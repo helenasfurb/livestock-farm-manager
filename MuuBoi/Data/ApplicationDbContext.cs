@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using MuuBoi.Models;
 
 namespace MuuBoi.Data
 {
@@ -8,6 +9,9 @@ namespace MuuBoi.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
+
         }
+        public DbSet<Animal> Animals { get; set; }
+
     }
 }
