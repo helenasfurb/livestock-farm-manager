@@ -17,3 +17,8 @@ COPY --from=build /app/out .
 EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "MuuBoi.dll"]
+
+# docker run -p 8080:8080 \
+#   -e "ConnectionStrings__DefaultConnection=Server=...;Database=...;" \
+#   -e "Jwt__Key=..." \
+#   muuboi
