@@ -16,6 +16,8 @@ COPY --from=build /app/out .
 
 EXPOSE 8080
 
+ENV ASPNETCORE_ENVIRONMENT=Docker
+
 ENTRYPOINT ["dotnet", "MuuBoi.dll"]
 
 # docker run -p 8080:8080 \

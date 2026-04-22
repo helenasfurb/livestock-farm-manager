@@ -20,7 +20,8 @@ builder.Services.AddIdentityCore<ApplicationUser>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
-var jwtKey = "MuuBoi_ChaveSuperSecreta_MinimoDe32Caracteres_2024!";
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("JWT Key não configurada.");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -82,15 +83,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsEnvironment("Docker"))
+    app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
