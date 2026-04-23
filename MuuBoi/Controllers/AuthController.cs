@@ -10,7 +10,7 @@ using System.Text;
 namespace MuuBoi.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/auth")]
     public class AuthController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -50,6 +50,7 @@ namespace MuuBoi.Controllers
             {
                 Token = token.Token,
                 Email = user.Email!,
+                FullName = user.FullName,
                 ExpiresAt = token.ExpiresAt
             });
         }
@@ -70,6 +71,7 @@ namespace MuuBoi.Controllers
             {
                 Token = token.Token,
                 Email = user.Email!,
+                FullName = user.FullName,
                 ExpiresAt = token.ExpiresAt
             });
         }

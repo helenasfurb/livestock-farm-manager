@@ -6,7 +6,7 @@ using MuuBoi.Interfaces;
 namespace MuuBoi.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/animals")]
     [Authorize]
     public class AnimalsController : ControllerBase
     {
@@ -51,6 +51,16 @@ namespace MuuBoi.Controllers
                 return NotFound();
 
             return NoContent();
+        }
+
+        [HttpPatch("{id:int}")]
+        public async Task<ActionResult<AnimalDto>> Update(int id, [FromBody] AnimalUpdateDto dto)
+        {
+            var updated = await _animalService.UpdateAnimalAsync(id, dto,_currentUserService.UserId);
+            if (updated == null)
+                return NotFound();
+
+            return Ok(updated);
         }
     }
 }

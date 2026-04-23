@@ -8,9 +8,6 @@ namespace MuuBoi.DTOs
         [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
 
-        [MaxLength(50)]
-        public string? Breed { get; set; }
-
         [MaxLength(10)]
         public string? Gender { get; set; }
 
@@ -19,6 +16,7 @@ namespace MuuBoi.DTOs
         [MaxLength(50)]
         public string? TagNumber { get; set; }
 
-        public bool IsActive { get; set; } = true;
+        public int? BreedId { get; set; }
+
     }
 }

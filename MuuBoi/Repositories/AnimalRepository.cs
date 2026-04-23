@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MuuBoi.Data;
+using MuuBoi.DTOs;
 using MuuBoi.Interfaces;
 using MuuBoi.Models;
 
@@ -23,22 +24,22 @@ namespace MuuBoi.Repositories
 
         public async Task<Animal?> DeleteAnimalAsync(int id)
         {
-           var animal = await _context.Animals.FindAsync(id);
-           if (animal == null) return null;
+            var animal = await _context.Animals.FindAsync(id);
+            if (animal == null) return null;
 
-           _context.Animals.Remove(animal);
-           await _context.SaveChangesAsync();
-           return animal;
+            _context.Animals.Remove(animal);
+            await _context.SaveChangesAsync();
+            return animal;
         }
 
         public async Task<IEnumerable<Animal>> GetAllAnimalsAsync()
         {
-            return await _context.Animals.ToListAsync();
+            return await _context.Animals.Include(a => a.Breed).ToListAsync();
         }
 
         public async Task<Animal?> GetAnimalByIdAsync(int id)
         {
-            return await _context.Animals.FindAsync(id);
+            return await _context.Animals.Include(a => a.Breed).FirstOrDefaultAsync(a => a.Id == id);
         }
 
         public async Task<Animal?> UpdateAnimalAsync(Animal animal)

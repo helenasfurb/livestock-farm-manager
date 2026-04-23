@@ -46,6 +46,9 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<IAnimalRepository, AnimalRepository>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
 
+builder.Services.AddScoped<IBreedRepository, BreedRepository>();
+builder.Services.AddScoped<IBreedService, BreedService>();
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
@@ -100,6 +103,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
+    await DatabaseSeeder.SeedAsync(scope.ServiceProvider);
 }
 
 app.Run();

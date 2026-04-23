@@ -6,8 +6,6 @@ namespace MuuBoi.DTOs
 
         public string Name { get; set; } = string.Empty;
 
-        public string? Breed { get; set; }
-
         public string? Gender { get; set; }
 
         public DateTime? BirthDate { get; set; }
@@ -16,8 +14,11 @@ namespace MuuBoi.DTOs
 
         public bool IsActive { get; set; }
 
+        public BreedResponseDto? Breed { get; set; }
+
         public DateTime CreatedAt { get; set; }
 
         public DateTime? UpdatedAt { get; set; }
+
     }
 }

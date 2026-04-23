@@ -12,5 +12,6 @@ namespace MuuBoi.Data
         }
 
         public DbSet<Animal> Animals { get; set; }
+        public DbSet<Breed> Breeds { get; set; }
     }
 }
