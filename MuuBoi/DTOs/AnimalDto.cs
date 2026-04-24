@@ -1,3 +1,6 @@
+using MuuBoi.Converters;
+using System.Text.Json.Serialization;
+
 namespace MuuBoi.DTOs
 {
     public class AnimalDto
@@ -8,6 +11,7 @@ namespace MuuBoi.DTOs
 
         public string? Gender { get; set; }
 
+        [JsonConverter(typeof(NullableDateFormatConverter))]
         public DateTime? BirthDate { get; set; }
 
         public string? TagNumber { get; set; }
