@@ -19,6 +19,8 @@ namespace MuuBoi.Mappings
 
             CreateMap<AnimalUpdateDto, Animal>()
                 .ForAllMembers(opt => opt.Condition((_, _, srcMember) => srcMember != null));
+
+            CreateMap<WeightRecord, WeightRecordDto>();
         }
     }
 }

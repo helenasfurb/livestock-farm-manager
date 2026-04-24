@@ -22,5 +22,7 @@ namespace MuuBoi.Models
         public int? BreedId { get; set; }
 
         public Breed? Breed { get; set; }
+
+        public ICollection<WeightRecord>? WeightRecords { get; set; }
     }
 }

@@ -39,7 +39,10 @@ namespace MuuBoi.Repositories
 
         public async Task<Animal?> GetAnimalByIdAsync(int id)
         {
-            return await _context.Animals.Include(a => a.Breed).FirstOrDefaultAsync(a => a.Id == id);
+            return await _context.Animals
+                .Include(a => a.Breed)
+                .Include(a => a.WeightRecords!.OrderBy(w => w.RecordedAt))
+                .FirstOrDefaultAsync(a => a.Id == id);
         }
 
         public async Task<Animal?> UpdateAnimalAsync(Animal animal)

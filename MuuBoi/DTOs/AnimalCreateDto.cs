@@ -18,5 +18,11 @@ namespace MuuBoi.DTOs
 
         public int? BreedId { get; set; }
 
+        public decimal? InitialWeight { get; set; }
+
+        public DateTime? InitialWeightDate { get; set; }
+
+        [MaxLength(500)]
+        public string? InitialWeightObservations { get; set; }
     }
 }

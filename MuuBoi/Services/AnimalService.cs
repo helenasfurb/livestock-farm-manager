@@ -38,6 +38,8 @@ namespace MuuBoi.Services
             animal.UserId = userId;
             animal.IsActive = true;
 
+            CreateWeightRecord(animalCreateDto, animal);
+
             var created = await _animalRepository.CreateAnimalAsync(animal);
             return _mapper.Map<AnimalDto>(created);
         }
@@ -63,6 +65,23 @@ namespace MuuBoi.Services
 
             var deleted = await _animalRepository.DeleteAnimalAsync(id);
             return deleted == null ? null : _mapper.Map<AnimalDto>(deleted);
+        }
+
+        private void CreateWeightRecord(AnimalCreateDto dto, Animal animal)
+        {
+
+            if (dto.InitialWeight.HasValue)
+            {
+                animal.WeightRecords = new List<WeightRecord>
+                {
+                    new()
+                    {
+                        Weight = dto.InitialWeight.Value,
+                        RecordedAt = dto.InitialWeightDate ?? DateTime.UtcNow,
+                        Observations = dto.InitialWeightObservations
+                    }
+                };
+            }
         }
     }
 }
