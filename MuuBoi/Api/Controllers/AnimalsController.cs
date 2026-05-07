@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using MuuBoi.DTOs;
 using MuuBoi.Interfaces;
 
-namespace MuuBoi.Controllers
+namespace MuuBoi.Api.Controllers
 {
     [ApiController]
     [Route("api/animals")]

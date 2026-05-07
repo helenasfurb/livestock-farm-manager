@@ -7,7 +7,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace MuuBoi.Controllers
+namespace MuuBoi.Api.Controllers
 {
     [ApiController]
     [Route("api/auth")]

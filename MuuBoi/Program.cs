@@ -1,11 +1,15 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using MuuBoi.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MuuBoi;
+using MuuBoi.Api.Middleware;
+using MuuBoi.Application.Interfaces;
+using MuuBoi.Application.Services;
 using MuuBoi.Data;
+using MuuBoi.Infrastructure.Repositories;
 using MuuBoi.Interfaces;
+using MuuBoi.Models;
 using MuuBoi.Repositories;
 using MuuBoi.Services;
 using System.Text;
@@ -48,6 +52,9 @@ builder.Services.AddScoped<IAnimalService, AnimalService>();
 
 builder.Services.AddScoped<IBreedRepository, BreedRepository>();
 builder.Services.AddScoped<IBreedService, BreedService>();
+
+builder.Services.AddScoped<IWeightRecordRepository, WeightRecordRepository>();
+builder.Services.AddScoped<IWeightRecordService, WeightRecordService>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -96,6 +103,8 @@ if (!app.Environment.IsEnvironment("Docker"))
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 app.MapControllers();
 
