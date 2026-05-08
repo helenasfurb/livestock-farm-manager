@@ -70,5 +70,17 @@ namespace MuuBoi.Application.Services
 
             return animal;
         }
+
+        public async Task<WeightRecordDto?> UpdateWeightRecordAsync(int id, string animalId, WeightRecordUpdateDto weightRecordUpdateDto)
+        {
+            await FindAnimalAsync(animalId);
+
+            var existing = await _weightRecordRepository.GetWeightRecordByIdAsync(id, animalId);
+            if (existing == null) return null;
+
+            _mapper.Map(weightRecordUpdateDto, existing);
+            var updated = await _weightRecordRepository.UpdateWeightRecordAsync(existing);
+            return _mapper.Map<WeightRecordDto>(updated);
+        }
     }
 }

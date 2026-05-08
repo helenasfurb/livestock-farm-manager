@@ -10,7 +10,6 @@ namespace MuuBoi.Api.Controllers
     [ApiController]
     [Route("api/animals/{animalId}/weight-records")]
     [Authorize]
-    [Authorize]
     public class WeightRecordsController : ControllerBase
     {
         private readonly IWeightRecordService _weightRecordService;
@@ -22,19 +21,43 @@ namespace MuuBoi.Api.Controllers
             _currentUserService = currentUserService;
         }
 
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<WeightRecordDto>>> GetAll(string animalId)
+        {
+            var weightRecords = await _weightRecordService.GetAllWeightRecordsAsync(animalId);
+            return Ok(weightRecords);
+        }
+
+        [HttpGet("{weightRecordId}")]
+        public async Task<ActionResult<WeightRecordDto>> GetById(string animalId, string weightRecordId)
+        {
+            var weightRecord = await _weightRecordService.GetWeightRecordByIdAsync(int.Parse(weightRecordId), animalId);
+            if (weightRecord == null) return NotFound();
+            return Ok(weightRecord);
+        }
+
         [HttpPost]
         public async Task<IActionResult> Create(string animalId, [FromBody] WeightRecordCreateDto dto)
         {
             var created = await _weightRecordService.CreateWeightRecordAsync(dto, animalId);
-            return CreatedAtAction(nameof(GetById), new { weightRecordId = created.Id, animalId }, created);
+            return CreatedAtAction(nameof(GetById), new { animalId, weightRecordId = created.Id }, created);
         }
 
-        [HttpGet]
-        public async Task<ActionResult<WeightRecordDto>> GetById(string weightRecordId, string animalId)
+        [HttpDelete("{weightRecordId}")]
+        public async Task<IActionResult> Delete(string animalId, string weightRecordId)
         {
+            var deleted = await _weightRecordService.DeleteWeightRecordAsync(int.Parse(weightRecordId), animalId);
+            if (deleted == null) return NotFound();
+            return NoContent();
+        }
 
-            var weightRecord = await _weightRecordService.GetWeightRecordByIdAsync(int.Parse(weightRecordId), animalId);
-            return Ok(weightRecord);
+        [HttpPatch("{weightRecordId}")]
+        public async Task<ActionResult<WeightRecordDto>> Update(string animalId, string weightRecordId, [FromBody] WeightRecordUpdateDto dto)
+        {
+            var updatedRecord = await _weightRecordService.UpdateWeightRecordAsync(int.Parse(weightRecordId), animalId, dto);
+            if (updatedRecord == null) return NotFound();
+     
+            return Ok(updatedRecord);
         }
     }
 }

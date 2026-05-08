@@ -9,5 +9,6 @@ namespace MuuBoi.Application.Interfaces
         Task<WeightRecordDto?> GetWeightRecordByIdAsync(int id, string animalId);
         Task<WeightRecordDto> CreateWeightRecordAsync(WeightRecordCreateDto weightRecordCreateDto, string animalId);
         Task<WeightRecordDto?> DeleteWeightRecordAsync(int id, string animalId);
+        Task<WeightRecordDto?> UpdateWeightRecordAsync(int id, string animalId, WeightRecordUpdateDto weightRecordUpdateDto);
     }
 }
