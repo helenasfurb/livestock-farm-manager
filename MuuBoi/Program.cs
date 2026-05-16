@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using MuuBoi;
 using MuuBoi.Api.Middleware;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Application.Services;
@@ -55,6 +54,18 @@ builder.Services.AddScoped<IBreedService, BreedService>();
 
 builder.Services.AddScoped<IWeightRecordRepository, WeightRecordRepository>();
 builder.Services.AddScoped<IWeightRecordService, WeightRecordService>();
+
+builder.Services.AddScoped<IVaccineRepository, VaccineRepository>();
+builder.Services.AddScoped<IVaccineService, VaccineService>();
+
+builder.Services.AddScoped<IAnimalVaccinationRepository, AnimalVaccinationRepository>();
+builder.Services.AddScoped<IAnimalVaccinationService, AnimalVaccinationService>();
+
+builder.Services.AddScoped<IMedicationRepository, MedicationRepository>();
+builder.Services.AddScoped<IMedicationService, MedicationService>();
+
+builder.Services.AddScoped<IAnimalMedicationRepository, AnimalMedicationRepository>();
+builder.Services.AddScoped<IAnimalMedicationService, AnimalMedicationService>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();

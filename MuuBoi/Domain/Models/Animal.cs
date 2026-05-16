@@ -24,5 +24,7 @@ namespace MuuBoi.Models
         public Breed? Breed { get; set; }
 
         public ICollection<WeightRecord>? WeightRecords { get; set; }
+        public ICollection<AnimalVaccination>? AnimalVaccinations { get; set; }
+        public ICollection<AnimalMedication>? AnimalMedications { get; set; }
     }
 }

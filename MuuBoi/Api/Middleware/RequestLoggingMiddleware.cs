@@ -1,4 +1,4 @@
-﻿namespace MuuBoi
+﻿namespace MuuBoi.Api.Middleware
 {
     public class RequestLoggingMiddleware
     {
