@@ -8,7 +8,8 @@ namespace MuuBoi.Mappings
     {
         public AnimalProfile()
         {
-            CreateMap<Animal, AnimalDto>();
+            CreateMap<Animal, AnimalDto>()
+                .ForMember(dest => dest.LastWeightRecord, opt => opt.MapFrom(src => src.WeightRecords != null ? src.WeightRecords.FirstOrDefault() : null));
 
             CreateMap<AnimalCreateDto, Animal>()
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))

@@ -40,7 +40,7 @@ namespace MuuBoi.Repositories
         {
             return await _context.Animals
                 .Include(a => a.Breed)
-                .Include(a => a.WeightRecords!.OrderBy(w => w.RecordedAt))
+                .Include(a => a.WeightRecords!.OrderByDescending(w => w.RecordedAt).Take(1))
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 

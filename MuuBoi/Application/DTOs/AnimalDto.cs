@@ -24,6 +24,6 @@ namespace MuuBoi.DTOs
 
         public DateTime? UpdatedAt { get; set; }
 
-        public IEnumerable<WeightRecordDto>? WeightRecords { get; set; }
+        public WeightRecordDto? LastWeightRecord{ get; set; }
     }
 }
