@@ -24,6 +24,11 @@ namespace MuuBoi.DTOs
 
         public DateTime? UpdatedAt { get; set; }
 
+        public bool IsPregnant { get; set; }
+
+        [JsonConverter(typeof(NullableDateFormatConverter))]
+        public DateTime? ExpectedBirthDate { get; set; }
+
         public WeightRecordDto? LastWeightRecord{ get; set; }
     }
 }

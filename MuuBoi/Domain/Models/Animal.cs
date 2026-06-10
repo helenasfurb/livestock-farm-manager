@@ -21,6 +21,10 @@ namespace MuuBoi.Models
 
         public int? BreedId { get; set; }
 
+        public bool IsPregnant { get; set; } = false;
+
+        public DateTime? ExpectedBirthDate { get; set; }
+
         public Breed? Breed { get; set; }
 
         public ICollection<WeightRecord>? WeightRecords { get; set; }
