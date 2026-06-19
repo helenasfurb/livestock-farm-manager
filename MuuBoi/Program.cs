@@ -67,6 +67,9 @@ builder.Services.AddScoped<IMedicationService, MedicationService>();
 builder.Services.AddScoped<IAnimalMedicationRepository, AnimalMedicationRepository>();
 builder.Services.AddScoped<IAnimalMedicationService, AnimalMedicationService>();
 
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
