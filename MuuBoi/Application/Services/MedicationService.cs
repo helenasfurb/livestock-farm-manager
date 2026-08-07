@@ -17,31 +17,29 @@ namespace MuuBoi.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<MedicationDto>> GetAllMedicationsAsync(string userId)
+        public async Task<IEnumerable<MedicationDto>> GetAllMedicationsAsync()
         {
-            var medications = await _medicationRepository.GetAllMedicationsAsync(userId);
+            var medications = await _medicationRepository.GetAllMedicationsAsync();
             return _mapper.Map<IEnumerable<MedicationDto>>(medications);
         }
 
-        public async Task<MedicationDto?> GetMedicationByIdAsync(int id, string userId)
+        public async Task<MedicationDto?> GetMedicationByIdAsync(int id)
         {
             var medication = await _medicationRepository.GetMedicationByIdAsync(id);
-            if (medication == null || medication.UserId != userId) return null;
-            return _mapper.Map<MedicationDto>(medication);
+            return medication == null ? null : _mapper.Map<MedicationDto>(medication);
         }
 
-        public async Task<MedicationDto> CreateMedicationAsync(MedicationCreateDto dto, string userId)
+        public async Task<MedicationDto> CreateMedicationAsync(MedicationCreateDto dto)
         {
             var medication = _mapper.Map<Medication>(dto);
-            medication.UserId = userId;
             var created = await _medicationRepository.CreateMedicationAsync(medication);
             return _mapper.Map<MedicationDto>(created);
         }
 
-        public async Task<MedicationDto?> UpdateMedicationAsync(int id, MedicationUpdateDto dto, string userId)
+        public async Task<MedicationDto?> UpdateMedicationAsync(int id, MedicationUpdateDto dto)
         {
             var existing = await _medicationRepository.GetMedicationByIdAsync(id);
-            if (existing == null || existing.UserId != userId) return null;
+            if (existing == null) return null;
 
             _mapper.Map(dto, existing);
             existing.UpdatedAt = DateTime.UtcNow;
@@ -49,10 +47,10 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<MedicationDto>(updated);
         }
 
-        public async Task<MedicationDto?> DeleteMedicationAsync(int id, string userId)
+        public async Task<MedicationDto?> DeleteMedicationAsync(int id)
         {
             var existing = await _medicationRepository.GetMedicationByIdAsync(id);
-            if (existing == null || existing.UserId != userId) return null;
+            if (existing == null) return null;
 
             var deleted = await _medicationRepository.DeleteMedicationAsync(id);
             return deleted == null ? null : _mapper.Map<MedicationDto>(deleted);

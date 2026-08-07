@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.DTOs;
-using MuuBoi.Interfaces;
 
 namespace MuuBoi.Api.Controllers
 {
@@ -13,25 +12,23 @@ namespace MuuBoi.Api.Controllers
     public class VaccinesController : ControllerBase
     {
         private readonly IVaccineService _vaccineService;
-        private readonly ICurrentUserService _currentUserService;
 
-        public VaccinesController(IVaccineService vaccineService, ICurrentUserService currentUserService)
+        public VaccinesController(IVaccineService vaccineService)
         {
             _vaccineService = vaccineService;
-            _currentUserService = currentUserService;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<VaccineDto>>> GetAll()
         {
-            var vaccines = await _vaccineService.GetAllVaccinesAsync(_currentUserService.UserId);
+            var vaccines = await _vaccineService.GetAllVaccinesAsync();
             return Ok(vaccines);
         }
 
         [HttpGet("{id:int}")]
         public async Task<ActionResult<VaccineDto>> GetById(int id)
         {
-            var vaccine = await _vaccineService.GetVaccineByIdAsync(id, _currentUserService.UserId);
+            var vaccine = await _vaccineService.GetVaccineByIdAsync(id);
             if (vaccine == null) return NotFound();
             return Ok(vaccine);
         }
@@ -39,14 +36,14 @@ namespace MuuBoi.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<VaccineDto>> Create([FromBody] VaccineCreateDto dto)
         {
-            var created = await _vaccineService.CreateVaccineAsync(dto, _currentUserService.UserId);
+            var created = await _vaccineService.CreateVaccineAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         [HttpPatch("{id:int}")]
         public async Task<ActionResult<VaccineDto>> Update(int id, [FromBody] VaccineUpdateDto dto)
         {
-            var updated = await _vaccineService.UpdateVaccineAsync(id, dto, _currentUserService.UserId);
+            var updated = await _vaccineService.UpdateVaccineAsync(id, dto);
             if (updated == null) return NotFound();
             return Ok(updated);
         }
@@ -54,7 +51,7 @@ namespace MuuBoi.Api.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _vaccineService.DeleteVaccineAsync(id, _currentUserService.UserId);
+            var deleted = await _vaccineService.DeleteVaccineAsync(id);
             if (deleted == null) return NotFound();
             return NoContent();
         }

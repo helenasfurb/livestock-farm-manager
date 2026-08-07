@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.DTOs;
-using MuuBoi.Interfaces;
 
 namespace MuuBoi.Api.Controllers
 {
@@ -13,25 +12,23 @@ namespace MuuBoi.Api.Controllers
     public class MedicationsController : ControllerBase
     {
         private readonly IMedicationService _medicationService;
-        private readonly ICurrentUserService _currentUserService;
 
-        public MedicationsController(IMedicationService medicationService, ICurrentUserService currentUserService)
+        public MedicationsController(IMedicationService medicationService)
         {
             _medicationService = medicationService;
-            _currentUserService = currentUserService;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<MedicationDto>>> GetAll()
         {
-            var medications = await _medicationService.GetAllMedicationsAsync(_currentUserService.UserId);
+            var medications = await _medicationService.GetAllMedicationsAsync();
             return Ok(medications);
         }
 
         [HttpGet("{id:int}")]
         public async Task<ActionResult<MedicationDto>> GetById(int id)
         {
-            var medication = await _medicationService.GetMedicationByIdAsync(id, _currentUserService.UserId);
+            var medication = await _medicationService.GetMedicationByIdAsync(id);
             if (medication == null) return NotFound();
             return Ok(medication);
         }
@@ -39,14 +36,14 @@ namespace MuuBoi.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<MedicationDto>> Create([FromBody] MedicationCreateDto dto)
         {
-            var created = await _medicationService.CreateMedicationAsync(dto, _currentUserService.UserId);
+            var created = await _medicationService.CreateMedicationAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         [HttpPatch("{id:int}")]
         public async Task<ActionResult<MedicationDto>> Update(int id, [FromBody] MedicationUpdateDto dto)
         {
-            var updated = await _medicationService.UpdateMedicationAsync(id, dto, _currentUserService.UserId);
+            var updated = await _medicationService.UpdateMedicationAsync(id, dto);
             if (updated == null) return NotFound();
             return Ok(updated);
         }
@@ -54,7 +51,7 @@ namespace MuuBoi.Api.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _medicationService.DeleteMedicationAsync(id, _currentUserService.UserId);
+            var deleted = await _medicationService.DeleteMedicationAsync(id);
             if (deleted == null) return NotFound();
             return NoContent();
         }

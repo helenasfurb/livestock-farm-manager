@@ -14,12 +14,9 @@ namespace MuuBoi.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Medication>> GetAllMedicationsAsync(string userId)
+        public async Task<IEnumerable<Medication>> GetAllMedicationsAsync()
         {
-            return await _context.Medications
-                .Where(m => m.UserId == userId)
-                .OrderBy(m => m.Name)
-                .ToListAsync();
+            return await _context.Medications.OrderBy(m => m.Name).ToListAsync();
         }
 
         public async Task<Medication?> GetMedicationByIdAsync(int id)

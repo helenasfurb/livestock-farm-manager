@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MuuBoi.Models
 {
-    public class Medication : BaseEntity
+    public class Medication : BaseEntity, ITenantEntity
     {
         [Required(ErrorMessage = "Name is required")]
         [MaxLength(100)]
@@ -19,10 +19,7 @@ namespace MuuBoi.Models
 
         public int? DefaultWithdrawalPeriodDays { get; set; }
 
-        [Required]
-        public string UserId { get; set; } = string.Empty;
-
-        public ApplicationUser? User { get; set; }
+        public Guid PropertyId { get; set; }
 
         public ICollection<AnimalMedication>? AnimalMedications { get; set; }
     }

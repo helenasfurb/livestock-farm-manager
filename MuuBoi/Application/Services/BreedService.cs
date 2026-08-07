@@ -16,35 +16,29 @@ namespace MuuBoi.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<BreedDto>> GetAllBreedsAsync(string userId)
+        public async Task<IEnumerable<BreedDto>> GetAllBreedsAsync()
         {
-            var breeds = await _breedRepository.GetAllBreedsAsync(userId);
+            var breeds = await _breedRepository.GetAllBreedsAsync();
             return _mapper.Map<IEnumerable<BreedDto>>(breeds);
         }
 
-        public async Task<BreedDto?> GetBreedByIdAsync(int id, string userId)
+        public async Task<BreedDto?> GetBreedByIdAsync(int id)
         {
             var breed = await _breedRepository.GetBreedByIdAsync(id);
-            if (breed == null || breed.UserId != userId)
-                return null;
-
-            return _mapper.Map<BreedDto>(breed);
+            return breed == null ? null : _mapper.Map<BreedDto>(breed);
         }
 
-        public async Task<BreedDto> CreateBreedAsync(BreedCreateDto breedCreateDto, string userId)
+        public async Task<BreedDto> CreateBreedAsync(BreedCreateDto breedCreateDto)
         {
             var breed = _mapper.Map<Breed>(breedCreateDto);
-            breed.UserId = userId;
-
             var created = await _breedRepository.CreateBreedAsync(breed);
             return _mapper.Map<BreedDto>(created);
         }
 
-        public async Task<BreedDto?> UpdateBreedAsync(int id, BreedUpdateDto breedUpdateDto, string userId)
+        public async Task<BreedDto?> UpdateBreedAsync(int id, BreedUpdateDto breedUpdateDto)
         {
             var breed = await _breedRepository.GetBreedByIdAsync(id);
-            if (breed == null || breed.UserId != userId)
-                return null;
+            if (breed == null) return null;
 
             _mapper.Map(breedUpdateDto, breed);
             breed.UpdatedAt = DateTime.UtcNow;
@@ -53,11 +47,10 @@ namespace MuuBoi.Services
             return updated == null ? null : _mapper.Map<BreedDto>(updated);
         }
 
-        public async Task<BreedDto?> DeleteBreedAsync(int id, string userId)
+        public async Task<BreedDto?> DeleteBreedAsync(int id)
         {
             var breed = await _breedRepository.GetBreedByIdAsync(id);
-            if (breed == null || breed.UserId != userId)
-                return null;
+            if (breed == null) return null;
 
             var deleted = await _breedRepository.DeleteBreedAsync(id);
             return deleted == null ? null : _mapper.Map<BreedDto>(deleted);

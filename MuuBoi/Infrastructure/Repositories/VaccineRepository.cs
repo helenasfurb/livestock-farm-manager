@@ -14,12 +14,9 @@ namespace MuuBoi.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Vaccine>> GetAllVaccinesAsync(string userId)
+        public async Task<IEnumerable<Vaccine>> GetAllVaccinesAsync()
         {
-            return await _context.Vaccines
-                .Where(v => v.UserId == userId)
-                .OrderBy(v => v.Name)
-                .ToListAsync();
+            return await _context.Vaccines.OrderBy(v => v.Name).ToListAsync();
         }
 
         public async Task<Vaccine?> GetVaccineByIdAsync(int id)

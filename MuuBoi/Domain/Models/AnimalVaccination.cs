@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MuuBoi.Models
 {
-    public class AnimalVaccination : BaseEntity
+    public class AnimalVaccination : BaseEntity, ITenantEntity
     {
         [Required]
         public int AnimalId { get; set; }
@@ -26,6 +26,8 @@ namespace MuuBoi.Models
 
         [MaxLength(500)]
         public string? Observations { get; set; }
+
+        public Guid PropertyId { get; set; }
 
         public Animal? Animal { get; set; }
         public Vaccine? Vaccine { get; set; }

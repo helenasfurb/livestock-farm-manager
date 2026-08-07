@@ -1,16 +1,18 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using MuuBoi.Application.Interfaces;
 using MuuBoi.Models;
 
 namespace MuuBoi.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-            : base(options)
-        {
-        }
+        private readonly Guid _propertyId;
 
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ITenantProvider tenant)
+            : base(options) => _propertyId = tenant.PropertyId;
+
+        public DbSet<Property> Properties { get; set; }
         public DbSet<Animal> Animals { get; set; }
         public DbSet<Breed> Breeds { get; set; }
         public DbSet<WeightRecord> WeightRecords { get; set; }
@@ -18,5 +20,44 @@ namespace MuuBoi.Data
         public DbSet<AnimalVaccination> AnimalVaccinations { get; set; }
         public DbSet<Medication> Medications { get; set; }
         public DbSet<AnimalMedication> AnimalMedications { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+
+            builder.Entity<ApplicationUser>()
+                .HasOne(u => u.Property)
+                .WithMany(p => p.Users)
+                .HasForeignKey(u => u.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Animal>().HasQueryFilter(a => a.PropertyId == _propertyId);
+            builder.Entity<Breed>().HasQueryFilter(b => b.PropertyId == _propertyId);
+            builder.Entity<Vaccine>().HasQueryFilter(v => v.PropertyId == _propertyId);
+            builder.Entity<Medication>().HasQueryFilter(m => m.PropertyId == _propertyId);
+            builder.Entity<WeightRecord>().HasQueryFilter(w => w.PropertyId == _propertyId);
+            builder.Entity<AnimalVaccination>().HasQueryFilter(av => av.PropertyId == _propertyId);
+            builder.Entity<AnimalMedication>().HasQueryFilter(am => am.PropertyId == _propertyId);
+
+            builder.Entity<Animal>().HasIndex(a => a.PropertyId).HasDatabaseName("IX_Animals_PropertyId");
+            builder.Entity<Breed>().HasIndex(b => b.PropertyId).HasDatabaseName("IX_Breeds_PropertyId");
+            builder.Entity<Vaccine>().HasIndex(v => v.PropertyId).HasDatabaseName("IX_Vaccines_PropertyId");
+            builder.Entity<Medication>().HasIndex(m => m.PropertyId).HasDatabaseName("IX_Medications_PropertyId");
+            builder.Entity<WeightRecord>().HasIndex(w => w.PropertyId).HasDatabaseName("IX_WeightRecords_PropertyId");
+            builder.Entity<AnimalVaccination>().HasIndex(av => av.PropertyId).HasDatabaseName("IX_AnimalVaccinations_PropertyId");
+            builder.Entity<AnimalMedication>().HasIndex(am => am.PropertyId).HasDatabaseName("IX_AnimalMedications_PropertyId");
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken ct = default)
+        {
+            foreach (var entry in ChangeTracker.Entries<ITenantEntity>()
+                                               .Where(e => e.State == EntityState.Added))
+            {
+                if (entry.Entity.PropertyId == Guid.Empty)
+                    entry.Entity.PropertyId = _propertyId;
+            }
+
+            return base.SaveChangesAsync(ct);
+        }
     }
 }

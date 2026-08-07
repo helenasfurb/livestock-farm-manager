@@ -14,15 +14,15 @@ namespace MuuBoi.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<DashboardCardsDto> GetCardsAsync(string userId)
+        public async Task<DashboardCardsDto> GetCardsAsync()
         {
             var today = DateTime.UtcNow.Date;
-            var baseQuery = _context.Animals.Where(a => a.UserId == userId && a.IsActive);
+            var baseQuery = _context.Animals.Where(a => a.IsActive);
 
             var total = await baseQuery.CountAsync();
             var pregnant = await baseQuery.CountAsync(a => a.IsPregnant);
             var treatments = await _context.AnimalMedications
-                .Where(am => am.Animal!.UserId == userId && am.Animal.IsActive)
+                .Where(am => am.Animal!.IsActive)
                 .Where(am => am.EndDate == null || am.EndDate.Value.Date >= today)
                 .CountAsync();
 
@@ -34,7 +34,7 @@ namespace MuuBoi.Infrastructure.Repositories
             };
         }
 
-        public async Task<IEnumerable<GenderDistributionDto>> GetGenderDistributionAsync(string userId)
+        public async Task<IEnumerable<GenderDistributionDto>> GetGenderDistributionAsync()
         {
             var genderLabels = new Dictionary<string, string>
             {
@@ -43,7 +43,7 @@ namespace MuuBoi.Infrastructure.Repositories
             };
 
             var raw = await _context.Animals
-                .Where(a => a.UserId == userId && a.IsActive && a.Gender != null)
+                .Where(a => a.IsActive && a.Gender != null)
                 .GroupBy(a => a.Gender!)
                 .Select(g => new { Gender = g.Key, Count = g.Count() })
                 .OrderBy(x => x.Gender)
@@ -57,10 +57,10 @@ namespace MuuBoi.Infrastructure.Repositories
             });
         }
 
-        public async Task<IEnumerable<BreedDistributionDto>> GetBreedDistributionAsync(string userId)
+        public async Task<IEnumerable<BreedDistributionDto>> GetBreedDistributionAsync()
         {
             var raw = await _context.Animals
-                .Where(a => a.UserId == userId && a.IsActive && a.BreedId != null)
+                .Where(a => a.IsActive && a.BreedId != null)
                 .GroupBy(a => new { a.BreedId, a.Breed!.Name })
                 .Select(g => new { BreedId = g.Key.BreedId!.Value, BreedName = g.Key.Name, Count = g.Count() })
                 .OrderByDescending(x => x.Count)
@@ -74,12 +74,12 @@ namespace MuuBoi.Infrastructure.Repositories
             });
         }
 
-        public async Task<IEnumerable<VaccinePerMonthDto>> GetVaccinesPerMonthAsync(string userId, int months = 12)
+        public async Task<IEnumerable<VaccinePerMonthDto>> GetVaccinesPerMonthAsync(int months = 12)
         {
             var cutoff = DateTime.UtcNow.AddMonths(-months);
 
             var raw = await _context.AnimalVaccinations
-                .Where(av => av.Animal!.UserId == userId && av.Animal.IsActive)
+                .Where(av => av.Animal!.IsActive)
                 .Where(av => av.ApplicationDate >= cutoff)
                 .GroupBy(av => new { av.ApplicationDate.Year, av.ApplicationDate.Month })
                 .Select(g => new { g.Key.Year, g.Key.Month, Count = g.Count() })
@@ -95,10 +95,10 @@ namespace MuuBoi.Infrastructure.Repositories
             });
         }
 
-        public async Task<IEnumerable<BirthForecastDto>> GetBirthForecastAsync(string userId)
+        public async Task<IEnumerable<BirthForecastDto>> GetBirthForecastAsync()
         {
             return await _context.Animals
-                .Where(a => a.UserId == userId && a.IsActive && a.IsPregnant && a.ExpectedBirthDate != null)
+                .Where(a => a.IsActive && a.IsPregnant && a.ExpectedBirthDate != null)
                 .OrderBy(a => a.ExpectedBirthDate)
                 .Select(a => new BirthForecastDto
                 {

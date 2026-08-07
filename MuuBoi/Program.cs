@@ -7,6 +7,7 @@ using MuuBoi.Application.Interfaces;
 using MuuBoi.Application.Services;
 using MuuBoi.Data;
 using MuuBoi.Infrastructure.Repositories;
+using MuuBoi.Infrastructure.Services;
 using MuuBoi.Interfaces;
 using MuuBoi.Models;
 using MuuBoi.Repositories;
@@ -71,6 +72,7 @@ builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITenantProvider, TenantProvider>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
