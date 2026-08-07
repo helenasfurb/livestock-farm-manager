@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MuuBoi.DTOs
 {
-    public class RegisterDto
+    public class CreateUserDto
     {
         [Required]
         [MaxLength(150)]
@@ -14,10 +14,13 @@ namespace MuuBoi.DTOs
 
         [Required]
         [MinLength(6)]
-        public string Password { get; set; } = string.Empty;
+        public string TemporaryPassword { get; set; } = string.Empty;
+    }
 
-        [Required]
-        [MaxLength(200)]
-        public string PropertyName { get; set; } = string.Empty;
+    public class UserResponseDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
     }
 }

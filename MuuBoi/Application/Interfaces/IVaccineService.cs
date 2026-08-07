@@ -5,10 +5,10 @@ namespace MuuBoi.Application.Interfaces
 {
     public interface IVaccineService
     {
-        Task<IEnumerable<VaccineDto>> GetAllVaccinesAsync(string userId);
-        Task<VaccineDto?> GetVaccineByIdAsync(int id, string userId);
-        Task<VaccineDto> CreateVaccineAsync(VaccineCreateDto dto, string userId);
-        Task<VaccineDto?> UpdateVaccineAsync(int id, VaccineUpdateDto dto, string userId);
-        Task<VaccineDto?> DeleteVaccineAsync(int id, string userId);
+        Task<IEnumerable<VaccineDto>> GetAllVaccinesAsync();
+        Task<VaccineDto?> GetVaccineByIdAsync(int id);
+        Task<VaccineDto> CreateVaccineAsync(VaccineCreateDto dto);
+        Task<VaccineDto?> UpdateVaccineAsync(int id, VaccineUpdateDto dto);
+        Task<VaccineDto?> DeleteVaccineAsync(int id);
     }
 }

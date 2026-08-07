@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MuuBoi.Models
 {
-    public class WeightRecord : BaseEntity
+    public class WeightRecord : BaseEntity, ITenantEntity
     {
         [Required]
         [Column(TypeName = "decimal(8,2)")]
@@ -16,6 +16,8 @@ namespace MuuBoi.Models
 
         [Required]
         public int AnimalId { get; set; }
+
+        public Guid PropertyId { get; set; }
 
         public Animal? Animal { get; set; }
     }

@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MuuBoi.Models
 {
-    public class Animal : BaseEntity
+    public class Animal : BaseEntity, ITenantEntity
     {
         [Required(ErrorMessage = "Name is required")]
         [MaxLength(100)]
@@ -16,8 +16,7 @@ namespace MuuBoi.Models
         [MaxLength(50)]
         public string? TagNumber { get; set; }
 
-        [Required]
-        public string UserId { get; set; } = string.Empty;
+        public Guid PropertyId { get; set; }
 
         public int? BreedId { get; set; }
 

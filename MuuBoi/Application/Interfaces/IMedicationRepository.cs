@@ -4,7 +4,7 @@ namespace MuuBoi.Application.Interfaces
 {
     public interface IMedicationRepository
     {
-        Task<IEnumerable<Medication>> GetAllMedicationsAsync(string userId);
+        Task<IEnumerable<Medication>> GetAllMedicationsAsync();
         Task<Medication?> GetMedicationByIdAsync(int id);
         Task<Medication> CreateMedicationAsync(Medication medication);
         Task<Medication?> UpdateMedicationAsync(Medication medication);

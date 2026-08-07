@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MuuBoi.Models
 {
-    public class Vaccine : BaseEntity
+    public class Vaccine : BaseEntity, ITenantEntity
     {
         [Required(ErrorMessage = "Name is required")]
         [MaxLength(100)]
@@ -16,10 +16,7 @@ namespace MuuBoi.Models
 
         public int? RecommendedIntervalDays { get; set; }
 
-        [Required]
-        public string UserId { get; set; } = string.Empty;
-
-        public ApplicationUser? User { get; set; }
+        public Guid PropertyId { get; set; }
 
         public ICollection<AnimalVaccination>? AnimalVaccinations { get; set; }
     }

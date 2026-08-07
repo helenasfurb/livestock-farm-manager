@@ -8,41 +8,75 @@ namespace MuuBoi.Data
     {
         private const string SystemUserEmail = "admin@muuboi.com.br";
         private const string SystemUserPassword = "Senha@123";
+        public static readonly Guid SystemPropertyId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+        private static readonly (string Name, string Description)[] DefaultBreeds =
+        [
+            ("Nelore", "Raça bovina de corte mais popular do Brasil."),
+            ("Angus", "Raça bovina de origem escocesa, valorizada pela qualidade da carne."),
+            ("Brahman", "Raça zebuína adaptada ao clima tropical."),
+            ("Hereford", "Raça bovina de corte de origem inglesa."),
+            ("Girolando", "Raça leiteira desenvolvida no Brasil."),
+            ("Holandesa", "Raça leiteira de alta produção."),
+            ("Senepol", "Raça bovina sem chifres adaptada ao calor."),
+            ("Simmental", "Raça de dupla aptidão, corte e leite."),
+        ];
 
         public static async Task SeedAsync(IServiceProvider services)
         {
             var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
             var db = services.GetRequiredService<ApplicationDbContext>();
 
-            var systemUser = await userManager.FindByEmailAsync(SystemUserEmail);
+            var systemProperty = await db.Properties.FindAsync(SystemPropertyId);
+            if (systemProperty == null)
+            {
+                systemProperty = new Property
+                {
+                    Id = SystemPropertyId,
+                    Name = "Sistema MuuBoi",
+                    CreatedAt = DateTime.UtcNow
+                };
+                db.Properties.Add(systemProperty);
+                await db.SaveChangesAsync();
+            }
 
+            var systemUser = await userManager.FindByEmailAsync(SystemUserEmail);
             if (systemUser == null)
             {
                 systemUser = new ApplicationUser
                 {
                     UserName = SystemUserEmail,
                     Email = SystemUserEmail,
-                    FullName = "Sistema MuuBoi",
-                    EmailConfirmed = true
+                    Name = "Sistema MuuBoi",
+                    EmailConfirmed = true,
+                    PropertyId = SystemPropertyId,
+                    IsActive = true
                 };
-
                 await userManager.CreateAsync(systemUser, SystemUserPassword);
             }
-
-            var hasBreeds = await db.Breeds.AnyAsync();
-            if (hasBreeds) return;
-
-            var breeds = new List<Breed>
+            else if (systemUser.PropertyId != SystemPropertyId)
             {
-                new() { Name = "Nelore", Description = "Raça bovina de corte mais popular do Brasil.", UserId = systemUser.Id },
-                new() { Name = "Angus", Description = "Raça bovina de origem escocesa, valorizada pela qualidade da carne.", UserId = systemUser.Id },
-                new() { Name = "Brahman", Description = "Raça zebuína adaptada ao clima tropical.", UserId = systemUser.Id },
-                new() { Name = "Hereford", Description = "Raça bovina de corte de origem inglesa.", UserId = systemUser.Id },
-                new() { Name = "Girolando", Description = "Raça leiteira desenvolvida no Brasil.", UserId = systemUser.Id },
-                new() { Name = "Holandesa", Description = "Raça leiteira de alta produção.", UserId = systemUser.Id },
-                new() { Name = "Senepol", Description = "Raça bovina sem chifres adaptada ao calor.", UserId = systemUser.Id },
-                new() { Name = "Simmental", Description = "Raça de dupla aptidão, corte e leite.", UserId = systemUser.Id },
-            };
+                systemUser.PropertyId = SystemPropertyId;
+                await userManager.UpdateAsync(systemUser);
+            }
+
+            var hasBreeds = await db.Breeds.IgnoreQueryFilters()
+                .AnyAsync(b => b.PropertyId == SystemPropertyId);
+
+            if (!hasBreeds)
+                await CopyDefaultBreeds(db, SystemPropertyId);
+        }
+
+        public static async Task CopyDefaultBreeds(ApplicationDbContext db, Guid targetPropertyId)
+        {
+            var breeds = DefaultBreeds.Select(b => new Breed
+            {
+                Name = b.Name,
+                Description = b.Description,
+                PropertyId = targetPropertyId,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
 
             await db.Breeds.AddRangeAsync(breeds);
             await db.SaveChangesAsync();
