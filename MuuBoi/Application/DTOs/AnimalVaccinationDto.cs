@@ -1,4 +1,4 @@
-using MuuBoi.Converters;
+using MuuBoi.Application.Helpers;
 using System.Text.Json.Serialization;
 
 namespace MuuBoi.DTOs

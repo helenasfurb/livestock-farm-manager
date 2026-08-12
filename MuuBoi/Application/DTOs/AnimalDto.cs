@@ -1,4 +1,5 @@
-using MuuBoi.Converters;
+using MuuBoi.Application.Helpers;
+using MuuBoi.Enums;
 using System.Text.Json.Serialization;
 
 namespace MuuBoi.DTOs
@@ -9,7 +10,7 @@ namespace MuuBoi.DTOs
 
         public string Name { get; set; } = string.Empty;
 
-        public string? Gender { get; set; }
+        public AnimalGender? Gender { get; set; }
 
         [JsonConverter(typeof(NullableDateFormatConverter))]
         public DateTime? BirthDate { get; set; }
