@@ -10,16 +10,42 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		docker-compose.yml = docker-compose.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuuBoi.Tests", "..\MuuBoi.Tests\MuuBoi.Tests.csproj", "{B2D60A52-6991-4D83-BBD7-29998C75C380}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Debug|x64.Build.0 = Debug|Any CPU
+		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Debug|x86.Build.0 = Debug|Any CPU
 		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Release|x64.ActiveCfg = Release|Any CPU
+		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Release|x64.Build.0 = Release|Any CPU
+		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Release|x86.ActiveCfg = Release|Any CPU
+		{6EED6505-BE33-4278-9B61-FC26B22AB040}.Release|x86.Build.0 = Release|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Debug|x64.Build.0 = Debug|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Debug|x86.Build.0 = Debug|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Release|x64.ActiveCfg = Release|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Release|x64.Build.0 = Release|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Release|x86.ActiveCfg = Release|Any CPU
+		{B2D60A52-6991-4D83-BBD7-29998C75C380}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
