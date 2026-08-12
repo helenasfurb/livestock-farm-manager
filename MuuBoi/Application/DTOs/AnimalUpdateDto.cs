@@ -1,3 +1,4 @@
+using MuuBoi.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace MuuBoi.DTOs
@@ -9,8 +10,7 @@ namespace MuuBoi.DTOs
 
         public int? BreedId { get; set; }
 
-        [MaxLength(10)]
-        public string? Gender { get; set; }
+        public AnimalGender? Gender { get; set; }
 
         public DateTime? BirthDate { get; set; }
 

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace MuuBoi.Converters
+namespace MuuBoi.Application.Helpers
 {
     public class DateFormatConverter : JsonConverter<DateTime>
     {

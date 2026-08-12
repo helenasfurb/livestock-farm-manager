@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MuuBoi.Application.Helpers;
 using MuuBoi.DTOs;
+using MuuBoi.Enums;
 using MuuBoi.Interfaces;
 
 namespace MuuBoi.Api.Controllers
@@ -15,6 +17,12 @@ namespace MuuBoi.Api.Controllers
         public AnimalsController(IAnimalService animalService)
         {
             _animalService = animalService;
+        }
+
+        [HttpGet("genders")]
+        public IActionResult GetGenders()
+        {
+            return Ok(EnumHelper.ToLookup<AnimalGender>());
         }
 
         [HttpGet]

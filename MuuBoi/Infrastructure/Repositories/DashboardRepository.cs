@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Data;
 using MuuBoi.DTOs;
@@ -36,12 +37,6 @@ namespace MuuBoi.Infrastructure.Repositories
 
         public async Task<IEnumerable<GenderDistributionDto>> GetGenderDistributionAsync()
         {
-            var genderLabels = new Dictionary<string, string>
-            {
-                { "M", "Macho" },
-                { "F", "Fêmea" }
-            };
-
             var raw = await _context.Animals
                 .Where(a => a.IsActive && a.Gender != null)
                 .GroupBy(a => a.Gender!)
@@ -51,8 +46,8 @@ namespace MuuBoi.Infrastructure.Repositories
 
             return raw.Select(x => new GenderDistributionDto
             {
-                Gender = x.Gender,
-                Label = genderLabels.GetValueOrDefault(x.Gender, x.Gender),
+                Gender = x.Gender!.Value.ToString(),
+                Label = x.Gender!.Value.GetDescription(),
                 Count = x.Count
             });
         }
