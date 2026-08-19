@@ -1,7 +1,7 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace MuuBoi.Models
+namespace MuuBoi.Domain.Models
 {
     public class WeightRecord : BaseEntity, ITenantEntity
     {

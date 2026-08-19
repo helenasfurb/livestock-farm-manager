@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using MuuBoi.Models;
+using MuuBoi.Domain.Models;
 
-namespace MuuBoi.Data
+namespace MuuBoi.Infrastructure.Data
 {
     public static class DatabaseSeeder
     {

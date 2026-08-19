@@ -1,10 +1,9 @@
 ﻿using AutoMapper;
 using MuuBoi.Application.DTOs;
-using MuuBoi.DTOs;
-using MuuBoi.Models;
+using MuuBoi.Domain.Models;
 
 
-namespace Application.Mappings
+namespace MuuBoi.Application.Mappings
 {
     public class WeightRecordProfile : Profile
     {

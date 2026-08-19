@@ -1,4 +1,4 @@
-namespace MuuBoi.Models
+﻿namespace MuuBoi.Domain.Models
 {
     public interface ITenantEntity
     {

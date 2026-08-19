@@ -1,6 +1,6 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace MuuBoi.DTOs
+namespace MuuBoi.Application.DTOs
 {
     public class CreateUserDto
     {

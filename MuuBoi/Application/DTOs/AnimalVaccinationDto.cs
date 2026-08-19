@@ -1,7 +1,7 @@
-using MuuBoi.Application.Helpers;
+﻿using MuuBoi.Application.Helpers;
 using System.Text.Json.Serialization;
 
-namespace MuuBoi.DTOs
+namespace MuuBoi.Application.DTOs
 {
     public class AnimalVaccinationDto
     {

@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MuuBoi.Application.Helpers;
-using MuuBoi.DTOs;
-using MuuBoi.Enums;
-using MuuBoi.Interfaces;
+using MuuBoi.Application.DTOs;
+using MuuBoi.Domain.Enums;
+using MuuBoi.Application.Interfaces;
 
 namespace MuuBoi.Api.Controllers
 {

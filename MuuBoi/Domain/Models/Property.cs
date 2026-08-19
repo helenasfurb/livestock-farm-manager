@@ -1,6 +1,6 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace MuuBoi.Models
+namespace MuuBoi.Domain.Models
 {
     public class Property
     {

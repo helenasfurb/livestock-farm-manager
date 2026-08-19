@@ -1,4 +1,4 @@
-﻿using MuuBoi.Models;
+﻿using MuuBoi.Domain.Models;
 
 namespace MuuBoi.Application.Interfaces
 {

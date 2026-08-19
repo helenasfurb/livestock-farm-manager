@@ -1,6 +1,6 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 
-namespace MuuBoi.Enums
+namespace MuuBoi.Domain.Enums
 {
     public enum AnimalGender
     {

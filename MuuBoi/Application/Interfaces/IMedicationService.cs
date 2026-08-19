@@ -1,5 +1,4 @@
-using MuuBoi.Application.DTOs;
-using MuuBoi.DTOs;
+﻿using MuuBoi.Application.DTOs;
 
 namespace MuuBoi.Application.Interfaces
 {

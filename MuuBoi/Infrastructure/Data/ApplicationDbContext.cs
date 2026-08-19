@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MuuBoi.Application.Interfaces;
-using MuuBoi.Models;
+using MuuBoi.Domain.Models;
 
-namespace MuuBoi.Data
+namespace MuuBoi.Infrastructure.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {

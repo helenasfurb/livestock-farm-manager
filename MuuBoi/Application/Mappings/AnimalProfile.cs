@@ -1,8 +1,8 @@
-using AutoMapper;
-using MuuBoi.DTOs;
-using MuuBoi.Models;
+﻿using AutoMapper;
+using MuuBoi.Application.DTOs;
+using MuuBoi.Domain.Models;
 
-namespace MuuBoi.Mappings
+namespace MuuBoi.Application.Mappings
 {
     public class AnimalProfile : Profile
     {

@@ -1,8 +1,8 @@
-using MuuBoi.Application.Helpers;
-using MuuBoi.Enums;
+﻿using MuuBoi.Application.Helpers;
+using MuuBoi.Domain.Enums;
 using System.Text.Json.Serialization;
 
-namespace MuuBoi.DTOs
+namespace MuuBoi.Application.DTOs
 {
     public class AnimalDto
     {

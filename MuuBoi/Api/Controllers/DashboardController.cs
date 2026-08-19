@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MuuBoi.Application.Interfaces;
-using MuuBoi.DTOs;
+using MuuBoi.Application.DTOs;
 
 namespace MuuBoi.Api.Controllers
 {

@@ -1,7 +1,7 @@
-using MuuBoi.Interfaces;
+﻿using MuuBoi.Application.Interfaces;
 using System.Security.Claims;
 
-namespace MuuBoi.Services
+namespace MuuBoi.Application.Services
 {
     public class CurrentUserService : ICurrentUserService
     {
