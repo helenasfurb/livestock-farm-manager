@@ -63,7 +63,6 @@ namespace MuuBoi.Api.Controllers
                 return BadRequest(new { message = "Erro ao criar usuário.", errors });
             }
 
-            await DatabaseSeeder.CopyDefaultBreeds(_context, property.Id);
             await transaction.CommitAsync();
 
             var token = GenerateJwtToken(user, property);

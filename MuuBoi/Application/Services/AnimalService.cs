@@ -1,6 +1,7 @@
-﻿using AutoMapper;
+using AutoMapper;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Interfaces;
+using MuuBoi.Domain.Exceptions;
 using MuuBoi.Domain.Models;
 
 namespace MuuBoi.Application.Services
@@ -16,64 +17,59 @@ namespace MuuBoi.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<AnimalDto>> GetAllAnimalsAsync()
+        public async Task<IEnumerable<AnimalListItemDto>> GetAllAnimalsAsync(AnimalFilterDto filter)
         {
-            var animals = await _animalRepository.GetAllAnimalsAsync();
-            return _mapper.Map<IEnumerable<AnimalDto>>(animals);
+            var animals = await _animalRepository.GetAllAnimalsAsync(filter);
+            return _mapper.Map<IEnumerable<AnimalListItemDto>>(animals);
         }
 
-        public async Task<AnimalDto?> GetAnimalByIdAsync(int id)
+        public async Task<AnimalDto> GetAnimalByIdAsync(int id)
         {
-            var animal = await _animalRepository.GetAnimalByIdAsync(id);
-            return animal == null ? null : _mapper.Map<AnimalDto>(animal);
+            var animal = await _animalRepository.GetAnimalByIdAsync(id)
+                ?? throw new NotFoundException($"Animal com id '{id}' não encontrado.");
+            return _mapper.Map<AnimalDto>(animal);
         }
 
-        public async Task<AnimalDto> CreateAnimalAsync(AnimalCreateDto animalCreateDto)
+        public async Task<AnimalDto> CreateAnimalAsync(AnimalCreateDto dto)
         {
-            var animal = _mapper.Map<Animal>(animalCreateDto);
-            animal.IsActive = true;
+            if (await _animalRepository.TagNumberExistsAsync(dto.TagNumber))
+                throw new ConflictException($"Já existe um animal com o brinco '{dto.TagNumber}' nesta propriedade.");
 
-            CreateWeightRecord(animalCreateDto, animal);
+            var animal = _mapper.Map<Animal>(dto);
+            CreateWeightRecord(dto, animal);
 
             var created = await _animalRepository.CreateAnimalAsync(animal);
             return _mapper.Map<AnimalDto>(created);
         }
 
-        public async Task<AnimalDto?> UpdateAnimalAsync(int id, AnimalUpdateDto animalUpdateDto)
+        public async Task<AnimalDto> UpdateAnimalAsync(int id, AnimalUpdateDto dto)
         {
-            var animal = await _animalRepository.GetAnimalByIdAsync(id);
-            if (animal == null) return null;
+            var animal = await _animalRepository.GetAnimalByIdAsync(id)
+                ?? throw new NotFoundException($"Animal com id '{id}' não encontrado.");
 
-            _mapper.Map(animalUpdateDto, animal);
+            if (dto.TagNumber != null && await _animalRepository.TagNumberExistsAsync(dto.TagNumber, excludeAnimalId: id))
+                throw new ConflictException($"Já existe um animal com o brinco '{dto.TagNumber}' nesta propriedade.");
+
+            _mapper.Map(dto, animal);
             animal.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _animalRepository.UpdateAnimalAsync(animal);
-            return updated == null ? null : _mapper.Map<AnimalDto>(updated);
+            return _mapper.Map<AnimalDto>(updated);
         }
 
-        public async Task<AnimalDto?> DeleteAnimalAsync(int id)
+        private static void CreateWeightRecord(AnimalCreateDto dto, Animal animal)
         {
-            var animal = await _animalRepository.GetAnimalByIdAsync(id);
-            if (animal == null) return null;
+            if (!dto.InitialWeight.HasValue) return;
 
-            var deleted = await _animalRepository.DeleteAnimalAsync(id);
-            return deleted == null ? null : _mapper.Map<AnimalDto>(deleted);
-        }
-
-        private void CreateWeightRecord(AnimalCreateDto dto, Animal animal)
-        {
-            if (dto.InitialWeight.HasValue)
+            animal.WeightRecords = new List<WeightRecord>
             {
-                animal.WeightRecords = new List<WeightRecord>
+                new()
                 {
-                    new()
-                    {
-                        Weight = dto.InitialWeight.Value,
-                        RecordedAt = dto.InitialWeightDate ?? DateTime.UtcNow,
-                        Observations = dto.InitialWeightObservations
-                    }
-                };
-            }
+                    Weight = dto.InitialWeight.Value,
+                    RecordedAt = dto.InitialWeightDate ?? DateTime.UtcNow,
+                    Observations = dto.InitialWeightObservations
+                }
+            };
         }
     }
 }
