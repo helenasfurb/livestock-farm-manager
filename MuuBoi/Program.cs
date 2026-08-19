@@ -1,17 +1,14 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MuuBoi.Api.Middleware;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Application.Services;
-using MuuBoi.Data;
+using MuuBoi.Infrastructure.Data;
 using MuuBoi.Infrastructure.Repositories;
 using MuuBoi.Infrastructure.Services;
-using MuuBoi.Interfaces;
-using MuuBoi.Models;
-using MuuBoi.Repositories;
-using MuuBoi.Services;
+using MuuBoi.Domain.Models;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);

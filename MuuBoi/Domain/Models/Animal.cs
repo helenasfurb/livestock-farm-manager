@@ -1,7 +1,7 @@
-using System.ComponentModel.DataAnnotations;
-using MuuBoi.Enums;
+﻿using System.ComponentModel.DataAnnotations;
+using MuuBoi.Domain.Enums;
 
-namespace MuuBoi.Models
+namespace MuuBoi.Domain.Models
 {
     public class Animal : BaseEntity, ITenantEntity
     {

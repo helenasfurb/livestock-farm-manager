@@ -2,8 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Interfaces;
-using MuuBoi.DTOs;
-using MuuBoi.Interfaces;
 
 namespace MuuBoi.Api.Controllers
 {

@@ -1,4 +1,4 @@
-namespace MuuBoi.DTOs
+﻿namespace MuuBoi.Application.DTOs
 {
     public class BreedUpdateDto
     {

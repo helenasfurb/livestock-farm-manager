@@ -1,7 +1,7 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MuuBoi.Application.Interfaces;
-using MuuBoi.Data;
-using MuuBoi.Models;
+using MuuBoi.Infrastructure.Data;
+using MuuBoi.Domain.Models;
 
 namespace MuuBoi.Infrastructure.Repositories
 {

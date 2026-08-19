@@ -1,6 +1,6 @@
-using MuuBoi.DTOs;
+﻿using MuuBoi.Application.DTOs;
 
-namespace MuuBoi.Interfaces
+namespace MuuBoi.Application.Interfaces
 {
     public interface IAnimalService
     {

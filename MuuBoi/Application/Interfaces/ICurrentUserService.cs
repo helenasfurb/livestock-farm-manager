@@ -1,4 +1,4 @@
-namespace MuuBoi.Interfaces
+﻿namespace MuuBoi.Application.Interfaces
 {
     public interface ICurrentUserService
     {

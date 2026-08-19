@@ -1,6 +1,6 @@
-using MuuBoi.Models;
+﻿using MuuBoi.Domain.Models;
 
-namespace MuuBoi.Interfaces
+namespace MuuBoi.Application.Interfaces
 {
     public interface IBreedRepository
     {

@@ -1,7 +1,7 @@
-using MuuBoi.Enums;
+﻿using MuuBoi.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace MuuBoi.DTOs
+namespace MuuBoi.Application.DTOs
 {
     public class AnimalCreateDto : IValidatableObject
     {

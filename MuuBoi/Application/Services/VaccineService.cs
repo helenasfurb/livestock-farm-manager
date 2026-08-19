@@ -1,8 +1,7 @@
-using AutoMapper;
+﻿using AutoMapper;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Interfaces;
-using MuuBoi.DTOs;
-using MuuBoi.Models;
+using MuuBoi.Domain.Models;
 
 namespace MuuBoi.Application.Services
 {

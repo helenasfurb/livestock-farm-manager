@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 
-namespace MuuBoi.Models
+namespace MuuBoi.Domain.Models
 {
     public class ApplicationUser : IdentityUser
     {

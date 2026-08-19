@@ -1,9 +1,9 @@
-using AutoMapper;
-using MuuBoi.DTOs;
-using MuuBoi.Interfaces;
-using MuuBoi.Models;
+﻿using AutoMapper;
+using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Interfaces;
+using MuuBoi.Domain.Models;
 
-namespace MuuBoi.Services
+namespace MuuBoi.Application.Services
 {
     public class BreedService : IBreedService
     {

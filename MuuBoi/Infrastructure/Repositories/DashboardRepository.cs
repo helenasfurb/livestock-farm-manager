@@ -1,8 +1,8 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
-using MuuBoi.Data;
-using MuuBoi.DTOs;
+using MuuBoi.Infrastructure.Data;
+using MuuBoi.Application.DTOs;
 
 namespace MuuBoi.Infrastructure.Repositories
 {

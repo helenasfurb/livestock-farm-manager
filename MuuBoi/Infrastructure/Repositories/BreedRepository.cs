@@ -1,9 +1,9 @@
-using Microsoft.EntityFrameworkCore;
-using MuuBoi.Data;
-using MuuBoi.Interfaces;
-using MuuBoi.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using MuuBoi.Infrastructure.Data;
+using MuuBoi.Application.Interfaces;
+using MuuBoi.Domain.Models;
 
-namespace MuuBoi.Repositories
+namespace MuuBoi.Infrastructure.Repositories
 {
     public class BreedRepository : IBreedRepository
     {
