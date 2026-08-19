@@ -81,7 +81,16 @@ Map between domain and DTOs exclusively via AutoMapper profiles in `Application/
 - Return `404 Not Found` (not `null`) when a resource does not exist
 
 ### Error handling
-Throw `NotFoundException` (from `Domain/Exceptions/`) when a required entity is not found. The `ExceptionMiddleware` in `Api/Middleware/` catches it and returns the correct HTTP response. Services should not return `null` to signal "not found" for entities that must exist — throw instead.
+
+The service layer uses domain exceptions for all error signaling. `ExceptionMiddleware` in `Api/Middleware/` catches them and maps to HTTP responses. **Never return `null` to signal an error — always throw.**
+
+| Exception | HTTP Status | When to use |
+|-----------|-------------|-------------|
+| `NotFoundException` | `404 Not Found` | Required entity does not exist |
+| `ConflictException` | `409 Conflict` | State conflict — e.g., duplicate unique field, entity already in target state |
+| `BusinessRuleException` | `422 Unprocessable Entity` | Business rule violation that requires a DB query and cannot be caught by DTO validation alone |
+
+All three exception classes live in `Domain/Exceptions/`. `ExceptionMiddleware` must handle all three.
 
 ## Testing conventions
 
@@ -93,6 +102,12 @@ Framework: **xUnit** with **Moq**. All tests live in `MuuBoi.Tests/`.
   - Example: `CreateAnimalAsync_WithValidDto_ReturnsCreatedAnimalDto`
 - Arrange / Act / Assert blocks, no blank lines between them.
 - Do not test mapping logic inside service tests — trust AutoMapper.
+
+## Enum conventions
+
+- Enum **member names** must be in **English** (e.g., `Holstein`, `Crossbred`, `BornOnFarm`).
+- Enum members must have a `[Description("...")]` attribute with the **Portuguese** display label (e.g., `[Description("Holandesa")]`).
+- This applies to all enums in `Domain/Enums/`.
 
 ## Things that require confirmation before doing
 
