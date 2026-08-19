@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MuuBoi.Application.Helpers;
 using MuuBoi.Application.DTOs;
-using MuuBoi.Domain.Enums;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
+using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Api.Controllers
 {
@@ -20,15 +20,24 @@ namespace MuuBoi.Api.Controllers
         }
 
         [HttpGet("genders")]
-        public IActionResult GetGenders()
-        {
-            return Ok(EnumHelper.ToLookup<AnimalGender>());
-        }
+        public IActionResult GetGenders() => Ok(EnumHelper.ToLookup<AnimalGender>());
+
+        [HttpGet("breeds")]
+        public IActionResult GetBreeds() => Ok(EnumHelper.ToLookup<AnimalBreed>());
+
+        [HttpGet("classifications")]
+        public IActionResult GetClassifications() => Ok(EnumHelper.ToLookup<AnimalClassification>());
+
+        [HttpGet("purposes")]
+        public IActionResult GetPurposes() => Ok(EnumHelper.ToLookup<AnimalPurpose>());
+
+        [HttpGet("origins")]
+        public IActionResult GetOrigins() => Ok(EnumHelper.ToLookup<AnimalOrigin>());
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<AnimalDto>>> GetAll()
+        public async Task<ActionResult<IEnumerable<AnimalListItemDto>>> GetAll([FromQuery] AnimalFilterDto filter)
         {
-            var animals = await _animalService.GetAllAnimalsAsync();
+            var animals = await _animalService.GetAllAnimalsAsync(filter);
             return Ok(animals);
         }
 
@@ -36,7 +45,6 @@ namespace MuuBoi.Api.Controllers
         public async Task<ActionResult<AnimalDto>> GetById(int id)
         {
             var animal = await _animalService.GetAnimalByIdAsync(id);
-            if (animal == null) return NotFound();
             return Ok(animal);
         }
 
@@ -47,19 +55,10 @@ namespace MuuBoi.Api.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
-        [HttpDelete("{id:int}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var deleted = await _animalService.DeleteAnimalAsync(id);
-            if (deleted == null) return NotFound();
-            return NoContent();
-        }
-
         [HttpPatch("{id:int}")]
         public async Task<ActionResult<AnimalDto>> Update(int id, [FromBody] AnimalUpdateDto dto)
         {
             var updated = await _animalService.UpdateAnimalAsync(id, dto);
-            if (updated == null) return NotFound();
             return Ok(updated);
         }
     }

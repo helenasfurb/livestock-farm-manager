@@ -1,9 +1,10 @@
-﻿namespace MuuBoi.Application.DTOs
+﻿using MuuBoi.Domain.Enums;
+
+namespace MuuBoi.Application.DTOs
 {
     public class DashboardCardsDto
     {
         public int TotalAnimals { get; set; }
-        public int PregnantAnimals { get; set; }
         public int ActiveTreatments { get; set; }
     }
 
@@ -16,7 +17,7 @@
 
     public class BreedDistributionDto
     {
-        public int BreedId { get; set; }
+        public AnimalBreed Breed { get; set; }
         public string BreedName { get; set; } = string.Empty;
         public int Count { get; set; }
     }

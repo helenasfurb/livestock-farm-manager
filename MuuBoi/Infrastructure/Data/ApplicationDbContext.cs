@@ -14,7 +14,6 @@ namespace MuuBoi.Infrastructure.Data
 
         public DbSet<Property> Properties { get; set; }
         public DbSet<Animal> Animals { get; set; }
-        public DbSet<Breed> Breeds { get; set; }
         public DbSet<WeightRecord> WeightRecords { get; set; }
         public DbSet<Vaccine> Vaccines { get; set; }
         public DbSet<AnimalVaccination> AnimalVaccinations { get; set; }
@@ -32,7 +31,6 @@ namespace MuuBoi.Infrastructure.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<Animal>().HasQueryFilter(a => a.PropertyId == _propertyId);
-            builder.Entity<Breed>().HasQueryFilter(b => b.PropertyId == _propertyId);
             builder.Entity<Vaccine>().HasQueryFilter(v => v.PropertyId == _propertyId);
             builder.Entity<Medication>().HasQueryFilter(m => m.PropertyId == _propertyId);
             builder.Entity<WeightRecord>().HasQueryFilter(w => w.PropertyId == _propertyId);
@@ -40,7 +38,6 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<AnimalMedication>().HasQueryFilter(am => am.PropertyId == _propertyId);
 
             builder.Entity<Animal>().HasIndex(a => a.PropertyId).HasDatabaseName("IX_Animals_PropertyId");
-            builder.Entity<Breed>().HasIndex(b => b.PropertyId).HasDatabaseName("IX_Breeds_PropertyId");
             builder.Entity<Vaccine>().HasIndex(v => v.PropertyId).HasDatabaseName("IX_Vaccines_PropertyId");
             builder.Entity<Medication>().HasIndex(m => m.PropertyId).HasDatabaseName("IX_Medications_PropertyId");
             builder.Entity<WeightRecord>().HasIndex(w => w.PropertyId).HasDatabaseName("IX_WeightRecords_PropertyId");

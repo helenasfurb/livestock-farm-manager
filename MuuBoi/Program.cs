@@ -47,9 +47,6 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<IAnimalRepository, AnimalRepository>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
 
-builder.Services.AddScoped<IBreedRepository, BreedRepository>();
-builder.Services.AddScoped<IBreedService, BreedService>();
-
 builder.Services.AddScoped<IWeightRecordRepository, WeightRecordRepository>();
 builder.Services.AddScoped<IWeightRecordService, WeightRecordService>();
 

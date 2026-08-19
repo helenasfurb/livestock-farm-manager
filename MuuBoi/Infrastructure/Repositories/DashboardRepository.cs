@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Infrastructure.Data;
-using MuuBoi.Application.DTOs;
 
 namespace MuuBoi.Infrastructure.Repositories
 {
@@ -21,7 +21,6 @@ namespace MuuBoi.Infrastructure.Repositories
             var baseQuery = _context.Animals.Where(a => a.IsActive);
 
             var total = await baseQuery.CountAsync();
-            var pregnant = await baseQuery.CountAsync(a => a.IsPregnant);
             var treatments = await _context.AnimalMedications
                 .Where(am => am.Animal!.IsActive)
                 .Where(am => am.EndDate == null || am.EndDate.Value.Date >= today)
@@ -30,7 +29,6 @@ namespace MuuBoi.Infrastructure.Repositories
             return new DashboardCardsDto
             {
                 TotalAnimals = total,
-                PregnantAnimals = pregnant,
                 ActiveTreatments = treatments
             };
         }
@@ -55,16 +53,16 @@ namespace MuuBoi.Infrastructure.Repositories
         public async Task<IEnumerable<BreedDistributionDto>> GetBreedDistributionAsync()
         {
             var raw = await _context.Animals
-                .Where(a => a.IsActive && a.BreedId != null)
-                .GroupBy(a => new { a.BreedId, a.Breed!.Name })
-                .Select(g => new { BreedId = g.Key.BreedId!.Value, BreedName = g.Key.Name, Count = g.Count() })
+                .Where(a => a.IsActive && a.Breed != null)
+                .GroupBy(a => a.Breed!)
+                .Select(g => new { Breed = g.Key, Count = g.Count() })
                 .OrderByDescending(x => x.Count)
                 .ToListAsync();
 
             return raw.Select(x => new BreedDistributionDto
             {
-                BreedId = x.BreedId,
-                BreedName = x.BreedName,
+                Breed = x.Breed!.Value,
+                BreedName = x.Breed!.Value.GetDescription(),
                 Count = x.Count
             });
         }
@@ -90,19 +88,10 @@ namespace MuuBoi.Infrastructure.Repositories
             });
         }
 
-        public async Task<IEnumerable<BirthForecastDto>> GetBirthForecastAsync()
+        public Task<IEnumerable<BirthForecastDto>> GetBirthForecastAsync()
         {
-            return await _context.Animals
-                .Where(a => a.IsActive && a.IsPregnant && a.ExpectedBirthDate != null)
-                .OrderBy(a => a.ExpectedBirthDate)
-                .Select(a => new BirthForecastDto
-                {
-                    AnimalId = a.Id,
-                    AnimalName = a.Name,
-                    TagNumber = a.TagNumber,
-                    ExpectedBirthDate = a.ExpectedBirthDate!.Value
-                })
-                .ToListAsync();
+            // Será implementado com os eventos reprodutivos (Spec #5)
+            return Task.FromResult(Enumerable.Empty<BirthForecastDto>());
         }
     }
 }
