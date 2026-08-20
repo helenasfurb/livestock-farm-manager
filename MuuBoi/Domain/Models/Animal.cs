@@ -30,6 +30,15 @@ namespace MuuBoi.Domain.Models
         [MaxLength(1000)]
         public string? Notes { get; set; }
 
+        public DateTime? ExitDate { get; set; }
+
+        public AnimalExitReason? ExitReason { get; set; }
+
+        [MaxLength(1000)]
+        public string? ExitNotes { get; set; }
+
+        public AnimalDeathCause? DeathCause { get; set; }
+
         public Guid PropertyId { get; set; }
 
         public ICollection<WeightRecord>? WeightRecords { get; set; }

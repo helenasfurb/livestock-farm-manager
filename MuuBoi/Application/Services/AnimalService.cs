@@ -3,6 +3,7 @@ using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Domain.Exceptions;
 using MuuBoi.Domain.Models;
+using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Application.Services
 {
@@ -51,6 +52,44 @@ namespace MuuBoi.Application.Services
                 throw new ConflictException($"Já existe um animal com o brinco '{dto.TagNumber}' nesta propriedade.");
 
             _mapper.Map(dto, animal);
+            animal.UpdatedAt = DateTime.UtcNow;
+
+            var updated = await _animalRepository.UpdateAnimalAsync(animal);
+            return _mapper.Map<AnimalDto>(updated);
+        }
+
+        public async Task<AnimalDto> ExitAnimalAsync(int id, AnimalExitDto dto)
+        {
+            var animal = await _animalRepository.GetAnimalByIdAsync(id)
+                ?? throw new NotFoundException($"Animal com id '{id}' não encontrado.");
+
+            if (!animal.IsActive)
+                throw new ConflictException("Não é possível registrar saída de um animal já inativo.");
+
+            animal.IsActive = false;
+            animal.ExitDate = dto.ExitDate;
+            animal.ExitReason = dto.ExitReason;
+            animal.ExitNotes = dto.ExitNotes;
+            animal.DeathCause = dto.DeathCause;
+            animal.UpdatedAt = DateTime.UtcNow;
+
+            var updated = await _animalRepository.UpdateAnimalAsync(animal);
+            return _mapper.Map<AnimalDto>(updated);
+        }
+
+        public async Task<AnimalDto> ReactivateAnimalAsync(int id)
+        {
+            var animal = await _animalRepository.GetAnimalByIdAsync(id)
+                ?? throw new NotFoundException($"Animal com id '{id}' não encontrado.");
+
+            if (animal.IsActive)
+                throw new ConflictException("Não é possível reativar um animal que já está ativo.");
+
+            animal.IsActive = true;
+            animal.ExitDate = null;
+            animal.ExitReason = null;
+            animal.ExitNotes = null;
+            animal.DeathCause = null;
             animal.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _animalRepository.UpdateAnimalAsync(animal);

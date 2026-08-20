@@ -34,6 +34,12 @@ namespace MuuBoi.Api.Controllers
         [HttpGet("origins")]
         public IActionResult GetOrigins() => Ok(EnumHelper.ToLookup<AnimalOrigin>());
 
+        [HttpGet("exit-reasons")]
+        public IActionResult GetExitReasons() => Ok(EnumHelper.ToLookup<AnimalExitReason>());
+
+        [HttpGet("death-causes")]
+        public IActionResult GetDeathCauses() => Ok(EnumHelper.ToLookup<AnimalDeathCause>());
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AnimalListItemDto>>> GetAll([FromQuery] AnimalFilterDto filter)
         {
@@ -60,6 +66,20 @@ namespace MuuBoi.Api.Controllers
         {
             var updated = await _animalService.UpdateAnimalAsync(id, dto);
             return Ok(updated);
+        }
+
+        [HttpPatch("{id:int}/exit")]
+        public async Task<ActionResult<AnimalDto>> Exit(int id, [FromBody] AnimalExitDto dto)
+        {
+            var result = await _animalService.ExitAnimalAsync(id, dto);
+            return Ok(result);
+        }
+
+        [HttpPatch("{id:int}/reactivate")]
+        public async Task<ActionResult<AnimalDto>> Reactivate(int id)
+        {
+            var result = await _animalService.ReactivateAnimalAsync(id);
+            return Ok(result);
         }
     }
 }

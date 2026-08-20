@@ -15,16 +15,21 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(100)]
         public string? Name { get; set; }
 
+        [ValidEnum(typeof(AnimalGender))]
         public AnimalGender? Gender { get; set; }
 
         public DateTime? BirthDate { get; set; }
 
+        [ValidEnum(typeof(AnimalBreed))]
         public AnimalBreed? Breed { get; set; }
 
+        [ValidEnum(typeof(AnimalClassification))]
         public AnimalClassification? Classification { get; set; }
 
+        [ValidEnum(typeof(AnimalPurpose))]
         public AnimalPurpose? Purpose { get; set; }
 
+        [ValidEnum(typeof(AnimalOrigin))]
         public AnimalOrigin? Origin { get; set; }
 
         [MaxLength(1000)]
