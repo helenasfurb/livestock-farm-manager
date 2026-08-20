@@ -44,5 +44,6 @@ namespace MuuBoi.Domain.Models
         public ICollection<WeightRecord>? WeightRecords { get; set; }
         public ICollection<AnimalVaccination>? AnimalVaccinations { get; set; }
         public ICollection<AnimalMedication>? AnimalMedications { get; set; }
+        public ICollection<BodyConditionRecord>? BodyConditionRecords { get; set; }
     }
 }

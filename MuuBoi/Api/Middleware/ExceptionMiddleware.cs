@@ -36,6 +36,15 @@ namespace MuuBoi.Api.Middleware
                     error = ex.Message
                 });
             }
+            catch (BusinessRuleException ex)
+            {
+                context.Response.StatusCode = 422;
+
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = ex.Message
+                });
+            }
             catch (ValidationException ex)
             {
                 context.Response.StatusCode = 400;

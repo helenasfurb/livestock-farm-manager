@@ -41,7 +41,9 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.LastWeightRecord,
                     opt => opt.MapFrom(src => src.WeightRecords != null ? src.WeightRecords.FirstOrDefault() : null))
                 .ForMember(dest => dest.WeightRecords,
-                    opt => opt.MapFrom(src => src.WeightRecords));
+                    opt => opt.MapFrom(src => src.WeightRecords))
+                .ForMember(dest => dest.LastBodyConditionRecord,
+                    opt => opt.MapFrom(src => src.BodyConditionRecords != null ? src.BodyConditionRecords.FirstOrDefault() : null));
 
             CreateMap<Animal, AnimalListItemDto>()
                 .ForMember(dest => dest.Classification,
@@ -67,7 +69,8 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
                 .ForMember(dest => dest.WeightRecords, opt => opt.Ignore())
                 .ForMember(dest => dest.AnimalVaccinations, opt => opt.Ignore())
-                .ForMember(dest => dest.AnimalMedications, opt => opt.Ignore());
+                .ForMember(dest => dest.AnimalMedications, opt => opt.Ignore())
+                .ForMember(dest => dest.BodyConditionRecords, opt => opt.Ignore());
 
             CreateMap<AnimalUpdateDto, Animal>()
                 .ForAllMembers(opt => opt.Condition((_, _, srcMember) => srcMember != null));
