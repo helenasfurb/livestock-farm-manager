@@ -9,6 +9,7 @@ namespace MuuBoi.Application.DTOs
         public EnumValueDto? Classification { get; set; }
         public EnumValueDto? Breed { get; set; }
         public bool IsActive { get; set; }
+        public EnumValueDto? ExitReason { get; set; }
         public WeightRecordDto? LastWeightRecord { get; set; }
     }
 }
