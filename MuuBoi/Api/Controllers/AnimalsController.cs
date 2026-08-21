@@ -37,9 +37,6 @@ namespace MuuBoi.Api.Controllers
         [HttpGet("exit-reasons")]
         public ActionResult<IEnumerable<LookupDto>> GetExitReasons() => Ok(EnumHelper.ToLookup<AnimalExitReason>());
 
-        [HttpGet("death-causes")]
-        public ActionResult<IEnumerable<LookupDto>> GetDeathCauses() => Ok(EnumHelper.ToLookup<AnimalDeathCause>());
-
         [HttpGet("body-condition-scores")]
         public IActionResult GetBodyConditionScores() => Ok(EnumHelper.ToLookup<BodyConditionScore>());
 
@@ -83,6 +80,13 @@ namespace MuuBoi.Api.Controllers
         {
             var result = await _animalService.ReactivateAnimalAsync(id);
             return Ok(result);
+        }
+
+        [HttpGet("{id:int}/exit-records")]
+        public async Task<ActionResult<IEnumerable<AnimalExitRecordDto>>> GetExitRecords(int id)
+        {
+            var records = await _animalService.GetExitRecordsAsync(id);
+            return Ok(records);
         }
     }
 }

@@ -65,6 +65,8 @@ builder.Services.AddScoped<IAnimalMedicationService, AnimalMedicationService>();
 builder.Services.AddScoped<IBodyConditionRecordRepository, BodyConditionRecordRepository>();
 builder.Services.AddScoped<IBodyConditionRecordService, BodyConditionRecordService>();
 
+builder.Services.AddScoped<IAnimalExitRecordRepository, AnimalExitRecordRepository>();
+
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 

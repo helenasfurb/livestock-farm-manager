@@ -14,10 +14,7 @@ namespace MuuBoi.Application.DTOs
         public EnumValueDto? Origin { get; set; }
         public string? Notes { get; set; }
         public bool IsActive { get; set; }
-        public DateTime? ExitDate { get; set; }
-        public EnumValueDto? ExitReason { get; set; }
-        public string? ExitNotes { get; set; }
-        public EnumValueDto? DeathCause { get; set; }
+        public AnimalExitRecordDto? LastExitRecord { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public WeightRecordDto? LastWeightRecord { get; set; }

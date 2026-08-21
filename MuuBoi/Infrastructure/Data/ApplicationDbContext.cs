@@ -20,6 +20,7 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<Medication> Medications { get; set; }
         public DbSet<AnimalMedication> AnimalMedications { get; set; }
         public DbSet<BodyConditionRecord> BodyConditionRecords { get; set; }
+        public DbSet<AnimalExitRecord> AnimalExitRecords { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -48,6 +49,14 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<BodyConditionRecord>()
                 .HasIndex(r => new { r.AnimalId, r.RecordedAt })
                 .HasDatabaseName("IX_BodyConditionRecords_AnimalId_RecordedAt");
+
+            builder.Entity<AnimalExitRecord>()
+                .HasIndex(r => new { r.AnimalId, r.ExitDate })
+                .HasDatabaseName("IX_AnimalExitRecords_AnimalId_ExitDate");
+
+            builder.Entity<AnimalExitRecord>()
+                .HasIndex(r => new { r.ExitDate, r.ExitReason })
+                .HasDatabaseName("IX_AnimalExitRecords_ExitDate_ExitReason");
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)
