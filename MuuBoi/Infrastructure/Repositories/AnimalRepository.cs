@@ -19,6 +19,7 @@ namespace MuuBoi.Infrastructure.Repositories
         {
             var query = _context.Animals
                 .Include(a => a.WeightRecords!.OrderByDescending(w => w.RecordedAt).Take(1))
+                .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1))
                 .AsQueryable();
 
             if (filter.IsActive.HasValue)
@@ -44,6 +45,7 @@ namespace MuuBoi.Infrastructure.Repositories
             return await _context.Animals
                 .Include(a => a.WeightRecords!.OrderByDescending(w => w.RecordedAt))
                 .Include(a => a.BodyConditionRecords!.OrderByDescending(r => r.RecordedAt).Take(1))
+                .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1))
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 

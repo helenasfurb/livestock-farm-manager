@@ -10,11 +10,13 @@ namespace MuuBoi.Application.Services
     public class AnimalService : IAnimalService
     {
         private readonly IAnimalRepository _animalRepository;
+        private readonly IAnimalExitRecordRepository _exitRecordRepository;
         private readonly IMapper _mapper;
 
-        public AnimalService(IAnimalRepository animalRepository, IMapper mapper)
+        public AnimalService(IAnimalRepository animalRepository, IAnimalExitRecordRepository exitRecordRepository, IMapper mapper)
         {
             _animalRepository = animalRepository;
+            _exitRecordRepository = exitRecordRepository;
             _mapper = mapper;
         }
 
@@ -66,12 +68,20 @@ namespace MuuBoi.Application.Services
             if (!animal.IsActive)
                 throw new ConflictException("Não é possível registrar saída de um animal já inativo.");
 
+            var exitRecord = new AnimalExitRecord
+            {
+                AnimalId = id,
+                ExitReason = dto.ExitReason,
+                ExitDate = dto.ExitDate,
+                ExitNotes = dto.ExitNotes,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _exitRecordRepository.CreateAsync(exitRecord);
+
             animal.IsActive = false;
-            animal.ExitDate = dto.ExitDate;
-            animal.ExitReason = dto.ExitReason;
-            animal.ExitNotes = dto.ExitNotes;
-            animal.DeathCause = dto.DeathCause;
             animal.UpdatedAt = DateTime.UtcNow;
+            animal.ExitRecords = new List<AnimalExitRecord> { exitRecord };
 
             var updated = await _animalRepository.UpdateAnimalAsync(animal);
             return _mapper.Map<AnimalDto>(updated);
@@ -86,14 +96,19 @@ namespace MuuBoi.Application.Services
                 throw new ConflictException("Não é possível reativar um animal que já está ativo.");
 
             animal.IsActive = true;
-            animal.ExitDate = null;
-            animal.ExitReason = null;
-            animal.ExitNotes = null;
-            animal.DeathCause = null;
             animal.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _animalRepository.UpdateAnimalAsync(animal);
             return _mapper.Map<AnimalDto>(updated);
+        }
+
+        public async Task<IEnumerable<AnimalExitRecordDto>> GetExitRecordsAsync(int animalId)
+        {
+            _ = await _animalRepository.GetAnimalByIdAsync(animalId)
+                ?? throw new NotFoundException($"Animal com id '{animalId}' não encontrado.");
+
+            var records = await _exitRecordRepository.GetByAnimalIdAsync(animalId);
+            return _mapper.Map<IEnumerable<AnimalExitRecordDto>>(records);
         }
 
         private static void CreateWeightRecord(AnimalCreateDto dto, Animal animal)

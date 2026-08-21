@@ -9,6 +9,10 @@ namespace MuuBoi.Application.Mappings
     {
         public AnimalProfile()
         {
+            CreateMap<AnimalExitRecord, AnimalExitRecordDto>()
+                .ForMember(dest => dest.ExitReason,
+                    opt => opt.MapFrom(src => new EnumValueDto { Value = (int)src.ExitReason, Label = src.ExitReason.GetDescription() }));
+
             CreateMap<Animal, AnimalDto>()
                 .ForMember(dest => dest.Gender,
                     opt => opt.MapFrom(src => src.Gender.HasValue
@@ -30,14 +34,8 @@ namespace MuuBoi.Application.Mappings
                     opt => opt.MapFrom(src => src.Origin.HasValue
                         ? new EnumValueDto { Value = (int)src.Origin.Value, Label = src.Origin.Value.GetDescription() }
                         : null))
-                .ForMember(dest => dest.ExitReason,
-                    opt => opt.MapFrom(src => src.ExitReason.HasValue
-                        ? new EnumValueDto { Value = (int)src.ExitReason.Value, Label = src.ExitReason.Value.GetDescription() }
-                        : null))
-                .ForMember(dest => dest.DeathCause,
-                    opt => opt.MapFrom(src => src.DeathCause.HasValue
-                        ? new EnumValueDto { Value = (int)src.DeathCause.Value, Label = src.DeathCause.Value.GetDescription() }
-                        : null))
+                .ForMember(dest => dest.LastExitRecord,
+                    opt => opt.MapFrom(src => src.ExitRecords != null ? src.ExitRecords.FirstOrDefault() : null))
                 .ForMember(dest => dest.LastWeightRecord,
                     opt => opt.MapFrom(src => src.WeightRecords != null ? src.WeightRecords.FirstOrDefault() : null))
                 .ForMember(dest => dest.WeightRecords,
@@ -54,10 +52,8 @@ namespace MuuBoi.Application.Mappings
                     opt => opt.MapFrom(src => src.Breed.HasValue
                         ? new EnumValueDto { Value = (int)src.Breed.Value, Label = src.Breed.Value.GetDescription() }
                         : null))
-                .ForMember(dest => dest.ExitReason,
-                    opt => opt.MapFrom(src => src.ExitReason.HasValue
-                        ? new EnumValueDto { Value = (int)src.ExitReason.Value, Label = src.ExitReason.Value.GetDescription() }
-                        : null))
+                .ForMember(dest => dest.LastExitRecord,
+                    opt => opt.MapFrom(src => src.ExitRecords != null ? src.ExitRecords.FirstOrDefault() : null))
                 .ForMember(dest => dest.LastWeightRecord,
                     opt => opt.MapFrom(src => src.WeightRecords != null ? src.WeightRecords.FirstOrDefault() : null));
 
@@ -70,7 +66,8 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.WeightRecords, opt => opt.Ignore())
                 .ForMember(dest => dest.AnimalVaccinations, opt => opt.Ignore())
                 .ForMember(dest => dest.AnimalMedications, opt => opt.Ignore())
-                .ForMember(dest => dest.BodyConditionRecords, opt => opt.Ignore());
+                .ForMember(dest => dest.BodyConditionRecords, opt => opt.Ignore())
+                .ForMember(dest => dest.ExitRecords, opt => opt.Ignore());
 
             CreateMap<AnimalUpdateDto, Animal>()
                 .ForAllMembers(opt => opt.Condition((_, _, srcMember) => srcMember != null));
