@@ -20,25 +20,25 @@ namespace MuuBoi.Api.Controllers
         }
 
         [HttpGet("genders")]
-        public IActionResult GetGenders() => Ok(EnumHelper.ToLookup<AnimalGender>());
+        public ActionResult<IEnumerable<LookupDto>> GetGenders() => Ok(EnumHelper.ToLookup<AnimalGender>());
 
         [HttpGet("breeds")]
-        public IActionResult GetBreeds() => Ok(EnumHelper.ToLookup<AnimalBreed>());
+        public ActionResult<IEnumerable<LookupDto>> GetBreeds() => Ok(EnumHelper.ToLookup<AnimalBreed>());
 
         [HttpGet("classifications")]
-        public IActionResult GetClassifications() => Ok(EnumHelper.ToLookup<AnimalClassification>());
+        public ActionResult<IEnumerable<LookupDto>> GetClassifications() => Ok(EnumHelper.ToLookup<AnimalClassification>());
 
         [HttpGet("purposes")]
-        public IActionResult GetPurposes() => Ok(EnumHelper.ToLookup<AnimalPurpose>());
+        public ActionResult<IEnumerable<LookupDto>> GetPurposes() => Ok(EnumHelper.ToLookup<AnimalPurpose>());
 
         [HttpGet("origins")]
-        public IActionResult GetOrigins() => Ok(EnumHelper.ToLookup<AnimalOrigin>());
+        public ActionResult<IEnumerable<LookupDto>> GetOrigins() => Ok(EnumHelper.ToLookup<AnimalOrigin>());
 
         [HttpGet("exit-reasons")]
-        public IActionResult GetExitReasons() => Ok(EnumHelper.ToLookup<AnimalExitReason>());
+        public ActionResult<IEnumerable<LookupDto>> GetExitReasons() => Ok(EnumHelper.ToLookup<AnimalExitReason>());
 
         [HttpGet("death-causes")]
-        public IActionResult GetDeathCauses() => Ok(EnumHelper.ToLookup<AnimalDeathCause>());
+        public ActionResult<IEnumerable<LookupDto>> GetDeathCauses() => Ok(EnumHelper.ToLookup<AnimalDeathCause>());
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AnimalListItemDto>>> GetAll([FromQuery] AnimalFilterDto filter)
