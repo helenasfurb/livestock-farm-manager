@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MuuBoi.Infrastructure.Data;
 using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Interfaces;
 using MuuBoi.Domain.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,15 +20,18 @@ namespace MuuBoi.Api.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _context;
+        private readonly IEmailService _emailService;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
             IConfiguration configuration,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IEmailService emailService)
         {
             _userManager = userManager;
             _configuration = configuration;
             _context = context;
+            _emailService = emailService;
         }
 
         [HttpPost("register")]
@@ -127,6 +131,39 @@ namespace MuuBoi.Api.Controllers
                     Name = user.Property.Name
                 }
             });
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+        {
+            var genericMessage = new { message = "Se o email estiver cadastrado, você receberá as instruções em breve." };
+
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null || !user.IsActive)
+                return Ok(genericMessage);
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            await _emailService.SendPasswordResetEmailAsync(user.Email!, user.Name, token);
+
+            return Ok(genericMessage);
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null || !user.IsActive)
+                return BadRequest(new { message = "Solicitação inválida." });
+
+            var decodedToken = Uri.UnescapeDataString(dto.Token);
+            var result = await _userManager.ResetPasswordAsync(user, decodedToken, dto.NewPassword);
+            if (!result.Succeeded)
+            {
+                var errors = result.Errors.Select(e => e.Description);
+                return BadRequest(new { message = "Erro ao redefinir senha.", errors });
+            }
+
+            return Ok(new { message = "Senha redefinida com sucesso." });
         }
 
         private (string Token, DateTime ExpiresAt) GenerateJwtToken(ApplicationUser user, Property property)

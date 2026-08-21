@@ -70,6 +70,8 @@ builder.Services.AddScoped<IAnimalExitRecordRepository, AnimalExitRecordReposito
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantProvider, TenantProvider>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
