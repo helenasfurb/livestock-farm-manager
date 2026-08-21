@@ -40,6 +40,9 @@ namespace MuuBoi.Api.Controllers
         [HttpGet("death-causes")]
         public ActionResult<IEnumerable<LookupDto>> GetDeathCauses() => Ok(EnumHelper.ToLookup<AnimalDeathCause>());
 
+        [HttpGet("body-condition-scores")]
+        public IActionResult GetBodyConditionScores() => Ok(EnumHelper.ToLookup<BodyConditionScore>());
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AnimalListItemDto>>> GetAll([FromQuery] AnimalFilterDto filter)
         {

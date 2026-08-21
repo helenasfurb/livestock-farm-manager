@@ -64,7 +64,7 @@ namespace MuuBoi.Application.Services
             var animal = await _animalRepository.GetAnimalByIdAsync(int.Parse(animalId));
 
             if (animal == null)
-                throw new NotFoundException("Animal not found");
+                throw new NotFoundException($"Animal com id '{animalId}' não encontrado.");
 
             return animal;
         }
