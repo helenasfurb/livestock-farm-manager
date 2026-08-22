@@ -37,5 +37,6 @@ namespace MuuBoi.Domain.Models
         public ICollection<AnimalMedication>? AnimalMedications { get; set; }
         public ICollection<BodyConditionRecord>? BodyConditionRecords { get; set; }
         public ICollection<AnimalExitRecord>? ExitRecords { get; set; }
+        public ICollection<BreedingEvent>? BreedingEvents { get; set; }
     }
 }
