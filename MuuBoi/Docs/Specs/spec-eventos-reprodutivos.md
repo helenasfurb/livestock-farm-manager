@@ -5,7 +5,7 @@
 **Data:** 20/Ago/2026  
 **Fonte:** Ata do Primeiro Encontro de Consultoria — Gestão de Animais; `spec_modulo_reproducao.md`  
 **Status:** Aprovado para implementação  
-**Depende de:** Spec #1 (Animal), Spec #3 (ECC), Spec #4 (Banco de Sêmen)  
+**Depende de:** Spec #1 (Animal), Spec #4 (Banco de Sêmen)  
 **Referenciado por:** Spec #6 (Gestação e Parto), Spec #7 (Dashboards)
 
 ---
@@ -30,7 +30,6 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 |---|---------|--------|
 | D1 | Apenas IA e Monta Natural no enum `ReproductionType` | Exatamente o que a ata especifica. IATF e TE são raros em pequenos produtores e podem ser adicionados depois. |
 | D2 | Touro pai (monta natural) deve ser um animal cadastrado no sistema | Garante rastreabilidade genealógica. O produtor cadastra o touro antes de registrar a monta. |
-| D3 | ECC opcional no payload de criação do evento | Quando informado, o serviço cria automaticamente um `BodyConditionRecord` na data da cobertura via `IBodyConditionRecordService`. |
 | D4 | Status reprodutivo calculado on-the-fly — sem tabela espelho | Simplicidade para o TCC. `AnimalReproStatus` como tabela separada pode ser introduzido depois se o dashboard exigir performance. |
 | D5 | `BreedingEvent` não implementa `ITenantEntity` diretamente | Isolamento de tenant garantido via join com `Animal.PropertyId`, igual ao padrão do `BodyConditionRecord` (Spec #3). |
 | D6 | Evento é imutável após criação — só o status pode ser atualizado | Mantém a trilha de auditoria. Para corrigir um evento errado, o produtor inativa e cria outro. |
@@ -39,6 +38,7 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 | D9 | A criação da gestação ao confirmar prenhez é efeito colateral definido no Spec #6 | O PATCH de status do Spec #5 atualiza o `BreedingEvent`. A lógica de criação do `AnimalPregnancy` é adicionada ao mesmo método de serviço na implementação do Spec #6. |
 | D10 | `ReproductiveStatus` adicionado ao `AnimalDto` como campo computado | Status calculado no `AnimalService.GetByIdAsync`. Para Spec #5 cobre Vazia e AguardandoConfirmação; Prenha e PósParto completados no Spec #6. |
 | D11 | "Seca" da ata mapeada para `Open` (Vazia) | A ata usa "Seca" onde o domínio reprodutivo usa "Vazia". "Seca" é status de lactação (abstraído); "Vazia" é a fêmea sem cobertura ativa ou gestação confirmada. |
+| D12 | Pós-Parto limitado a 60 dias fixos; futuramente configurável por propriedade | Sem limite de tempo, um animal nunca inseminado após o parto ficaria preso em Pós-Parto indefinidamente. O PEV (Período de Espera Voluntário) padrão para bovinos leiteiros é 60 dias. A constante `PostpartumDaysThreshold = 60` fica em `BreedingEventService` para facilitar a extração futura para um campo de configuração da propriedade (`Property.PostpartumDaysThreshold`). |
 
 ---
 
@@ -59,7 +59,6 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 - O animal submetido deve estar ativo.
 - O evento nasce com `Status = Pending`.
 - `ServiceNumber` é calculado automaticamente (número da cobertura para aquele animal).
-- Se `BodyConditionScore` for informado, cria automaticamente um `BodyConditionRecord` na data da cobertura.
 
 ---
 
@@ -139,8 +138,7 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 6. Se `ReproductionType = NaturalMating`: verifica que o `SireAnimal` existe, está ativo e tem `Classification = Bull` — se não, lança `BusinessRuleException`.
 7. Calcula `ServiceNumber` = (count de eventos anteriores do animal) + 1.
 8. Cria `BreedingEvent` com `Status = Pending`.
-9. Se `BodyConditionScore` foi informado, chama `IBodyConditionRecordService` para criar o `BodyConditionRecord` com a data da cobertura.
-10. Retorna `201 Created` com `BreedingEventDto`.
+9. Retorna `201 Created` com `BreedingEventDto`.
 
 **Fluxo alternativo — animal não encontrado:** Passo 2 → `NotFoundException` → `404`.  
 **Fluxo alternativo — animal inativo:** Passo 3 → `ConflictException` → `409`.  
@@ -367,9 +365,6 @@ public class BreedingEventCreateDto : IValidatableObject
     [MaxLength(500)]
     public string? Notes { get; set; }
 
-    // Se informado, cria automaticamente um BodyConditionRecord na data da cobertura
-    public BodyConditionScore? BodyConditionScore { get; set; }
-
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (BreedingDate > DateTime.UtcNow)
@@ -521,15 +516,17 @@ Chamada no `AnimalService` ao montar o `AnimalDto`. Aplicável apenas a animais 
 1. Se há gestação ativa (AnimalPregnancy com Status = Confirmed, implementado no Spec #6)
    → ReproductiveStatus.Pregnant
 
-2. Senão, se há BreedingEvent com Status = Pending (e IsActive = true)
+2. Senão, se há BreedingEvent ativo com Status = Pending
    → ReproductiveStatus.AwaitingConfirmation
 
-3. Senão, se há parto registrado sem nova cobertura ativa após ele (Spec #6)
+3. Senão, se há parto registrado há menos de 60 dias E sem cobertura ativa após ele (Spec #6)
    → ReproductiveStatus.Postpartum
 
 4. Caso contrário
    → ReproductiveStatus.Open
 ```
+
+> **PEV (Período de Espera Voluntário):** o limite de 60 dias do passo 3 é definido pela constante `PostpartumDaysThreshold = 60` em `BreedingEventService`. Após esse prazo sem nova cobertura, o animal retorna a `Open`. Futuramente, esse valor será movido para `Property.PostpartumDaysThreshold` (configurável por propriedade).
 
 > Para a implementação do Spec #5 (antes do Spec #6): apenas os estados `AwaitingConfirmation` e `Open` são funcionais. Os demais são retornados corretamente após a implementação do Spec #6.
 
@@ -566,7 +563,6 @@ Chamada no `AnimalService` ao montar o `AnimalDto`. Aplicável apenas a animais 
 | RN-07 | `SireAnimal` deve ter `Classification = Bull`. | Service → lança `BusinessRuleException` |
 | RN-08 | `SireAnimal` deve estar ativo. | Service → lança `ConflictException` |
 | RN-09 | `ServiceNumber` calculado automaticamente (count eventos ativos do animal + 1). | Service |
-| RN-10 | Se `BodyConditionScore` informado, criar `BodyConditionRecord` via `IBodyConditionRecordService`. | Service |
 | RN-11 | Atualização de status permitida apenas quando `Status = Pending`. | Service → lança `ConflictException` |
 | RN-12 | `DiagnosisDate` não pode ser futura. | DTO (IValidatableObject) |
 | RN-13 | Status não pode regredir para `Pending` via PATCH. | DTO (IValidatableObject) |

@@ -21,6 +21,7 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<AnimalMedication> AnimalMedications { get; set; }
         public DbSet<BodyConditionRecord> BodyConditionRecords { get; set; }
         public DbSet<AnimalExitRecord> AnimalExitRecords { get; set; }
+        public DbSet<SemenSample> SemenSamples { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -57,6 +58,11 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<AnimalExitRecord>()
                 .HasIndex(r => new { r.ExitDate, r.ExitReason })
                 .HasDatabaseName("IX_AnimalExitRecords_ExitDate_ExitReason");
+
+            builder.Entity<SemenSample>().HasQueryFilter(s => s.PropertyId == _propertyId);
+            builder.Entity<SemenSample>()
+                .HasIndex(s => new { s.PropertyId, s.IsActive })
+                .HasDatabaseName("IX_SemenSamples_PropertyId_IsActive");
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)
