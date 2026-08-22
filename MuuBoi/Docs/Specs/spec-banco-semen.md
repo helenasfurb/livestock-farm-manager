@@ -29,7 +29,7 @@ O objetivo é permitir que o produtor cadastre e consulte as amostras de sêmen 
 | D3 | `Name` (apelido interno) é o único campo obrigatório | O produtor nem sempre tem todos os dados do touro ou da central. O apelido interno é suficiente para identificar e selecionar o sêmen. |
 | D4 | `CollectedAt` e `ManufacturedAt` são campos **distintos e opcionais** | Em coleta local (touro próprio) o produtor conhece a data de coleta. Em sêmen de central genética, conhece a data de fabricação do produto. Na prática são a mesma data, mas manter os dois campos separados evita ambiguidade e não há custo de modelagem. |
 | D5 | `BullBreed` reutiliza o enum `AnimalBreed` (Spec #1) | As raças leiteiras relevantes são as mesmas (Holandesa, Jersey, Híbrida/Mestiça). Não há necessidade de enum separado. |
-| D6 | Inativação bloqueada se sêmen referenciado em eventos reprodutivos | Preserva integridade histórica: um sêmen que gerou inseminações não pode ser inativado sem perder a rastreabilidade. O bloqueio é implementável após Spec #5 introduzir a FK. |
+| D6 | Inativação permitida mesmo se sêmen referenciado em eventos reprodutivos | O soft delete (`IsActive = false`) não remove o registro nem a FK — a rastreabilidade histórica é preservada. Inativar apenas impede que a amostra apareça em novas seleções, que é o comportamento desejado quando o sêmen não está mais disponível. |
 | D7 | `SemenSample` implementa `ITenantEntity` (PropertyId) | Cada propriedade gerencia seu próprio banco de sêmen. |
 | D8 | Soft delete — inativação em vez de exclusão | Consistência com o padrão do projeto. Um sêmen inativo não aparece nas seleções de novos eventos reprodutivos. |
 
@@ -81,14 +81,26 @@ O objetivo é permitir que o produtor cadastre e consulte as amostras de sêmen 
 
 ---
 
+### US-06 — Buscar amostras para autocomplete
+> **Como** produtor,  
+> **quero** buscar amostras de sêmen pelo nome enquanto digito,  
+> **para** selecionar rapidamente a amostra ao registrar uma inseminação artificial.
+
+**Critérios de aceite:**
+- Retorna apenas amostras **ativas** da propriedade do usuário autenticado.
+- Filtro por `name` (busca parcial, case-insensitive) é opcional — sem filtro retorna todas as ativas.
+- A resposta contém apenas `Id` e `Name`.
+
+---
+
 ### US-05 — Inativar amostra de sêmen
 > **Como** produtor,  
 > **quero** inativar uma amostra de sêmen que não está mais disponível,  
 > **para** que ela não apareça como opção em novas inseminações.
 
 **Critérios de aceite:**
-- Inativar seta `IsActive = false`. A amostra não aparece na listagem padrão.
-- Se a amostra já foi referenciada em eventos reprodutivos (Spec #5), a inativação é bloqueada.
+- Inativar seta `IsActive = false`. A amostra não aparece na listagem padrão nem como opção em novas inseminações.
+- A inativação é permitida mesmo que a amostra já tenha sido utilizada em eventos reprodutivos — o histórico é preservado pela FK existente.
 - A exclusão física não é permitida.
 
 ---
@@ -156,6 +168,24 @@ O objetivo é permitir que o produtor cadastre e consulte as amostras de sêmen 
 
 ---
 
+### CU-06 — Autocomplete de Amostras de Sêmen
+
+**Ator:** Produtor autenticado
+
+**Fluxo principal:**
+1. Produtor envia `GET /api/semen-samples/autocomplete` com `name` opcional.
+2. Repositório filtra por `PropertyId` do tenant atual e `IsActive = true`.
+3. Aplica busca parcial no `Name` se o parâmetro estiver presente.
+4. Retorna lista de `SemenSampleAutocompleteItemDto`.
+
+**Filtros disponíveis (query params):**
+
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| `name` | string | Busca parcial no apelido interno (opcional) |
+
+---
+
 ### CU-05 — Inativar Amostra de Sêmen
 
 **Ator:** Produtor autenticado
@@ -163,17 +193,11 @@ O objetivo é permitir que o produtor cadastre e consulte as amostras de sêmen 
 **Fluxo principal:**
 1. Produtor envia `DELETE /api/semen-samples/{id}`.
 2. Sistema carrega a amostra e valida o tenant.
-3. Sistema verifica que não há eventos reprodutivos referenciando esta amostra (Spec #5).
-4. Sistema seta `IsActive = false`.
-5. Retorna `204 No Content`.
+3. Sistema seta `IsActive = false`.
+4. Retorna `204 No Content`.
 
 **Fluxo alternativo — amostra não encontrada:**
 - Passo 2 falha → lança `NotFoundException` → `404 Not Found`.
-
-**Fluxo alternativo — amostra referenciada em eventos:**
-- Passo 3 falha → lança `ConflictException` → `409 Conflict`.
-
-> **Nota:** A verificação do passo 3 só pode ser implementada após Spec #5 introduzir a entidade de eventos reprodutivos com FK para `SemenSample`. Até lá, a inativação pode prosseguir sem essa checagem, mas o endpoint já deve existir.
 
 ---
 
@@ -353,6 +377,18 @@ public class SemenSampleListItemDto
 
 ---
 
+#### `SemenSampleAutocompleteItemDto.cs` (response — autocomplete)
+
+```csharp
+public class SemenSampleAutocompleteItemDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+```
+
+---
+
 #### `SemenSampleFilterDto.cs` (query params)
 
 ```csharp
@@ -373,6 +409,7 @@ public class SemenSampleFilterDto
 | Método | Rota | Descrição | Retorno |
 |--------|------|-----------|---------|
 | `GET` | `/api/semen-samples` | Lista amostras com filtros | `200 SemenSampleListItemDto[]` |
+| `GET` | `/api/semen-samples/autocomplete` | Autocomplete por nome (só ativas) | `200 SemenSampleAutocompleteItemDto[]` |
 | `GET` | `/api/semen-samples/{id}` | Detalhe de uma amostra | `200 SemenSampleDto` / `404` |
 | `POST` | `/api/semen-samples` | Cadastrar amostra | `201 SemenSampleDto` |
 | `PATCH` | `/api/semen-samples/{id}` | Editar amostra | `200 SemenSampleDto` / `404` |
@@ -387,7 +424,7 @@ public class SemenSampleFilterDto
 | # | Regra | Onde aplicar |
 |---|-------|-------------|
 | RN-01 | `Name` é obrigatório. | DTO (DataAnnotations) |
-| RN-02 | Inativação bloqueada se a amostra estiver referenciada em eventos reprodutivos (Spec #5). | Service → lança `ConflictException` |
+| RN-02 | Inativação sempre permitida — o soft delete preserva a FK nos eventos históricos. | Service |
 | RN-03 | Inativação é sempre soft delete (`IsActive = false`). Nunca exclusão física. | Repository |
 | RN-04 | Listagem sem filtro `IsActive` retorna todas as amostras. `true` filtra só ativas; `false` filtra só inativas. | Repository |
 | RN-05 | Isolamento de tenant: repositório filtra por `PropertyId` em todas as operações. | Repository |
@@ -403,6 +440,7 @@ public class SemenSampleFilterDto
 | `Application/DTOs` | `SemenSampleUpdateDto.cs` | Criar |
 | `Application/DTOs` | `SemenSampleDto.cs` | Criar |
 | `Application/DTOs` | `SemenSampleListItemDto.cs` | Criar |
+| `Application/DTOs` | `SemenSampleAutocompleteItemDto.cs` | Criar |
 | `Application/DTOs` | `SemenSampleFilterDto.cs` | Criar |
 | `Application/Mappings` | `SemenSampleProfile.cs` | Criar |
 | `Application/Services` | `SemenSampleService.cs` | Criar |

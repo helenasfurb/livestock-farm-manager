@@ -5,7 +5,7 @@
 **Data:** 20/Ago/2026  
 **Fonte:** Ata do Primeiro Encontro de Consultoria — Gestão de Animais; `spec_modulo_reproducao.md`  
 **Status:** Aprovado para implementação  
-**Depende de:** Spec #1 (Animal), Spec #3 (ECC), Spec #4 (Banco de Sêmen)  
+**Depende de:** Spec #1 (Animal), Spec #4 (Banco de Sêmen)  
 **Referenciado por:** Spec #6 (Gestação e Parto), Spec #7 (Dashboards)
 
 ---
@@ -38,6 +38,7 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 | D9 | A criação da gestação ao confirmar prenhez é efeito colateral definido no Spec #6 | O PATCH de status do Spec #5 atualiza o `BreedingEvent`. A lógica de criação do `AnimalPregnancy` é adicionada ao mesmo método de serviço na implementação do Spec #6. |
 | D10 | `ReproductiveStatus` adicionado ao `AnimalDto` como campo computado | Status calculado no `AnimalService.GetByIdAsync`. Para Spec #5 cobre Vazia e AguardandoConfirmação; Prenha e PósParto completados no Spec #6. |
 | D11 | "Seca" da ata mapeada para `Open` (Vazia) | A ata usa "Seca" onde o domínio reprodutivo usa "Vazia". "Seca" é status de lactação (abstraído); "Vazia" é a fêmea sem cobertura ativa ou gestação confirmada. |
+| D12 | Pós-Parto limitado a 60 dias fixos; futuramente configurável por propriedade | Sem limite de tempo, um animal nunca inseminado após o parto ficaria preso em Pós-Parto indefinidamente. O PEV (Período de Espera Voluntário) padrão para bovinos leiteiros é 60 dias. A constante `PostpartumDaysThreshold = 60` fica em `BreedingEventService` para facilitar a extração futura para um campo de configuração da propriedade (`Property.PostpartumDaysThreshold`). |
 
 ---
 
@@ -58,7 +59,6 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 - O animal submetido deve estar ativo.
 - O evento nasce com `Status = AwaitingDiagnosis`.
 - `ServiceNumber` é calculado automaticamente (número da cobertura para aquele animal).
-- Se `BodyConditionScore` for informado, cria automaticamente um `BodyConditionRecord` na data da cobertura.
 
 ---
 
@@ -371,9 +371,6 @@ public class BreedingEventCreateDto : IValidatableObject
     [MaxLength(500)]
     public string? Notes { get; set; }
 
-    // Se informado, cria automaticamente um BodyConditionRecord na data da cobertura
-    public BodyConditionScore? BodyConditionScore { get; set; }
-
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (BreedingDate > DateTime.UtcNow)
@@ -528,12 +525,14 @@ Chamada no `AnimalService` ao montar o `AnimalDto`. Aplicável apenas a animais 
 2. Senão, se há BreedingEvent com Status = AwaitingDiagnosis (e IsActive = true)
    → ReproductiveStatus.AwaitingConfirmation
 
-3. Senão, se há parto registrado sem nova cobertura ativa após ele (Spec #6)
+3. Senão, se há parto registrado há menos de 60 dias E sem cobertura ativa após ele (Spec #6)
    → ReproductiveStatus.Postpartum
 
 4. Caso contrário
    → ReproductiveStatus.Open
 ```
+
+> **PEV (Período de Espera Voluntário):** o limite de 60 dias do passo 3 é definido pela constante `PostpartumDaysThreshold = 60` em `BreedingEventService`. Após esse prazo sem nova cobertura, o animal retorna a `Open`. Futuramente, esse valor será movido para `Property.PostpartumDaysThreshold` (configurável por propriedade).
 
 > Para a implementação do Spec #5 (antes do Spec #6): apenas os estados `AwaitingConfirmation` e `Open` são funcionais. Os demais são retornados corretamente após a implementação do Spec #6.
 
