@@ -38,7 +38,7 @@ namespace MuuBoi.Api.Controllers
         public ActionResult<IEnumerable<LookupDto>> GetExitReasons() => Ok(EnumHelper.ToLookup<AnimalExitReason>());
 
         [HttpGet("body-condition-scores")]
-        public IActionResult GetBodyConditionScores() => Ok(EnumHelper.ToLookup<BodyConditionScore>());
+        public ActionResult<IEnumerable<LookupDto>> GetBodyConditionScores() => Ok(EnumHelper.ToLookup<BodyConditionScore>());
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AnimalListItemDto>>> GetAll([FromQuery] AnimalFilterDto filter)

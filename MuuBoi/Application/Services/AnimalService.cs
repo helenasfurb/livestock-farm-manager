@@ -40,6 +40,7 @@ namespace MuuBoi.Application.Services
 
             var animal = _mapper.Map<Animal>(dto);
             CreateWeightRecord(dto, animal);
+            CreateBodyConditionRecord(dto, animal);
 
             var created = await _animalRepository.CreateAnimalAsync(animal);
             return _mapper.Map<AnimalDto>(created);
@@ -122,6 +123,21 @@ namespace MuuBoi.Application.Services
                     Weight = dto.InitialWeight.Value,
                     RecordedAt = dto.InitialWeightDate ?? DateTime.UtcNow,
                     Observations = dto.InitialWeightObservations
+                }
+            };
+        }
+
+        private static void CreateBodyConditionRecord(AnimalCreateDto dto, Animal animal)
+        {
+            if (!dto.InitialBodyConditionScore.HasValue) return;
+
+            animal.BodyConditionRecords = new List<BodyConditionRecord>
+            {
+                new()
+                {
+                    Score = dto.InitialBodyConditionScore.Value,
+                    RecordedAt = dto.InitialBodyConditionDate ?? DateTime.UtcNow,
+                    Notes = dto.InitialBodyConditionNotes
                 }
             };
         }
