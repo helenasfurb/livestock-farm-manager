@@ -70,6 +70,9 @@ builder.Services.AddScoped<IAnimalExitRecordRepository, AnimalExitRecordReposito
 builder.Services.AddScoped<ISemenSampleRepository, SemenSampleRepository>();
 builder.Services.AddScoped<ISemenSampleService, SemenSampleService>();
 
+builder.Services.AddScoped<IBreedingEventRepository, BreedingEventRepository>();
+builder.Services.AddScoped<IBreedingEventService, BreedingEventService>();
+
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 

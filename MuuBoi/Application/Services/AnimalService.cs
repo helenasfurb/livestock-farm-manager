@@ -1,9 +1,10 @@
 using AutoMapper;
 using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
+using MuuBoi.Domain.Enums;
 using MuuBoi.Domain.Exceptions;
 using MuuBoi.Domain.Models;
-using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Application.Services
 {
@@ -11,12 +12,18 @@ namespace MuuBoi.Application.Services
     {
         private readonly IAnimalRepository _animalRepository;
         private readonly IAnimalExitRecordRepository _exitRecordRepository;
+        private readonly IBreedingEventRepository _breedingEventRepository;
         private readonly IMapper _mapper;
 
-        public AnimalService(IAnimalRepository animalRepository, IAnimalExitRecordRepository exitRecordRepository, IMapper mapper)
+        public AnimalService(
+            IAnimalRepository animalRepository,
+            IAnimalExitRecordRepository exitRecordRepository,
+            IBreedingEventRepository breedingEventRepository,
+            IMapper mapper)
         {
             _animalRepository = animalRepository;
             _exitRecordRepository = exitRecordRepository;
+            _breedingEventRepository = breedingEventRepository;
             _mapper = mapper;
         }
 
@@ -30,7 +37,10 @@ namespace MuuBoi.Application.Services
         {
             var animal = await _animalRepository.GetAnimalByIdAsync(id)
                 ?? throw new NotFoundException($"Animal com id '{id}' não encontrado.");
-            return _mapper.Map<AnimalDto>(animal);
+
+            var dto = _mapper.Map<AnimalDto>(animal);
+            dto.ReproductiveStatus = await DeriveReproductiveStatusAsync(animal);
+            return dto;
         }
 
         public async Task<AnimalDto> CreateAnimalAsync(AnimalCreateDto dto)
@@ -110,6 +120,20 @@ namespace MuuBoi.Application.Services
 
             var records = await _exitRecordRepository.GetByAnimalIdAsync(animalId);
             return _mapper.Map<IEnumerable<AnimalExitRecordDto>>(records);
+        }
+
+        private async Task<EnumValueDto?> DeriveReproductiveStatusAsync(Animal animal)
+        {
+            if (animal.Classification != AnimalClassification.Cow &&
+                animal.Classification != AnimalClassification.Heifer)
+                return null;
+
+            var hasAwaitingDiagnosis = await _breedingEventRepository.HasActiveByAnimalIdAsync(animal.Id);
+            var status = hasAwaitingDiagnosis
+                ? ReproductiveStatus.AwaitingConfirmation
+                : ReproductiveStatus.Open;
+
+            return new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
         }
 
         private static void CreateWeightRecord(AnimalCreateDto dto, Animal animal)

@@ -31,8 +31,8 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 | D1 | Apenas IA e Monta Natural no enum `ReproductionType` | Exatamente o que a ata especifica. IATF e TE são raros em pequenos produtores e podem ser adicionados depois. |
 | D2 | Touro pai (monta natural) deve ser um animal cadastrado no sistema | Garante rastreabilidade genealógica. O produtor cadastra o touro antes de registrar a monta. |
 | D4 | Status reprodutivo calculado on-the-fly — sem tabela espelho | Simplicidade para o TCC. `AnimalReproStatus` como tabela separada pode ser introduzido depois se o dashboard exigir performance. |
-| D5 | `BreedingEvent` não implementa `ITenantEntity` diretamente | Isolamento de tenant garantido via join com `Animal.PropertyId`, igual ao padrão do `BodyConditionRecord` (Spec #3). |
-| D6 | Evento é imutável após criação — só o status pode ser atualizado | Mantém a trilha de auditoria. Para corrigir um evento errado, o produtor inativa e cria outro. |
+| D5 | `BreedingEvent` implementa `ITenantEntity` (PropertyId) | Consistência com o padrão do projeto. `PropertyId` é preenchido automaticamente pelo `SaveChangesAsync` do `ApplicationDbContext` e permite query filter direto na tabela, sem necessidade de join com `Animal` para isolamento de tenant. |
+| D6 | Evento editável enquanto `Status = AwaitingDiagnosis`; imutável após diagnóstico confirmado | Enquanto o resultado ainda não foi registrado, faz sentido permitir correção de dados (data, sêmen, touro). Após confirmar `Successful` ou `Unsuccessful`, o evento congela para preservar a trilha de auditoria. |
 | D7 | Soft delete bloqueado se evento referenciado por gestação (Spec #6) | Preserva a integridade: a gestação deve saber de qual cobertura originou. |
 | D8 | `ServiceNumber` calculado automaticamente pelo serviço | Conta coberturas anteriores daquele animal e incrementa. Necessário para o cálculo de "% prenhez ao 1º serviço" no Spec #7 sem contagem retroativa. |
 | D9 | A criação da gestação ao confirmar prenhez é efeito colateral definido no Spec #6 | O PATCH de status do Spec #5 atualiza o `BreedingEvent`. A lógica de criação do `AnimalPregnancy` é adicionada ao mesmo método de serviço na implementação do Spec #6. |
@@ -57,7 +57,7 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 - O touro informado deve ter `Classification = Bull`.
 - O sêmen informado deve estar ativo.
 - O animal submetido deve estar ativo.
-- O evento nasce com `Status = Pending`.
+- O evento nasce com `Status = AwaitingDiagnosis`.
 - `ServiceNumber` é calculado automaticamente (número da cobertura para aquele animal).
 
 ---
@@ -68,11 +68,11 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 > **para** registrar se a fêmea ficou prenha ou não.
 
 **Critérios de aceite:**
-- O produtor informa o novo status (`Pregnant` ou `NotPregnant`) e a data do diagnóstico.
-- Apenas eventos com `Status = Pending` podem ser atualizados.
+- O produtor informa o novo status (`Successful` ou `Unsuccessful`) e a data do diagnóstico.
+- Apenas eventos com `Status = AwaitingDiagnosis` podem ter o status atualizado.
 - A data de diagnóstico não pode ser futura.
-- Ao confirmar `Pregnant`, o sistema criará um registro de gestação (Spec #6).
-- Ao confirmar `NotPregnant`, o animal retorna ao status `Open` (Vazia).
+- Ao confirmar `Successful`, o sistema criará um registro de gestação (Spec #6).
+- Ao confirmar `Unsuccessful`, o animal retorna ao status `Open` (Vazia).
 
 ---
 
@@ -137,8 +137,9 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 5. Se `ReproductionType = ArtificialInsemination`: verifica que `SemenSample` existe e está ativo — se não, lança `NotFoundException` ou `ConflictException`.
 6. Se `ReproductionType = NaturalMating`: verifica que o `SireAnimal` existe, está ativo e tem `Classification = Bull` — se não, lança `BusinessRuleException`.
 7. Calcula `ServiceNumber` = (count de eventos anteriores do animal) + 1.
-8. Cria `BreedingEvent` com `Status = Pending`.
-9. Retorna `201 Created` com `BreedingEventDto`.
+8. Cria `BreedingEvent` com `Status = AwaitingDiagnosis`.
+9. Se `BodyConditionScore` foi informado, chama `IBodyConditionRecordService` para criar o `BodyConditionRecord` com a data da cobertura.
+10. Retorna `201 Created` com `BreedingEventDto`.
 
 **Fluxo alternativo — animal não encontrado:** Passo 2 → `NotFoundException` → `404`.  
 **Fluxo alternativo — animal inativo:** Passo 3 → `ConflictException` → `409`.  
@@ -150,14 +151,14 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 ### CU-02 — Atualizar Status do Evento (Diagnóstico)
 
 **Ator:** Produtor autenticado  
-**Pré-condição:** Evento existe, pertence à propriedade e está com `Status = Pending`.
+**Pré-condição:** Evento existe, pertence à propriedade e está com `Status = AwaitingDiagnosis`.
 
 **Fluxo principal:**
 1. Produtor envia `PATCH /api/breeding-events/{id}/status` com `BreedingEventStatusUpdateDto`.
-2. Sistema carrega o evento e valida o tenant via `Animal.PropertyId`.
-3. Sistema valida que o evento está com `Status = Pending` — se não, lança `ConflictException`.
+2. Sistema carrega o evento e valida o tenant via `BreedingEvent.PropertyId`.
+3. Sistema valida que o evento está com `Status = AwaitingDiagnosis` — se não, lança `ConflictException`.
 4. Sistema atualiza `Status` e `DiagnosisDate`.
-5. Se `Status = Pregnant`: criação de `AnimalPregnancy` será implementada no Spec #6 — neste spec, o serviço apenas atualiza o evento.
+5. Se `Status = Successful`: criação de `AnimalPregnancy` será implementada no Spec #6 — neste spec, o serviço apenas atualiza o evento.
 6. Retorna `200 OK` com `BreedingEventDto` atualizado.
 
 **Fluxo alternativo — evento não encontrado:** `NotFoundException` → `404`.  
@@ -182,7 +183,7 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 
 **Fluxo principal:**
 1. Produtor envia `GET /api/breeding-events` com `BreedingEventFilterDto` como query params.
-2. Repositório filtra por `Animal.PropertyId` do tenant.
+2. Repositório filtra por `BreedingEvent.PropertyId` do tenant (via query filter global).
 3. Aplica filtros adicionais.
 4. Retorna lista de `BreedingEventListItemDto`.
 
@@ -192,7 +193,7 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 |-----------|------|-----------|
 | `animalId` | int | Filtro por animal |
 | `reproductionType` | int | Valor do enum `ReproductionType` |
-| `status` | int | Valor do enum `BreedingStatus` |
+| `status` | int | Valor do enum `ReproductiveEventStatus` |
 | `breedingDateFrom` | DateTime | Início do período da cobertura |
 | `breedingDateTo` | DateTime | Fim do período da cobertura |
 | `isActive` | bool? | `true` = só ativos, `false` = só inativos, `null` = todos |
@@ -228,17 +229,18 @@ O **status reprodutivo** do animal (Vazia / Aguardando Confirmação / Prenha / 
 | `BreedingDate` | `DateTime` | Sim | Data da cobertura. Não pode ser futura. |
 | `SemenSampleId` | `int?` | Condicional | Obrigatório quando IA. FK → `SemenSample`. |
 | `SireAnimalId` | `int?` | Condicional | Obrigatório quando Monta Natural. FK → `Animal` (touro pai). |
-| `Status` | `BreedingStatus` (enum) | Sim | Inicia como `Pending`. |
+| `Status` | `ReproductiveEventStatus` (enum) | Sim | Inicia como `AwaitingDiagnosis`. |
 | `DiagnosisDate` | `DateTime?` | Não | Preenchido ao atualizar o status. |
 | `ServiceNumber` | `int` | Sim | Auto-calculado pelo serviço (nº da cobertura para esse animal). |
 | `Notes` | `string?` (max 500) | Não | Observações livres. |
+| `PropertyId` | `Guid` | Sim | FK tenant. Preenchido automaticamente pelo DbContext. |
 | `Animal` | navigation | — | Fêmea submetida. |
 | `SemenSample` | navigation | — | Sêmen usado (nullable). |
 | `SireAnimal` | navigation | — | Touro pai (nullable). |
 | *(BaseEntity)* | `Id`, `IsActive`, `CreatedAt`, `UpdatedAt` | — | Herdados. |
 
 ```csharp
-public class BreedingEvent : BaseEntity
+public class BreedingEvent : BaseEntity, ITenantEntity
 {
     public int AnimalId { get; set; }
 
@@ -250,7 +252,7 @@ public class BreedingEvent : BaseEntity
 
     public int? SireAnimalId { get; set; }
 
-    public BreedingStatus Status { get; set; } = BreedingStatus.Pending;
+    public ReproductiveEventStatus Status { get; set; } = ReproductiveEventStatus.AwaitingDiagnosis;
 
     public DateTime? DiagnosisDate { get; set; }
 
@@ -258,6 +260,8 @@ public class BreedingEvent : BaseEntity
 
     [MaxLength(500)]
     public string? Notes { get; set; }
+
+    public Guid PropertyId { get; set; }
 
     public Animal? Animal { get; set; }
     public SemenSample? SemenSample { get; set; }
@@ -308,20 +312,22 @@ public enum ReproductionType
 }
 ```
 
-#### `BreedingStatus.cs`
+#### `ReproductiveEventStatus.cs`
 ```csharp
-public enum BreedingStatus
+public enum ReproductiveEventStatus
 {
-    [Description("Pendente")]
-    Pending = 1,
+    [Description("Aguardando Diagnóstico")]
+    AwaitingDiagnosis = 1,
 
-    [Description("Prenha")]
-    Pregnant = 2,
+    [Description("Com Gestação Confirmada")]
+    Successful = 2,
 
-    [Description("Não Prenha")]
-    NotPregnant = 3
+    [Description("Sem Gestação")]
+    Unsuccessful = 3
 }
 ```
+
+> **Nota:** `ReproductiveEventStatus` representa o **resultado do evento de cobertura**, não o estado da vaca. `Successful` significa "esta cobertura resultou em prenhez confirmada". O estado reprodutivo da vaca (`ReproductiveStatus`) é derivado separadamente a partir dos eventos e gestações.
 
 #### `ReproductiveStatus.cs`
 ```csharp
@@ -409,16 +415,16 @@ public class BreedingEventCreateDto : IValidatableObject
 public class BreedingEventStatusUpdateDto : IValidatableObject
 {
     [Required(ErrorMessage = "O status é obrigatório.")]
-    public BreedingStatus Status { get; set; }
+    public ReproductiveEventStatus Status { get; set; }
 
     [Required(ErrorMessage = "A data do diagnóstico é obrigatória.")]
     public DateTime DiagnosisDate { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (Status == BreedingStatus.Pending)
+        if (Status == ReproductiveEventStatus.AwaitingDiagnosis)
             yield return new ValidationResult(
-                "O status não pode ser alterado para Pendente.",
+                "O status não pode ser alterado para Aguardando Diagnóstico.",
                 new[] { nameof(Status) });
 
         if (DiagnosisDate > DateTime.UtcNow)
@@ -447,7 +453,7 @@ public class BreedingEventDto
     public int? SireAnimalId { get; set; }
     public string? SireAnimalTagNumber { get; set; }
     public string? SireAnimalName { get; set; }
-    public BreedingStatus Status { get; set; }
+    public ReproductiveEventStatus Status { get; set; }
     public string StatusLabel { get; set; } = string.Empty;
     public DateTime? DiagnosisDate { get; set; }
     public int ServiceNumber { get; set; }
@@ -471,7 +477,7 @@ public class BreedingEventListItemDto
     public ReproductionType ReproductionType { get; set; }
     public string ReproductionTypeLabel { get; set; } = string.Empty;
     public DateTime BreedingDate { get; set; }
-    public BreedingStatus Status { get; set; }
+    public ReproductiveEventStatus Status { get; set; }
     public string StatusLabel { get; set; } = string.Empty;
     public int ServiceNumber { get; set; }
 }
@@ -486,7 +492,7 @@ public class BreedingEventFilterDto
 {
     public int? AnimalId { get; set; }
     public ReproductionType? ReproductionType { get; set; }
-    public BreedingStatus? Status { get; set; }
+    public ReproductiveEventStatus? Status { get; set; }
     public DateTime? BreedingDateFrom { get; set; }
     public DateTime? BreedingDateTo { get; set; }
     public bool? IsActive { get; set; }
@@ -516,7 +522,7 @@ Chamada no `AnimalService` ao montar o `AnimalDto`. Aplicável apenas a animais 
 1. Se há gestação ativa (AnimalPregnancy com Status = Confirmed, implementado no Spec #6)
    → ReproductiveStatus.Pregnant
 
-2. Senão, se há BreedingEvent ativo com Status = Pending
+2. Senão, se há BreedingEvent com Status = AwaitingDiagnosis (e IsActive = true)
    → ReproductiveStatus.AwaitingConfirmation
 
 3. Senão, se há parto registrado há menos de 60 dias E sem cobertura ativa após ele (Spec #6)
@@ -563,12 +569,13 @@ Chamada no `AnimalService` ao montar o `AnimalDto`. Aplicável apenas a animais 
 | RN-07 | `SireAnimal` deve ter `Classification = Bull`. | Service → lança `BusinessRuleException` |
 | RN-08 | `SireAnimal` deve estar ativo. | Service → lança `ConflictException` |
 | RN-09 | `ServiceNumber` calculado automaticamente (count eventos ativos do animal + 1). | Service |
-| RN-11 | Atualização de status permitida apenas quando `Status = Pending`. | Service → lança `ConflictException` |
+| RN-10 | Se `BodyConditionScore` informado, criar `BodyConditionRecord` via `IBodyConditionRecordService`. | Service |
+| RN-11 | Atualização de status permitida apenas quando `Status = AwaitingDiagnosis`. | Service → lança `ConflictException` |
 | RN-12 | `DiagnosisDate` não pode ser futura. | DTO (IValidatableObject) |
-| RN-13 | Status não pode regredir para `Pending` via PATCH. | DTO (IValidatableObject) |
+| RN-13 | Status não pode regredir para `AwaitingDiagnosis` via PATCH. | DTO (IValidatableObject) |
 | RN-14 | Inativação bloqueada se existir gestação vinculada (Spec #6). | Service → lança `ConflictException` |
 | RN-15 | `ReproductiveStatus` calculado apenas para animais `Cow` ou `Heifer`; retorna `null` para demais. | Service |
-| RN-16 | Isolamento de tenant via `Animal.PropertyId` em todas as queries. | Repository |
+| RN-16 | Isolamento de tenant via query filter global em `BreedingEvent.PropertyId`. | Repository / DbContext |
 
 ---
 
@@ -579,7 +586,7 @@ Chamada no `AnimalService` ao montar o `AnimalDto`. Aplicável apenas a animais 
 | `Domain/Models` | `BreedingEvent.cs` | Criar |
 | `Domain/Models` | `Animal.cs` | Adicionar navigation `ICollection<BreedingEvent>? BreedingEvents` |
 | `Domain/Enums` | `ReproductionType.cs` | Criar |
-| `Domain/Enums` | `BreedingStatus.cs` | Criar |
+| `Domain/Enums` | `ReproductiveEventStatus.cs` | Criar |
 | `Domain/Enums` | `ReproductiveStatus.cs` | Criar |
 | `Application/DTOs` | `BreedingEventCreateDto.cs` | Criar |
 | `Application/DTOs` | `BreedingEventStatusUpdateDto.cs` | Criar |
@@ -615,7 +622,7 @@ A migration deverá:
 
 ## 7. Fora do Escopo deste Spec
 
-- **Gestação e Parto** (entidade `AnimalPregnancy`, `AnimalCalving`, status `Pregnant` e `Postpartum` funcionais) → Spec #6
+- **Gestação e Parto** (entidade `AnimalPregnancy`, `AnimalCalving`, status `Pregnant` e `Postpartum` do `ReproductiveStatus` funcionais) → Spec #6
 - **Secagem e status de lactação** (`AnimalDryOff`, `LactationStatus`) → abstraído / fora do TCC
 - **Inseminação em lote** → fora do escopo
 - **IATF e Transferência de Embrião** → fora do escopo

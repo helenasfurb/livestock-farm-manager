@@ -22,6 +22,7 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<BodyConditionRecord> BodyConditionRecords { get; set; }
         public DbSet<AnimalExitRecord> AnimalExitRecords { get; set; }
         public DbSet<SemenSample> SemenSamples { get; set; }
+        public DbSet<BreedingEvent> BreedingEvents { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -63,6 +64,32 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<SemenSample>()
                 .HasIndex(s => new { s.PropertyId, s.IsActive })
                 .HasDatabaseName("IX_SemenSamples_PropertyId_IsActive");
+
+            builder.Entity<BreedingEvent>().HasQueryFilter(e => e.PropertyId == _propertyId);
+
+            builder.Entity<BreedingEvent>()
+                .HasOne(e => e.Animal)
+                .WithMany(a => a.BreedingEvents)
+                .HasForeignKey(e => e.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<BreedingEvent>()
+                .HasOne(e => e.SireAnimal)
+                .WithMany()
+                .HasForeignKey(e => e.SireAnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<BreedingEvent>()
+                .HasIndex(e => new { e.AnimalId, e.BreedingDate })
+                .HasDatabaseName("IX_BreedingEvents_AnimalId_BreedingDate");
+
+            builder.Entity<BreedingEvent>()
+                .HasIndex(e => new { e.AnimalId, e.Status, e.IsActive })
+                .HasDatabaseName("IX_BreedingEvents_AnimalId_Status_IsActive");
+
+            builder.Entity<BreedingEvent>()
+                .HasIndex(e => e.SemenSampleId)
+                .HasDatabaseName("IX_BreedingEvents_SemenSampleId");
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)
