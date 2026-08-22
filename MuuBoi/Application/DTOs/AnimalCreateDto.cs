@@ -36,6 +36,14 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(1000)]
         public string? Notes { get; set; }
 
+        [ValidEnum(typeof(BodyConditionScore))]
+        public BodyConditionScore? InitialBodyConditionScore { get; set; }
+
+        public DateTime? InitialBodyConditionDate { get; set; }
+
+        [MaxLength(500)]
+        public string? InitialBodyConditionNotes { get; set; }
+
         public decimal? InitialWeight { get; set; }
 
         public DateTime? InitialWeightDate { get; set; }
@@ -60,6 +68,11 @@ namespace MuuBoi.Application.DTOs
                         $"A classificação '{Classification.Value.GetDescription()}' é exclusiva de machos.",
                         new[] { nameof(Classification) });
             }
+
+            if (InitialBodyConditionDate.HasValue && InitialBodyConditionDate.Value > DateTime.UtcNow)
+                yield return new ValidationResult(
+                    "A data do ECC inicial não pode ser futura.",
+                    new[] { nameof(InitialBodyConditionDate) });
         }
     }
 }

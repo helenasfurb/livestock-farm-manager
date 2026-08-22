@@ -33,6 +33,21 @@ O objetivo deste spec é definir o cadastro manual de ECC e a consulta do histó
 
 ## 3. Histórias de Usuário
 
+### US-00 — Informar ECC inicial no cadastro do animal
+> **Como** produtor,  
+> **quero** informar o escore de condição corporal no momento do cadastro de um animal,  
+> **para** já ter um registro inicial de ECC sem precisar acessar outro formulário.
+
+**Critérios de aceite:**
+- Os campos `InitialBodyConditionScore`, `InitialBodyConditionDate` e `InitialBodyConditionNotes` são opcionais em `POST /api/animals`.
+- Se `InitialBodyConditionScore` não for informado, nenhum registro de ECC é criado.
+- Se `InitialBodyConditionScore` for informado e `InitialBodyConditionDate` não, usa-se `DateTime.UtcNow`.
+- `InitialBodyConditionDate` não pode ser futura.
+- O escore informado deve ser um valor válido do enum `BodyConditionScore`.
+- O registro criado segue as mesmas regras de imutabilidade dos demais registros de ECC.
+
+---
+
 ### US-01 — Registrar ECC de um animal
 > **Como** produtor,  
 > **quero** registrar o escore de condição corporal de um animal em uma data específica,  
@@ -182,6 +197,31 @@ public enum BodyConditionScore
 
 ### 5.3 DTOs
 
+#### Atualização de `AnimalCreateDto.cs`
+
+Adicionar campos opcionais para ECC inicial, espelhando o padrão de `InitialWeight`:
+
+```csharp
+[ValidEnum(typeof(BodyConditionScore))]
+public BodyConditionScore? InitialBodyConditionScore { get; set; }
+
+public DateTime? InitialBodyConditionDate { get; set; }
+
+[MaxLength(500)]
+public string? InitialBodyConditionNotes { get; set; }
+```
+
+Adicionar ao método `Validate` de `AnimalCreateDto`:
+
+```csharp
+if (InitialBodyConditionDate.HasValue && InitialBodyConditionDate.Value > DateTime.UtcNow)
+    yield return new ValidationResult(
+        "A data do ECC inicial não pode ser futura.",
+        new[] { nameof(InitialBodyConditionDate) });
+```
+
+---
+
 #### `BodyConditionRecordCreateDto.cs`
 
 ```csharp
@@ -268,11 +308,13 @@ public BodyConditionRecordDto? LastBodyConditionRecord { get; set; }
 | `Domain/Models` | `BodyConditionRecord.cs` | Criar |
 | `Domain/Models` | `Animal.cs` | Adicionar navigation `ICollection<BodyConditionRecord>?` |
 | `Domain/Enums` | `BodyConditionScore.cs` | Criar |
+| `Application/DTOs` | `AnimalCreateDto.cs` | Adicionar campos `InitialBodyConditionScore`, `InitialBodyConditionDate`, `InitialBodyConditionNotes` e validação de data futura |
 | `Application/DTOs` | `BodyConditionRecordCreateDto.cs` | Criar |
 | `Application/DTOs` | `BodyConditionRecordDto.cs` | Criar |
 | `Application/DTOs` | `AnimalDto.cs` | Adicionar `LastBodyConditionRecord` |
 | `Application/Mappings` | `BodyConditionRecordProfile.cs` | Criar |
 | `Application/Mappings` | `AnimalProfile.cs` | Mapear `LastBodyConditionRecord` |
+| `Application/Services` | `AnimalService.cs` | Adicionar helper `CreateBodyConditionRecord` chamado em `CreateAnimalAsync` |
 | `Application/Services` | `BodyConditionRecordService.cs` | Criar |
 | `Application/Interfaces` | `IBodyConditionRecordService.cs` | Criar |
 | `Application/Interfaces` | `IBodyConditionRecordRepository.cs` | Criar |
