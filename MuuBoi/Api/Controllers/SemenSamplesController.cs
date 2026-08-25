@@ -11,10 +11,12 @@ namespace MuuBoi.Api.Controllers
     public class SemenSamplesController : ControllerBase
     {
         private readonly ISemenSampleService _service;
+        private readonly ISemenSampleMovementService _movementService;
 
-        public SemenSamplesController(ISemenSampleService service)
+        public SemenSamplesController(ISemenSampleService service, ISemenSampleMovementService movementService)
         {
             _service = service;
+            _movementService = movementService;
         }
 
         [HttpGet]
@@ -53,9 +55,63 @@ namespace MuuBoi.Api.Controllers
         }
 
         [HttpDelete("{id:int}")]
-        public async Task<IActionResult> Deactivate(int id)
+        public async Task<ActionResult<bool>> Deactivate(int id)
         {
-            await _service.DeactivateAsync(id);
+            var isActive = await _service.DeactivateAsync(id);
+            return Ok(isActive);
+        }
+
+        [HttpPatch("{id:int}/reactivate")]
+        public async Task<ActionResult<bool>> Reactivate(int id)
+        {
+            var isActive = await _service.ReactivateAsync(id);
+            return Ok(isActive);
+        }
+
+        // --- Movements ---
+
+        [HttpGet("{semenSampleId:int}/movements")]
+        public async Task<ActionResult<IEnumerable<SemenSampleMovementListItemDto>>> GetMovements(
+            int semenSampleId,
+            [FromQuery] SemenSampleMovementFilterDto filter)
+        {
+            var movements = await _movementService.GetBySemenSampleIdAsync(semenSampleId, filter);
+            return Ok(movements);
+        }
+
+        [HttpGet("{semenSampleId:int}/movements/{movementId:int}")]
+        public async Task<ActionResult<SemenSampleMovementDto>> GetMovementById(int semenSampleId, int movementId)
+        {
+            var movement = await _movementService.GetByIdAsync(semenSampleId, movementId);
+            return Ok(movement);
+        }
+
+        [HttpPost("{semenSampleId:int}/movements")]
+        public async Task<ActionResult<SemenSampleMovementDto>> CreateMovement(
+            int semenSampleId,
+            [FromBody] SemenSampleMovementCreateDto dto)
+        {
+            var created = await _movementService.CreateAsync(semenSampleId, dto);
+            return CreatedAtAction(
+                nameof(GetMovementById),
+                new { semenSampleId, movementId = created.Id },
+                created);
+        }
+
+        [HttpPatch("{semenSampleId:int}/movements/{movementId:int}")]
+        public async Task<ActionResult<SemenSampleMovementDto>> UpdateMovement(
+            int semenSampleId,
+            int movementId,
+            [FromBody] SemenSampleMovementUpdateDto dto)
+        {
+            var updated = await _movementService.UpdateAsync(semenSampleId, movementId, dto);
+            return Ok(updated);
+        }
+
+        [HttpDelete("{semenSampleId:int}/movements/{movementId:int}")]
+        public async Task<IActionResult> DeactivateMovement(int semenSampleId, int movementId)
+        {
+            await _movementService.DeactivateAsync(semenSampleId, movementId);
             return NoContent();
         }
     }

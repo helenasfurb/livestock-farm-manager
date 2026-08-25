@@ -10,5 +10,7 @@ namespace MuuBoi.Application.Interfaces
         Task<SemenSample?> GetByIdAsync(int id);
         Task<SemenSample> CreateAsync(SemenSample semenSample);
         Task<SemenSample> UpdateAsync(SemenSample semenSample);
+        Task<int> GetAvailableDosesAsync(int semenSampleId);
+        Task<Dictionary<int, int>> GetAvailableDosesBatchAsync(IEnumerable<int> semenSampleIds);
     }
 }
