@@ -12,17 +12,20 @@ namespace MuuBoi.Application.Services
         private readonly IBreedingEventRepository _repository;
         private readonly IAnimalRepository _animalRepository;
         private readonly ISemenSampleRepository _semenSampleRepository;
+        private readonly ISemenSampleMovementService _movementService;
         private readonly IMapper _mapper;
 
         public BreedingEventService(
             IBreedingEventRepository repository,
             IAnimalRepository animalRepository,
             ISemenSampleRepository semenSampleRepository,
+            ISemenSampleMovementService movementService,
             IMapper mapper)
         {
             _repository = repository;
             _animalRepository = animalRepository;
             _semenSampleRepository = semenSampleRepository;
+            _movementService = movementService;
             _mapper = mapper;
         }
 
@@ -63,6 +66,10 @@ namespace MuuBoi.Application.Services
 
                 if (!semen.IsActive)
                     throw new ConflictException("A amostra de sêmen selecionada está inativa.");
+
+                var availableDoses = await _semenSampleRepository.GetAvailableDosesAsync(semen.Id);
+                if (availableDoses <= 0)
+                    throw new BusinessRuleException("Não há doses disponíveis para a amostra de sêmen selecionada.");
             }
             else
             {
@@ -81,6 +88,9 @@ namespace MuuBoi.Application.Services
             ev.ServiceNumber = await _repository.CountActiveByAnimalIdAsync(animalId) + 1;
 
             var created = await _repository.CreateAsync(ev);
+
+            if (created.ReproductionType == ReproductionType.ArtificialInsemination)
+                await _movementService.CreateForBreedingEventAsync(created);
 
             created.Animal = animal;
             if (created.SemenSampleId.HasValue)
@@ -176,6 +186,9 @@ namespace MuuBoi.Application.Services
             ev.IsActive = false;
             ev.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(ev);
+
+            if (ev.ReproductionType == ReproductionType.ArtificialInsemination)
+                await _movementService.InactivateForBreedingEventAsync(ev.Id);
         }
     }
 }

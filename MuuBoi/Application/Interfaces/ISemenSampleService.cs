@@ -9,6 +9,7 @@ namespace MuuBoi.Application.Interfaces
         Task<SemenSampleDto> GetByIdAsync(int id);
         Task<SemenSampleDto> CreateAsync(SemenSampleCreateDto dto);
         Task<SemenSampleDto> UpdateAsync(int id, SemenSampleUpdateDto dto);
-        Task DeactivateAsync(int id);
+        Task<bool> DeactivateAsync(int id);
+        Task<bool> ReactivateAsync(int id);
     }
 }

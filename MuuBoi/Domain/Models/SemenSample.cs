@@ -9,9 +9,6 @@ namespace MuuBoi.Domain.Models
         [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
 
-        [MaxLength(200)]
-        public string? BullName { get; set; }
-
         [MaxLength(100)]
         public string? BullRegistration { get; set; }
 
@@ -20,17 +17,16 @@ namespace MuuBoi.Domain.Models
 
         public AnimalBreed? BullBreed { get; set; }
 
-        public DateTime? CollectedAt { get; set; }
+        [MaxLength(100)]
+        public string? BatchNumber { get; set; }
 
-        public DateTime? ManufacturedAt { get; set; }
-
-        public DateTime? ReceivedAt { get; set; }
-
-        public DateTime? ExpiresAt { get; set; }
+        public DateTime? BatchDate { get; set; }
 
         [MaxLength(500)]
         public string? Notes { get; set; }
 
         public Guid PropertyId { get; set; }
+
+        public ICollection<SemenSampleMovement>? Movements { get; set; }
     }
 }

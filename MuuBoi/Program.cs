@@ -68,6 +68,8 @@ builder.Services.AddScoped<IBodyConditionRecordService, BodyConditionRecordServi
 builder.Services.AddScoped<IAnimalExitRecordRepository, AnimalExitRecordRepository>();
 
 builder.Services.AddScoped<ISemenSampleRepository, SemenSampleRepository>();
+builder.Services.AddScoped<ISemenSampleMovementRepository, SemenSampleMovementRepository>();
+builder.Services.AddScoped<ISemenSampleMovementService, SemenSampleMovementService>();
 builder.Services.AddScoped<ISemenSampleService, SemenSampleService>();
 
 builder.Services.AddScoped<IBreedingEventRepository, BreedingEventRepository>();
