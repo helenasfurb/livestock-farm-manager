@@ -59,6 +59,15 @@ namespace MuuBoi.Application.Services
             if (!animal.IsActive)
                 throw new ConflictException("Não é possível registrar evento reprodutivo para um animal inativo.");
 
+            if (animal.Classification != AnimalClassification.Cow &&
+                animal.Classification != AnimalClassification.Heifer)
+                throw new BusinessRuleException("Apenas vacas e novilhas podem ser submetidas a eventos reprodutivos.");
+
+            var hasActiveEvent = await _repository.HasActiveByAnimalIdAsync(animalId);
+
+            if (hasActiveEvent)
+                throw new BusinessRuleException("O animal já possui um evento reprodutivo aguardando diagnóstico. Registre o diagnóstico do serviço anterior antes de criar um novo.");
+
             if (dto.ReproductionType == ReproductionType.ArtificialInsemination)
             {
                 var semen = await _semenSampleRepository.GetByIdAsync(dto.SemenSampleId!.Value)
