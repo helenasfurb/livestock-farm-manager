@@ -29,5 +29,6 @@ namespace MuuBoi.Domain.Models
         public Animal? Animal { get; set; }
         public SemenSample? SemenSample { get; set; }
         public Animal? SireAnimal { get; set; }
+        public AnimalPregnancy? Pregnancy { get; set; }
     }
 }

@@ -24,6 +24,9 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<SemenSample> SemenSamples { get; set; }
         public DbSet<SemenSampleMovement> SemenSampleMovements { get; set; }
         public DbSet<BreedingEvent> BreedingEvents { get; set; }
+        public DbSet<AnimalPregnancy> AnimalPregnancies { get; set; }
+        public DbSet<AnimalCalving> AnimalCalvings { get; set; }
+        public DbSet<AnimalCalvingCalf> AnimalCalvingCalves { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -112,6 +115,71 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<BreedingEvent>()
                 .HasIndex(e => e.SemenSampleId)
                 .HasDatabaseName("IX_BreedingEvents_SemenSampleId");
+
+            builder.Entity<AnimalPregnancy>().HasQueryFilter(p => p.PropertyId == _propertyId);
+
+            builder.Entity<AnimalPregnancy>()
+                .HasOne(p => p.Animal)
+                .WithMany(a => a.Pregnancies)
+                .HasForeignKey(p => p.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalPregnancy>()
+                .HasOne(p => p.BreedingEvent)
+                .WithOne(e => e.Pregnancy)
+                .HasForeignKey<AnimalPregnancy>(p => p.BreedingEventId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalPregnancy>()
+                .HasIndex(p => p.BreedingEventId)
+                .IsUnique()
+                .HasDatabaseName("IX_AnimalPregnancies_BreedingEventId");
+
+            builder.Entity<AnimalPregnancy>()
+                .HasIndex(p => new { p.AnimalId, p.Status, p.IsActive })
+                .HasDatabaseName("IX_AnimalPregnancies_AnimalId_Status_IsActive");
+
+            builder.Entity<AnimalPregnancy>()
+                .HasIndex(p => new { p.PropertyId, p.IsActive })
+                .HasDatabaseName("IX_AnimalPregnancies_PropertyId_IsActive");
+
+            builder.Entity<AnimalCalving>().HasQueryFilter(c => c.PropertyId == _propertyId);
+
+            builder.Entity<AnimalCalving>()
+                .HasOne(c => c.AnimalPregnancy)
+                .WithMany(p => p.Calvings)
+                .HasForeignKey(c => c.AnimalPregnancyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalCalving>()
+                .HasOne(c => c.Animal)
+                .WithMany(a => a.Calvings)
+                .HasForeignKey(c => c.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalCalving>()
+                .HasIndex(c => c.AnimalPregnancyId)
+                .HasDatabaseName("IX_AnimalCalvings_AnimalPregnancyId");
+
+            builder.Entity<AnimalCalving>()
+                .HasIndex(c => new { c.AnimalId, c.CalvingDate })
+                .HasDatabaseName("IX_AnimalCalvings_AnimalId_CalvingDate");
+
+            builder.Entity<AnimalCalvingCalf>().HasQueryFilter(cf => cf.PropertyId == _propertyId);
+
+            builder.Entity<AnimalCalvingCalf>()
+                .HasOne(cf => cf.Calving)
+                .WithMany(c => c.Calves)
+                .HasForeignKey(cf => cf.CalvingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalCalvingCalf>()
+                .Property(cf => cf.WeightKg)
+                .HasPrecision(6, 2);
+
+            builder.Entity<AnimalCalvingCalf>()
+                .HasIndex(cf => cf.CalvingId)
+                .HasDatabaseName("IX_AnimalCalvingCalves_CalvingId");
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

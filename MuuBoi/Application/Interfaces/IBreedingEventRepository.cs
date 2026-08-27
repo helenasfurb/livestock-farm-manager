@@ -11,6 +11,6 @@ namespace MuuBoi.Application.Interfaces
         Task<int> CountActiveByAnimalIdAsync(int animalId);
         Task<BreedingEvent> CreateAsync(BreedingEvent breedingEvent);
         Task<BreedingEvent> UpdateAsync(BreedingEvent breedingEvent);
-        Task<bool> HasActiveByAnimalIdAsync(int animalId);
+        Task<DateTime?> GetLastActiveAwaitingDiagnosisDateAsync(int animalId);
     }
 }

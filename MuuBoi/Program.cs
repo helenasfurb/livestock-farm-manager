@@ -75,6 +75,12 @@ builder.Services.AddScoped<ISemenSampleService, SemenSampleService>();
 builder.Services.AddScoped<IBreedingEventRepository, BreedingEventRepository>();
 builder.Services.AddScoped<IBreedingEventService, BreedingEventService>();
 
+builder.Services.AddScoped<IAnimalPregnancyRepository, AnimalPregnancyRepository>();
+builder.Services.AddScoped<IAnimalPregnancyService, AnimalPregnancyService>();
+
+builder.Services.AddScoped<IAnimalCalvingRepository, AnimalCalvingRepository>();
+builder.Services.AddScoped<IAnimalCalvingService, AnimalCalvingService>();
+
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 

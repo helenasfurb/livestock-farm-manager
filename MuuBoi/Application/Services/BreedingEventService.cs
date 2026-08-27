@@ -13,6 +13,8 @@ namespace MuuBoi.Application.Services
         private readonly IAnimalRepository _animalRepository;
         private readonly ISemenSampleRepository _semenSampleRepository;
         private readonly ISemenSampleMovementService _movementService;
+        private readonly IAnimalPregnancyService _pregnancyService;
+        private readonly IAnimalPregnancyRepository _pregnancyRepository;
         private readonly IMapper _mapper;
 
         public BreedingEventService(
@@ -20,12 +22,16 @@ namespace MuuBoi.Application.Services
             IAnimalRepository animalRepository,
             ISemenSampleRepository semenSampleRepository,
             ISemenSampleMovementService movementService,
+            IAnimalPregnancyService pregnancyService,
+            IAnimalPregnancyRepository pregnancyRepository,
             IMapper mapper)
         {
             _repository = repository;
             _animalRepository = animalRepository;
             _semenSampleRepository = semenSampleRepository;
             _movementService = movementService;
+            _pregnancyService = pregnancyService;
+            _pregnancyRepository = pregnancyRepository;
             _mapper = mapper;
         }
 
@@ -175,6 +181,9 @@ namespace MuuBoi.Application.Services
 
             var updated = await _repository.UpdateAsync(ev);
 
+            if (updated.Status == ReproductiveEventStatus.Successful)
+                await _pregnancyService.CreateForBreedingEventAsync(updated, dto.DiagnosisDate);
+
             updated.Animal = await _animalRepository.GetAnimalByIdAsync(ev.AnimalId);
             if (updated.SemenSampleId.HasValue)
                 updated.SemenSample = await _semenSampleRepository.GetByIdAsync(updated.SemenSampleId.Value);
@@ -191,6 +200,9 @@ namespace MuuBoi.Application.Services
 
             if (!ev.IsActive)
                 throw new ConflictException("O evento reprodutivo já está inativo.");
+
+            if (await _pregnancyRepository.ExistsActiveForBreedingEventAsync(ev.Id))
+                throw new ConflictException("Este evento possui uma gestação ativa vinculada. Inative a gestação primeiro.");
 
             ev.IsActive = false;
             ev.UpdatedAt = DateTime.UtcNow;

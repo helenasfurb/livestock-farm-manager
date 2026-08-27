@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
+using MuuBoi.Domain.Enums;
 using MuuBoi.Domain.Models;
 using MuuBoi.Infrastructure.Data;
 
@@ -17,11 +19,40 @@ namespace MuuBoi.Infrastructure.Repositories
 
         public async Task<IEnumerable<Animal>> GetAllAnimalsAsync(AnimalFilterDto filter)
         {
-            var query = _context.Animals
+            var query = ApplyFilters(_context.Animals
                 .Include(a => a.WeightRecords!.OrderByDescending(w => w.RecordedAt).Take(1))
-                .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1))
-                .AsQueryable();
+                .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1)), filter);
 
+            return await query.ToListAsync();
+        }
+
+        public async Task<Dictionary<int, ReproductiveStatus>> GetReproductiveStatusMapAsync(IReadOnlyCollection<int> animalIds)
+        {
+            var rows = await _context.Animals
+                .Where(a => animalIds.Contains(a.Id))
+                .Select(a => new
+                {
+                    a.Id,
+                    HasConfirmedPregnancy = a.Pregnancies!.Any(p =>
+                        p.IsActive && p.Status == AnimalPregnancyStatus.Confirmed),
+                    LastCalvingDate = a.Calvings!
+                        .Where(c => c.IsActive)
+                        .Max(c => (DateTime?)c.CalvingDate),
+                    LastAwaitingBreedingDate = a.BreedingEvents!
+                        .Where(e => e.IsActive && e.Status == ReproductiveEventStatus.AwaitingDiagnosis)
+                        .Max(e => (DateTime?)e.BreedingDate)
+                })
+                .ToListAsync();
+
+            var now = DateTime.UtcNow;
+            return rows.ToDictionary(
+                r => r.Id,
+                r => ReproductiveStatusResolver.Resolve(
+                    r.HasConfirmedPregnancy, r.LastCalvingDate, r.LastAwaitingBreedingDate, now));
+        }
+
+        private static IQueryable<Animal> ApplyFilters(IQueryable<Animal> query, AnimalFilterDto filter)
+        {
             if (filter.IsActive.HasValue)
                 query = query.Where(a => a.IsActive == filter.IsActive.Value);
 
@@ -37,7 +68,7 @@ namespace MuuBoi.Infrastructure.Repositories
             if (filter.Breed.HasValue)
                 query = query.Where(a => a.Breed == filter.Breed.Value);
 
-            return await query.ToListAsync();
+            return query;
         }
 
         public async Task<Animal?> GetAnimalByIdAsync(int id)

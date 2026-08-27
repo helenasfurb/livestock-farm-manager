@@ -8,6 +8,7 @@ namespace MuuBoi.Application.DTOs
         public string? Name { get; set; }
         public AnimalClassification? Classification { get; set; }
         public AnimalBreed? Breed { get; set; }
+        public ReproductiveStatus? ReproductiveStatus { get; set; }
         public bool? IsActive { get; set; }
     }
 }
