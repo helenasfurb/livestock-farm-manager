@@ -13,24 +13,53 @@ namespace MuuBoi.Application.Services
         private readonly IAnimalRepository _animalRepository;
         private readonly IAnimalExitRecordRepository _exitRecordRepository;
         private readonly IBreedingEventRepository _breedingEventRepository;
+        private readonly IAnimalPregnancyRepository _pregnancyRepository;
+        private readonly IAnimalCalvingRepository _calvingRepository;
         private readonly IMapper _mapper;
 
         public AnimalService(
             IAnimalRepository animalRepository,
             IAnimalExitRecordRepository exitRecordRepository,
             IBreedingEventRepository breedingEventRepository,
+            IAnimalPregnancyRepository pregnancyRepository,
+            IAnimalCalvingRepository calvingRepository,
             IMapper mapper)
         {
             _animalRepository = animalRepository;
             _exitRecordRepository = exitRecordRepository;
             _breedingEventRepository = breedingEventRepository;
+            _pregnancyRepository = pregnancyRepository;
+            _calvingRepository = calvingRepository;
             _mapper = mapper;
         }
 
         public async Task<IEnumerable<AnimalListItemDto>> GetAllAnimalsAsync(AnimalFilterDto filter)
         {
             var animals = await _animalRepository.GetAllAnimalsAsync(filter);
-            return _mapper.Map<IEnumerable<AnimalListItemDto>>(animals);
+
+            var femaleIds = animals
+                .Where(a => a.Classification == AnimalClassification.Cow
+                    || a.Classification == AnimalClassification.Heifer)
+                .Select(a => a.Id)
+                .ToList();
+
+            var statusMap = femaleIds.Count > 0
+                ? await _animalRepository.GetReproductiveStatusMapAsync(femaleIds)
+                : new Dictionary<int, ReproductiveStatus>();
+
+            var items = animals.Select(animal =>
+            {
+                var dto = _mapper.Map<AnimalListItemDto>(animal);
+                if (statusMap.TryGetValue(animal.Id, out var status))
+                    dto.ReproductiveStatus = new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
+                return dto;
+            });
+
+            if (filter.ReproductiveStatus.HasValue)
+                items = items.Where(dto => dto.ReproductiveStatus != null
+                    && dto.ReproductiveStatus.Value == (int)filter.ReproductiveStatus.Value);
+
+            return items.ToList();
         }
 
         public async Task<AnimalDto> GetAnimalByIdAsync(int id)
@@ -128,12 +157,21 @@ namespace MuuBoi.Application.Services
                 animal.Classification != AnimalClassification.Heifer)
                 return null;
 
-            var hasAwaitingDiagnosis = await _breedingEventRepository.HasActiveByAnimalIdAsync(animal.Id);
-            var status = hasAwaitingDiagnosis
-                ? ReproductiveStatus.AwaitingConfirmation
-                : ReproductiveStatus.Open;
-
+            var status = await ResolveReproductiveStatusAsync(animal.Id);
             return new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
+        }
+
+        private async Task<ReproductiveStatus> ResolveReproductiveStatusAsync(int animalId)
+        {
+            var hasConfirmedPregnancy = await _pregnancyRepository.HasActiveConfirmedByAnimalIdAsync(animalId);
+            var lastCalving = await _calvingRepository.GetLastActiveByAnimalIdAsync(animalId);
+            var lastAwaitingBreedingDate = await _breedingEventRepository.GetLastActiveAwaitingDiagnosisDateAsync(animalId);
+
+            return ReproductiveStatusResolver.Resolve(
+                hasConfirmedPregnancy,
+                lastCalving?.CalvingDate,
+                lastAwaitingBreedingDate,
+                DateTime.UtcNow);
         }
 
         private static void CreateWeightRecord(AnimalCreateDto dto, Animal animal)
