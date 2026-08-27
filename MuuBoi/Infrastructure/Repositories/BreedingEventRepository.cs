@@ -69,6 +69,14 @@ namespace MuuBoi.Infrastructure.Repositories
                 .CountAsync(e => e.AnimalId == animalId && e.IsActive);
         }
 
+        public async Task<bool> HasActiveByAnimalIdAsync(int animalId)
+        {
+            return await _context.BreedingEvents
+                .AnyAsync(e => e.AnimalId == animalId
+                    && e.IsActive
+                    && e.Status == ReproductiveEventStatus.AwaitingDiagnosis);
+        }
+
         public async Task<DateTime?> GetLastActiveAwaitingDiagnosisDateAsync(int animalId)
         {
             return await _context.BreedingEvents
