@@ -29,6 +29,13 @@ namespace MuuBoi.Api.Controllers
             return CreatedAtAction("GetById", "Pregnancies", new { id = pregnancyId }, created);
         }
 
+        [HttpPatch("api/calvings/{calvingId:int}/calves/{calfId:int}")]
+        public async Task<ActionResult<AnimalCalvingCalfDto>> UpdateCalf(int calvingId, int calfId, [FromBody] AnimalCalvingCalfUpdateDto dto)
+        {
+            var updated = await _service.UpdateCalfAsync(calvingId, calfId, dto);
+            return Ok(updated);
+        }
+
         [HttpDelete("api/calvings/{id:int}")]
         public async Task<IActionResult> Inactivate(int id)
         {

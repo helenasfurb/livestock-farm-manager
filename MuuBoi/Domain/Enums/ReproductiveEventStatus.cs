@@ -7,7 +7,7 @@ namespace MuuBoi.Domain.Enums
         [Description("Aguardando diagnóstico")]
         AwaitingDiagnosis = 1,
 
-        [Description("Com gestação confirmada")]
+        [Description("Gestação confirmada")]
         Successful = 2,
 
         [Description("Sem gestação")]

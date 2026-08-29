@@ -174,6 +174,12 @@ namespace MuuBoi.Infrastructure.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<AnimalCalvingCalf>()
+                .HasOne(cf => cf.Animal)
+                .WithOne()
+                .HasForeignKey<AnimalCalvingCalf>(cf => cf.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalCalvingCalf>()
                 .Property(cf => cf.WeightKg)
                 .HasPrecision(6, 2);
 

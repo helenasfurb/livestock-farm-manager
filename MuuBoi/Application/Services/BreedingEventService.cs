@@ -63,16 +63,16 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Animal com id '{animalId}' não encontrado.");
 
             if (!animal.IsActive)
-                throw new ConflictException("Não é possível registrar evento reprodutivo para um animal inativo.");
+                throw new ConflictException("Não é possível registrar coberturas para um animal inativo.");
 
             if (animal.Classification != AnimalClassification.Cow &&
                 animal.Classification != AnimalClassification.Heifer)
-                throw new BusinessRuleException("Apenas vacas e novilhas podem ser submetidas a eventos reprodutivos.");
+                throw new BusinessRuleException("Apenas vacas e novilhas podem ser submetidas a coberturas.");
 
             var hasActiveEvent = await _repository.HasActiveByAnimalIdAsync(animalId);
 
             if (hasActiveEvent)
-                throw new BusinessRuleException("O animal já possui um evento reprodutivo aguardando diagnóstico. Registre o diagnóstico do serviço anterior antes de criar um novo.");
+                throw new BusinessRuleException("O animal já possui uma cobertura aguardando diagnóstico. Registre o diagnóstico do serviço anterior antes de criar uma nova.");
 
             if (dto.ReproductionType == ReproductionType.ArtificialInsemination)
             {
@@ -119,10 +119,10 @@ namespace MuuBoi.Application.Services
         public async Task<BreedingEventDto> UpdateAsync(int id, BreedingEventUpdateDto dto)
         {
             var ev = await _repository.GetByIdAsync(id)
-                ?? throw new NotFoundException($"Evento reprodutivo com id '{id}' não encontrado.");
+                ?? throw new NotFoundException($"Cobertura com id '{id}' não encontrado.");
 
             if (ev.Status != ReproductiveEventStatus.AwaitingDiagnosis)
-                throw new ConflictException("Apenas eventos com diagnóstico pendente podem ser editados.");
+                throw new ConflictException("Apenas coberturas com diagnóstico pendente podem ser editados.");
 
             if (dto.BreedingDate.HasValue)
                 ev.BreedingDate = dto.BreedingDate.Value;
@@ -170,10 +170,13 @@ namespace MuuBoi.Application.Services
         public async Task<BreedingEventDto> UpdateStatusAsync(int id, BreedingEventStatusUpdateDto dto)
         {
             var ev = await _repository.GetByIdAsync(id)
-                ?? throw new NotFoundException($"Evento reprodutivo com id '{id}' não encontrado.");
+                ?? throw new NotFoundException($"Cobertura com id '{id}' não encontrada.");
 
             if (ev.Status != ReproductiveEventStatus.AwaitingDiagnosis)
-                throw new ConflictException("O diagnóstico deste evento já foi registrado.");
+                throw new ConflictException("O diagnóstico desta cobertura já foi registrado.");
+
+            if (dto.DiagnosisDate < ev.BreedingDate)
+                throw new BusinessRuleException("A data do diagnóstico não pode ser anterior à data da cobertura.");
 
             ev.Status = dto.Status;
             ev.DiagnosisDate = dto.DiagnosisDate;
@@ -196,13 +199,13 @@ namespace MuuBoi.Application.Services
         public async Task DeactivateAsync(int id)
         {
             var ev = await _repository.GetByIdAsync(id)
-                ?? throw new NotFoundException($"Evento reprodutivo com id '{id}' não encontrado.");
+                ?? throw new NotFoundException($"Cobertura com id '{id}' não encontrada.");
 
             if (!ev.IsActive)
-                throw new ConflictException("O evento reprodutivo já está inativo.");
+                throw new ConflictException("A cobertura já está inativa.");
 
             if (await _pregnancyRepository.ExistsActiveForBreedingEventAsync(ev.Id))
-                throw new ConflictException("Este evento possui uma gestação ativa vinculada. Inative a gestação primeiro.");
+                throw new ConflictException("Esta cobertura possui uma gestação ativa vinculada. Inative a gestação primeiro.");
 
             ev.IsActive = false;
             ev.UpdatedAt = DateTime.UtcNow;

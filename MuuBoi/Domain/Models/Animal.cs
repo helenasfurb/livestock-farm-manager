@@ -8,9 +8,8 @@ namespace MuuBoi.Domain.Models
         [MaxLength(100)]
         public string? Name { get; set; }
 
-        [Required]
         [MaxLength(6)]
-        public string TagNumber { get; set; } = string.Empty;
+        public string? TagNumber { get; set; }
 
         [MaxLength(100)]
         public string? PropertyTagNumber { get; set; }

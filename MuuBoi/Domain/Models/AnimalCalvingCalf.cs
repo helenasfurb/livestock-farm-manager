@@ -7,6 +7,8 @@ namespace MuuBoi.Domain.Models
     {
         public int CalvingId { get; set; }
 
+        public int? AnimalId { get; set; }
+
         public AnimalGender Sex { get; set; }
 
         [Range(0.01, 999.99)]
@@ -20,5 +22,6 @@ namespace MuuBoi.Domain.Models
         public Guid PropertyId { get; set; }
 
         public AnimalCalving? Calving { get; set; }
+        public Animal? Animal { get; set; }
     }
 }

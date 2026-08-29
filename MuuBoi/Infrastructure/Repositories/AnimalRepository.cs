@@ -57,7 +57,7 @@ namespace MuuBoi.Infrastructure.Repositories
                 query = query.Where(a => a.IsActive == filter.IsActive.Value);
 
             if (!string.IsNullOrWhiteSpace(filter.TagNumber))
-                query = query.Where(a => a.TagNumber.Contains(filter.TagNumber));
+                query = query.Where(a => a.TagNumber != null && a.TagNumber.Contains(filter.TagNumber));
 
             if (!string.IsNullOrWhiteSpace(filter.Name))
                 query = query.Where(a => a.Name != null && a.Name.Contains(filter.Name));
