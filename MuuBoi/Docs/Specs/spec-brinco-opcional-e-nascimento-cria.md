@@ -36,8 +36,8 @@ Isso encerra o trabalho futuro previsto no Spec 6.3 (§7 e decisão D3), que dei
 | D2 | Brinco continua **obrigatório** no cadastro manual (`AnimalCreateDto`), com o mesmo formato de 6 dígitos. | Cadastro manual pressupõe um animal já identificado; regra de negócio inalterada nesse fluxo. |
 | D3 | Cada cria com `VitalStatus = Live` gera automaticamente um `Animal`; natimortos não. | Só faz sentido cadastrar na base animais que continuarão vivos na propriedade. |
 | D4 | `Name` passa a ser **obrigatório por cria viva** no DTO do parto. | Sem brinco, o nome é o único identificador humano da cria recém-nascida. |
-| D5 | O `Animal`-bezerro criado recebe: `Classification = Calf`, `Origin = BornOnFarm`, `BirthDate = CalvingDate`, `Gender = Sex` da cria, `Name` da cria, `TagNumber = null`. | Regras fixas do nascimento; demais campos ficam a cargo de edição futura. |
-| D6 | `Breed` e `Purpose` do bezerro ficam **nulos** no nascimento. | Produtor completa depois via `PATCH /api/animals/{id}` quando o animal receber o brinco. |
+| D5 | O `Animal`-bezerro criado recebe: `Classification = Calf`, `Origin = BornOnFarm`, `BirthDate = CalvingDate`, `Gender = Sex` da cria, `Name` da cria, `Breed` da cria, `TagNumber = null`. | Regras fixas do nascimento; demais campos ficam a cargo de edição futura. |
+| D6 | `Purpose` do bezerro fica **nulo** no nascimento. **`Breed` é obrigatória por cria viva** (informada no parto) e natimorta pode ter `Breed` nula. | Raça já é conhecida no parto e deve ser registrada para a cria viva; finalidade o produtor completa depois via `PATCH /api/animals/{id}`. |
 | D7 | Se `WeightKg` da cria for informado, cria um `WeightRecord` no `Animal` (`RecordedAt = CalvingDate`, `Observations = Notes` da cria). Peso é opcional. | Aproveita o peso já capturado no parto sem introduzir campos novos. |
 | D8 | `AnimalCalvingCalf` ganha FK opcional `AnimalId` apontando para o `Animal` gerado. | Rastreabilidade cria → animal; nulo para natimortos. Fecha Spec 6.3 §7. |
 | D9 | Ao inativar o parto, os `Animal`-bezerros gerados são inativados junto (soft delete). | Consistência com a inativação em cascata das crias (Spec 6.2 CU-02 / Spec 6.3 CU-02). |
@@ -109,16 +109,17 @@ Isso encerra o trabalho futuro previsto no Spec 6.3 (§7 e decisão D3), que dei
 **Fluxo principal:**
 1. Produtor envia `POST /api/pregnancies/{pregnancyId}/calvings` com `AnimalCalvingCreateDto` (cada cria agora inclui `Name` quando viva).
 2. Validações do Spec 6.2 (status, parto único, datas) são aplicadas normalmente.
-3. Para cada cria com `VitalStatus = Live`, o DTO exige `Name` — se ausente/vazio, `400`.
+3. Para cada cria com `VitalStatus = Live`, o DTO exige `Name` e `Breed` — se ausente/vazio, `400`.
 4. Sistema cria a `AnimalCalving` (Spec 6.2).
 5. Para cada cria **viva**, o sistema:
    1. Cria um `Animal` com:
       - `Name` = `Calf.Name`
       - `Gender` = `Calf.Sex`
+      - `Breed` = `Calf.Breed`
       - `Classification` = `Calf`
       - `Origin` = `BornOnFarm`
       - `BirthDate` = `AnimalCalving.CalvingDate`
-      - `TagNumber` = `null`, `Breed` = `null`, `Purpose` = `null`
+      - `TagNumber` = `null`, `Purpose` = `null`
       - `PropertyId` = `pregnancy.PropertyId`, `IsActive = true`
    2. Se `Calf.WeightKg` informado, adiciona um `WeightRecord` (`Weight = WeightKg`, `RecordedAt = CalvingDate`, `Observations = Calf.Notes`).
    3. Persiste o `Animal` e grava o `Id` gerado em `AnimalCalvingCalf.AnimalId`.
@@ -214,7 +215,7 @@ Nenhum enum novo. São reutilizados:
 #### `AnimalCreateDto.cs` — **inalterado**
 `TagNumber` permanece `[Required]` com regex de 6 dígitos. Nenhuma mudança.
 
-#### `AnimalCalvingCalfCreateDto.cs` — adicionar `Name` com obrigatoriedade condicional
+#### `AnimalCalvingCalfCreateDto.cs` — adicionar `Name` e `Breed` com obrigatoriedade condicional
 
 ```csharp
 public class AnimalCalvingCalfCreateDto : IValidatableObject
@@ -224,6 +225,9 @@ public class AnimalCalvingCalfCreateDto : IValidatableObject
 
     [Required(ErrorMessage = "O sexo da cria é obrigatório.")]
     public AnimalGender Sex { get; set; }
+
+    [ValidEnum(typeof(AnimalBreed))]
+    public AnimalBreed? Breed { get; set; }    // obrigatório quando VitalStatus == Live
 
     [Range(0.01, 999.99, ErrorMessage = "O peso deve ser entre 0,01 e 999,99 kg.")]
     public decimal? WeightKg { get; set; }
@@ -240,11 +244,16 @@ public class AnimalCalvingCalfCreateDto : IValidatableObject
             yield return new ValidationResult(
                 "O nome é obrigatório para crias nascidas vivas.",
                 new[] { nameof(Name) });
+
+        if (VitalStatus == CalfVitalStatus.Live && !Breed.HasValue)
+            yield return new ValidationResult(
+                "A raça é obrigatória para crias nascidas vivas.",
+                new[] { nameof(Breed) });
     }
 }
 ```
 
-> `AnimalCalvingCreateDto` permanece como no Spec 6.2 (a validação por-item é feita no DTO da cria acima).
+> `Name` e `Breed` são entrada da cria e alimentam o `Animal` gerado (não são colunas de `AnimalCalvingCalf`). Natimorta não exige `Name`/`Breed`. `AnimalCalvingCreateDto` permanece como no Spec 6.2 (a validação por-item é feita no DTO da cria acima).
 
 #### `AnimalCalvingCalfDto.cs` (response) — expor o vínculo
 
@@ -253,8 +262,9 @@ public class AnimalCalvingCalfDto
 {
     public int Id { get; set; }
     public int? AnimalId { get; set; }          // novo — animal gerado (null p/ natimorto)
-    public string? Name { get; set; }           // novo
+    public string? Name { get; set; }           // novo — do Animal vinculado
     public EnumValueDto? Sex { get; set; }
+    public EnumValueDto? Breed { get; set; }    // novo — do Animal vinculado
     public decimal? WeightKg { get; set; }
     public EnumValueDto? VitalStatus { get; set; }
     public string? Notes { get; set; }
@@ -283,7 +293,8 @@ public class AnimalCalvingCalfDto
 | RN-02 | No cadastro manual, `TagNumber` é obrigatório e deve ter 6 dígitos numéricos. | `AnimalCreateDto` (DataAnnotations) |
 | RN-03 | Unicidade de brinco só se aplica a brincos preenchidos (ignora nulos). | `AnimalRepository.TagNumberExistsAsync` |
 | RN-04 | `Name` é obrigatório para cada cria com `VitalStatus = Live`. | `AnimalCalvingCalfCreateDto` (IValidatableObject) |
-| RN-05 | Para cada cria viva, criar um `Animal` (`Calf`, `BornOnFarm`, `BirthDate = CalvingDate`, `Gender = Sex`, `Name`, `TagNumber = null`). | `AnimalCalvingService.CreateAsync` |
+| RN-04b | `Breed` é obrigatória para cada cria com `VitalStatus = Live`; natimorta pode ter `Breed` nula. | `AnimalCalvingCalfCreateDto` (IValidatableObject) |
+| RN-05 | Para cada cria viva, criar um `Animal` (`Calf`, `BornOnFarm`, `BirthDate = CalvingDate`, `Gender = Sex`, `Name`, `Breed = Calf.Breed`, `TagNumber = null`). | `AnimalCalvingService.CreateAsync` |
 | RN-06 | Crias natimortas não geram `Animal`; `AnimalId` fica nulo. | `AnimalCalvingService.CreateAsync` |
 | RN-07 | Se `WeightKg` informado, criar `WeightRecord` no bezerro (`RecordedAt = CalvingDate`, `Observations = Calf.Notes`). | `AnimalCalvingService.CreateAsync` |
 | RN-08 | Gravar o `Id` do `Animal` gerado em `AnimalCalvingCalf.AnimalId`. | `AnimalCalvingService.CreateAsync` |

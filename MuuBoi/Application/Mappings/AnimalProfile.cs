@@ -74,6 +74,8 @@ namespace MuuBoi.Application.Mappings
             CreateMap<AnimalUpdateDto, Animal>()
                 .ForAllMembers(opt => opt.Condition((_, _, srcMember) => srcMember != null));
 
+            CreateMap<Animal, AnimalAutocompleteItemDto>();
+
             CreateMap<WeightRecord, WeightRecordDto>();
         }
     }

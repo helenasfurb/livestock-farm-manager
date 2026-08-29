@@ -26,6 +26,13 @@ namespace MuuBoi.Api.Controllers
         public ActionResult<IEnumerable<LookupDto>> GetStatuses()
             => Ok(EnumHelper.ToLookup<ReproductiveEventStatus>());
 
+        [HttpGet("api/breeding-events/animals-autocomplete")]
+        public async Task<ActionResult<IEnumerable<AnimalAutocompleteItemDto>>> GetAnimalsAutocomplete([FromQuery] string? search)
+        {
+            var animals = await _service.GetEligibleAnimalsAsync(search);
+            return Ok(animals);
+        }
+
         [HttpGet("api/animals/{animalId:int}/breeding-events")]
         public async Task<ActionResult<IEnumerable<BreedingEventListItemDto>>> GetByAnimal(int animalId)
         {

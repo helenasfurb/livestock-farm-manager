@@ -6,6 +6,7 @@ namespace MuuBoi.Application.Interfaces
     {
         Task<IEnumerable<BreedingEventListItemDto>> GetByAnimalIdAsync(int animalId);
         Task<IEnumerable<BreedingEventListItemDto>> GetAllAsync(BreedingEventFilterDto filter);
+        Task<IEnumerable<AnimalAutocompleteItemDto>> GetEligibleAnimalsAsync(string? search);
         Task<BreedingEventDto> GetByIdAsync(int id);
         Task<BreedingEventDto> CreateAsync(int animalId, BreedingEventCreateDto dto);
         Task<BreedingEventDto> UpdateAsync(int id, BreedingEventUpdateDto dto);

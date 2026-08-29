@@ -80,6 +80,23 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 
+        public async Task<IEnumerable<Animal>> GetBreedingEligibleAnimalsAsync(string? search)
+        {
+            var query = _context.Animals.Where(a =>
+                a.IsActive
+                && a.Gender == AnimalGender.F
+                && (a.Classification == AnimalClassification.Cow || a.Classification == AnimalClassification.Heifer)
+                && !a.BreedingEvents!.Any(e => e.IsActive && (e.Status == ReproductiveEventStatus.AwaitingDiagnosis))
+                && !a.Pregnancies!.Any(p => p.IsActive && p.Status == AnimalPregnancyStatus.Confirmed));
+
+            if (!string.IsNullOrWhiteSpace(search))
+                query = query.Where(a =>
+                    (a.Name != null && a.Name.Contains(search))
+                    || (a.TagNumber != null && a.TagNumber.Contains(search)));
+
+            return await query.OrderBy(a => a.Name).ToListAsync();
+        }
+
         public async Task<Animal> CreateAnimalAsync(Animal animal)
         {
             _context.Animals.Add(animal);

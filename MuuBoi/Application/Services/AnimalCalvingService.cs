@@ -152,6 +152,7 @@ namespace MuuBoi.Application.Services
             {
                 Name = calfDto.Name,
                 Gender = calfDto.Sex,
+                Breed = calfDto.Breed,
                 Classification = AnimalClassification.Calf,
                 Origin = AnimalOrigin.BornOnFarm,
                 BirthDate = calvingDate,

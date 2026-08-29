@@ -50,6 +50,12 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<IEnumerable<BreedingEventListItemDto>>(events);
         }
 
+        public async Task<IEnumerable<AnimalAutocompleteItemDto>> GetEligibleAnimalsAsync(string? search)
+        {
+            var animals = await _animalRepository.GetBreedingEligibleAnimalsAsync(search);
+            return _mapper.Map<IEnumerable<AnimalAutocompleteItemDto>>(animals);
+        }
+
         public async Task<BreedingEventDto> GetByIdAsync(int id)
         {
             var ev = await _repository.GetByIdAsync(id)
@@ -73,6 +79,9 @@ namespace MuuBoi.Application.Services
 
             if (hasActiveEvent)
                 throw new BusinessRuleException("O animal já possui uma cobertura aguardando diagnóstico. Registre o diagnóstico do serviço anterior antes de criar uma nova.");
+
+            if (await _pregnancyRepository.HasActiveConfirmedByAnimalIdAsync(animalId))
+                throw new BusinessRuleException("O animal possui uma gestação ativa. Não é possível registrar uma nova cobertura.");
 
             if (dto.ReproductionType == ReproductionType.ArtificialInsemination)
             {
