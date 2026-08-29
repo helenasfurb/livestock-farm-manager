@@ -53,6 +53,8 @@ namespace MuuBoi.Application.Services
                 {
                     var calf = _mapper.Map<AnimalCalvingCalf>(calfDto);
                     calf.PropertyId = pregnancy.PropertyId;
+                    if (calfDto.VitalStatus == CalfVitalStatus.Live)
+                        calf.Animal = BuildCalfAnimal(calfDto, dto.CalvingDate, pregnancy.PropertyId);
                     return calf;
                 }).ToList()
             };
@@ -73,6 +75,41 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<AnimalCalvingDto>(created);
         }
 
+        public async Task<AnimalCalvingCalfDto> UpdateCalfAsync(int calvingId, int calfId, AnimalCalvingCalfUpdateDto dto)
+        {
+            var calf = await _repository.GetCalfByIdAsync(calfId);
+
+            if (calf == null || calf.CalvingId != calvingId)
+                throw new NotFoundException($"Cria com id '{calfId}' não encontrada no parto '{calvingId}'.");
+
+            if (!calf.IsActive || calf.Calving == null || !calf.Calving.IsActive)
+                throw new ConflictException("Não é possível editar uma cria de um parto inativo.");
+
+            if (dto.Notes != null)
+                calf.Notes = dto.Notes;
+
+            if (dto.Sex.HasValue)
+            {
+                calf.Sex = dto.Sex.Value;
+                if (calf.Animal != null)
+                    calf.Animal.Gender = dto.Sex.Value;
+            }
+
+            if (dto.WeightKg.HasValue)
+            {
+                calf.WeightKg = dto.WeightKg.Value;
+                if (calf.Animal != null)
+                    ApplyBirthWeight(calf.Animal, dto.WeightKg.Value, calf.Calving.CalvingDate, calf.Notes);
+            }
+
+            calf.UpdatedAt = DateTime.UtcNow;
+            if (calf.Animal != null)
+                calf.Animal.UpdatedAt = DateTime.UtcNow;
+
+            await _repository.UpdateCalfAsync(calf);
+            return _mapper.Map<AnimalCalvingCalfDto>(calf);
+        }
+
         public async Task<bool> InactivateAsync(int id)
         {
             var calving = await _repository.GetByIdAsync(id)
@@ -89,6 +126,12 @@ namespace MuuBoi.Application.Services
                 {
                     calf.IsActive = false;
                     calf.UpdatedAt = DateTime.UtcNow;
+
+                    if (calf.Animal != null && calf.Animal.IsActive)
+                    {
+                        calf.Animal.IsActive = false;
+                        calf.Animal.UpdatedAt = DateTime.UtcNow;
+                    }
                 }
 
             await _repository.UpdateAsync(calving);
@@ -101,6 +144,59 @@ namespace MuuBoi.Application.Services
             }
 
             return true;
+        }
+
+        private static Animal BuildCalfAnimal(AnimalCalvingCalfCreateDto calfDto, DateTime calvingDate, Guid propertyId)
+        {
+            var animal = new Animal
+            {
+                Name = calfDto.Name,
+                Gender = calfDto.Sex,
+                Classification = AnimalClassification.Calf,
+                Origin = AnimalOrigin.BornOnFarm,
+                BirthDate = calvingDate,
+                TagNumber = null,
+                PropertyId = propertyId,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            if (calfDto.WeightKg.HasValue)
+                animal.WeightRecords = new List<WeightRecord>
+                {
+                    new()
+                    {
+                        Weight = calfDto.WeightKg.Value,
+                        RecordedAt = calvingDate,
+                        Observations = calfDto.Notes,
+                        PropertyId = propertyId
+                    }
+                };
+
+            return animal;
+        }
+
+        private static void ApplyBirthWeight(Animal animal, decimal weight, DateTime calvingDate, string? observations)
+        {
+            animal.WeightRecords ??= new List<WeightRecord>();
+
+            var birthRecord = animal.WeightRecords.FirstOrDefault(w => w.RecordedAt == calvingDate);
+            if (birthRecord != null)
+            {
+                birthRecord.Weight = weight;
+                birthRecord.UpdatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                animal.WeightRecords.Add(new WeightRecord
+                {
+                    Weight = weight,
+                    RecordedAt = calvingDate,
+                    Observations = observations,
+                    AnimalId = animal.Id,
+                    PropertyId = animal.PropertyId
+                });
+            }
         }
     }
 }

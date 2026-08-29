@@ -3,8 +3,11 @@ using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Application.DTOs
 {
-    public class AnimalCalvingCalfCreateDto
+    public class AnimalCalvingCalfCreateDto : IValidatableObject
     {
+        [MaxLength(100)]
+        public string? Name { get; set; }
+
         [Required(ErrorMessage = "O sexo da cria é obrigatório.")]
         public AnimalGender Sex { get; set; }
 
@@ -16,5 +19,13 @@ namespace MuuBoi.Application.DTOs
 
         [MaxLength(500)]
         public string? Notes { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (VitalStatus == CalfVitalStatus.Live && string.IsNullOrWhiteSpace(Name))
+                yield return new ValidationResult(
+                    "O nome é obrigatório para crias nascidas vivas.",
+                    new[] { nameof(Name) });
+        }
     }
 }

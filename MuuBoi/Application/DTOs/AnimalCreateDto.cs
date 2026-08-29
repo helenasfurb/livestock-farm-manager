@@ -16,6 +16,7 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(100)]
         public string? Name { get; set; }
 
+        [Required(ErrorMessage = "O sexo é obrigatório.")]
         [ValidEnum(typeof(AnimalGender))]
         public AnimalGender? Gender { get; set; }
 
@@ -24,6 +25,7 @@ namespace MuuBoi.Application.DTOs
         [ValidEnum(typeof(AnimalBreed))]
         public AnimalBreed? Breed { get; set; }
 
+        [Required(ErrorMessage = "A classificação é obrigatória.")]
         [ValidEnum(typeof(AnimalClassification))]
         public AnimalClassification? Classification { get; set; }
 

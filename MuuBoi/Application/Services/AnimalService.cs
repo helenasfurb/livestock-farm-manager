@@ -93,8 +93,20 @@ namespace MuuBoi.Application.Services
             if (dto.TagNumber != null && await _animalRepository.TagNumberExistsAsync(dto.TagNumber, excludeAnimalId: id))
                 throw new ConflictException($"Já existe um animal com o brinco '{dto.TagNumber}' nesta propriedade.");
 
+            var previousGender = animal.Gender;
+
             _mapper.Map(dto, animal);
             animal.UpdatedAt = DateTime.UtcNow;
+
+            if (dto.Gender.HasValue && dto.Gender.Value != previousGender)
+            {
+                var calf = await _calvingRepository.GetActiveCalfByAnimalIdAsync(id);
+                if (calf != null)
+                {
+                    calf.Sex = dto.Gender.Value;
+                    calf.UpdatedAt = DateTime.UtcNow;
+                }
+            }
 
             var updated = await _animalRepository.UpdateAnimalAsync(animal);
             return _mapper.Map<AnimalDto>(updated);

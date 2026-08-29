@@ -57,6 +57,7 @@ namespace MuuBoi.Infrastructure.Repositories
                 .Include(p => p.Animal)
                 .Include(p => p.Calvings!.Where(c => c.IsActive))
                     .ThenInclude(c => c.Calves!.Where(cf => cf.IsActive))
+                        .ThenInclude(cf => cf.Animal)
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
 

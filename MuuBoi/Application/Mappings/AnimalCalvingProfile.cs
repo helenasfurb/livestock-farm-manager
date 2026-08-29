@@ -16,6 +16,8 @@ namespace MuuBoi.Application.Mappings
                         : Enumerable.Empty<AnimalCalvingCalf>()));
 
             CreateMap<AnimalCalvingCalf, AnimalCalvingCalfDto>()
+                .ForMember(dest => dest.Name,
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.Name : null))
                 .ForMember(dest => dest.Sex,
                     opt => opt.MapFrom(src => new EnumValueDto
                     {
@@ -32,11 +34,13 @@ namespace MuuBoi.Application.Mappings
             CreateMap<AnimalCalvingCalfCreateDto, AnimalCalvingCalf>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CalvingId, opt => opt.Ignore())
+                .ForMember(dest => dest.AnimalId, opt => opt.Ignore())
                 .ForMember(dest => dest.PropertyId, opt => opt.Ignore())
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.Calving, opt => opt.Ignore());
+                .ForMember(dest => dest.Calving, opt => opt.Ignore())
+                .ForMember(dest => dest.Animal, opt => opt.Ignore());
         }
     }
 }
