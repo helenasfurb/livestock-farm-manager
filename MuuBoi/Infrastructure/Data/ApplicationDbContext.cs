@@ -27,6 +27,7 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<AnimalPregnancy> AnimalPregnancies { get; set; }
         public DbSet<AnimalCalving> AnimalCalvings { get; set; }
         public DbSet<AnimalCalvingCalf> AnimalCalvingCalves { get; set; }
+        public DbSet<MilkProduction> MilkProductions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -186,6 +187,20 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<AnimalCalvingCalf>()
                 .HasIndex(cf => cf.CalvingId)
                 .HasDatabaseName("IX_AnimalCalvingCalves_CalvingId");
+
+            builder.Entity<MilkProduction>().HasQueryFilter(m => m.PropertyId == _propertyId);
+
+            builder.Entity<MilkProduction>()
+                .Property(m => m.Volume)
+                .HasPrecision(11, 2);
+
+            builder.Entity<MilkProduction>()
+                .HasIndex(m => m.PropertyId)
+                .HasDatabaseName("IX_MilkProductions_PropertyId");
+
+            builder.Entity<MilkProduction>()
+                .HasIndex(m => new { m.PropertyId, m.Date })
+                .HasDatabaseName("IX_MilkProductions_PropertyId_Date");
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)
