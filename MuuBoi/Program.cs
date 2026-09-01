@@ -84,6 +84,9 @@ builder.Services.AddScoped<IAnimalCalvingService, AnimalCalvingService>();
 builder.Services.AddScoped<IMilkProductionRepository, MilkProductionRepository>();
 builder.Services.AddScoped<IMilkProductionService, MilkProductionService>();
 
+builder.Services.AddScoped<ILactationRepository, LactationRepository>();
+builder.Services.AddScoped<ILactationService, LactationService>();
+
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 

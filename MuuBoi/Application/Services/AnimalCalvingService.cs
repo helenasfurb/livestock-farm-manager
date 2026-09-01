@@ -12,17 +12,20 @@ namespace MuuBoi.Application.Services
         private readonly IAnimalCalvingRepository _repository;
         private readonly IAnimalPregnancyRepository _pregnancyRepository;
         private readonly IBodyConditionRecordService _bodyConditionRecordService;
+        private readonly ILactationRepository _lactationRepository;
         private readonly IMapper _mapper;
 
         public AnimalCalvingService(
             IAnimalCalvingRepository repository,
             IAnimalPregnancyRepository pregnancyRepository,
             IBodyConditionRecordService bodyConditionRecordService,
+            ILactationRepository lactationRepository,
             IMapper mapper)
         {
             _repository = repository;
             _pregnancyRepository = pregnancyRepository;
             _bodyConditionRecordService = bodyConditionRecordService;
+            _lactationRepository = lactationRepository;
             _mapper = mapper;
         }
 
@@ -39,6 +42,9 @@ namespace MuuBoi.Application.Services
 
             if (dto.CalvingDate < pregnancy.ConfirmationDate)
                 throw new BusinessRuleException("A data do parto não pode ser anterior à data de confirmação da gestação.");
+
+            if (await _lactationRepository.HasOpenByAnimalIdAsync(pregnancy.AnimalId))
+                throw new BusinessRuleException("O animal possui uma lactação em aberto. Registre a secagem antes de lançar um novo parto.");
 
             var calving = new AnimalCalving
             {
@@ -64,6 +70,18 @@ namespace MuuBoi.Application.Services
             pregnancy.Status = AnimalPregnancyStatus.Calved;
             pregnancy.UpdatedAt = DateTime.UtcNow;
             await _pregnancyRepository.UpdateAsync(pregnancy);
+
+            await _lactationRepository.CreateAsync(new Lactation
+            {
+                AnimalId = pregnancy.AnimalId,
+                StartDate = dto.CalvingDate,
+                EndDate = null,
+                CalvingId = created.Id,
+                Origin = LactationOrigin.Calving,
+                PropertyId = pregnancy.PropertyId,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
 
             if (dto.BodyConditionScore.HasValue)
                 await _bodyConditionRecordService.CreateAsync(pregnancy.AnimalId, new BodyConditionRecordCreateDto
@@ -135,6 +153,14 @@ namespace MuuBoi.Application.Services
                 }
 
             await _repository.UpdateAsync(calving);
+
+            var lactation = await _lactationRepository.GetByCalvingIdAsync(calving.Id);
+            if (lactation != null && lactation.IsActive)
+            {
+                lactation.IsActive = false;
+                lactation.UpdatedAt = DateTime.UtcNow;
+                await _lactationRepository.UpdateAsync(lactation);
+            }
 
             if (calving.AnimalPregnancy != null)
             {

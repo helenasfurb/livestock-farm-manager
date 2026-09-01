@@ -53,6 +53,9 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(500)]
         public string? InitialWeightObservations { get; set; }
 
+        // Bloco opcional de última lactação (Spec 11.2 D17) — só para Vaca/Novilha (validado no AnimalService).
+        public LactationSeedDto? InitialLactation { get; set; }
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (Classification.HasValue && Gender.HasValue)
