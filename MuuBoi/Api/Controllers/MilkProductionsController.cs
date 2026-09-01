@@ -30,6 +30,13 @@ namespace MuuBoi.Api.Controllers
             return Ok(days);
         }
 
+        [HttpGet("by-date")]
+        public async Task<ActionResult<IEnumerable<MilkProductionListItemDto>>> GetByDate([FromQuery] DateTime date)
+        {
+            var records = await _service.GetByDateAsync(date);
+            return Ok(records);
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<MilkProductionDto>> GetById(int id)
         {

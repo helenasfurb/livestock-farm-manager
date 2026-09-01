@@ -4,6 +4,6 @@ namespace MuuBoi.Application.DTOs
     {
         public DateTime Date { get; set; }
         public decimal TotalVolume { get; set; }
-        public List<MilkProductionListItemDto> Records { get; set; } = new();
+        public int RecordCount { get; set; }
     }
 }

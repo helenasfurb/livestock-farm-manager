@@ -28,10 +28,25 @@ namespace MuuBoi.Application.Services
                 {
                     Date = g.Key,
                     TotalVolume = g.Sum(p => p.Volume),
-                    Records = _mapper.Map<List<MilkProductionListItemDto>>(
-                        g.OrderBy(p => p.Milking).ThenBy(p => p.CreatedAt).ToList())
+                    RecordCount = g.Count()
                 })
                 .ToList();
+        }
+
+        public async Task<IEnumerable<MilkProductionListItemDto>> GetByDateAsync(DateTime date)
+        {
+            var filter = new MilkProductionFilterDto
+            {
+                DateFrom = date.Date,
+                DateTo = date.Date.AddDays(1).AddTicks(-1)
+            };
+
+            var productions = (await _repository.GetAllAsync(filter))
+                .OrderBy(p => p.Milking)
+                .ThenBy(p => p.CreatedAt)
+                .ToList();
+
+            return _mapper.Map<List<MilkProductionListItemDto>>(productions);
         }
 
         public async Task<MilkProductionDto> GetByIdAsync(int id)
