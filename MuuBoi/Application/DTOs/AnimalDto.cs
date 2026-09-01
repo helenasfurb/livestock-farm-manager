@@ -21,5 +21,7 @@ namespace MuuBoi.Application.DTOs
         public IEnumerable<WeightRecordDto>? WeightRecords { get; set; }
         public BodyConditionRecordDto? LastBodyConditionRecord { get; set; }
         public EnumValueDto? ReproductiveStatus { get; set; }
+        public EnumValueDto? ProductiveStatus { get; set; }
+        public int? DaysInMilk { get; set; }
     }
 }
