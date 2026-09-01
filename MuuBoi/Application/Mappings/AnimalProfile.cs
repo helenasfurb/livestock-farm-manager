@@ -42,7 +42,9 @@ namespace MuuBoi.Application.Mappings
                     opt => opt.MapFrom(src => src.WeightRecords))
                 .ForMember(dest => dest.LastBodyConditionRecord,
                     opt => opt.MapFrom(src => src.BodyConditionRecords != null ? src.BodyConditionRecords.FirstOrDefault() : null))
-                .ForMember(dest => dest.ReproductiveStatus, opt => opt.Ignore());
+                .ForMember(dest => dest.ReproductiveStatus, opt => opt.Ignore())
+                .ForMember(dest => dest.ProductiveStatus, opt => opt.Ignore())
+                .ForMember(dest => dest.DaysInMilk, opt => opt.Ignore());
 
             CreateMap<Animal, AnimalListItemDto>()
                 .ForMember(dest => dest.Classification,
@@ -57,7 +59,9 @@ namespace MuuBoi.Application.Mappings
                     opt => opt.MapFrom(src => src.ExitRecords != null ? src.ExitRecords.FirstOrDefault() : null))
                 .ForMember(dest => dest.LastWeightRecord,
                     opt => opt.MapFrom(src => src.WeightRecords != null ? src.WeightRecords.FirstOrDefault() : null))
-                .ForMember(dest => dest.ReproductiveStatus, opt => opt.Ignore());
+                .ForMember(dest => dest.ReproductiveStatus, opt => opt.Ignore())
+                .ForMember(dest => dest.ProductiveStatus, opt => opt.Ignore())
+                .ForMember(dest => dest.DaysInMilk, opt => opt.Ignore());
 
             CreateMap<AnimalCreateDto, Animal>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())

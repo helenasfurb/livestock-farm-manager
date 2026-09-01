@@ -15,6 +15,7 @@ namespace MuuBoi.Application.Services
         private readonly IBreedingEventRepository _breedingEventRepository;
         private readonly IAnimalPregnancyRepository _pregnancyRepository;
         private readonly IAnimalCalvingRepository _calvingRepository;
+        private readonly ILactationRepository _lactationRepository;
         private readonly IMapper _mapper;
 
         public AnimalService(
@@ -23,6 +24,7 @@ namespace MuuBoi.Application.Services
             IBreedingEventRepository breedingEventRepository,
             IAnimalPregnancyRepository pregnancyRepository,
             IAnimalCalvingRepository calvingRepository,
+            ILactationRepository lactationRepository,
             IMapper mapper)
         {
             _animalRepository = animalRepository;
@@ -30,6 +32,7 @@ namespace MuuBoi.Application.Services
             _breedingEventRepository = breedingEventRepository;
             _pregnancyRepository = pregnancyRepository;
             _calvingRepository = calvingRepository;
+            _lactationRepository = lactationRepository;
             _mapper = mapper;
         }
 
@@ -47,11 +50,29 @@ namespace MuuBoi.Application.Services
                 ? await _animalRepository.GetReproductiveStatusMapAsync(femaleIds)
                 : new Dictionary<int, ReproductiveStatus>();
 
+            var lactations = femaleIds.Count > 0
+                ? await _lactationRepository.GetActiveByAnimalIdsAsync(femaleIds)
+                : Enumerable.Empty<Lactation>();
+            var lactationsByAnimal = lactations
+                .GroupBy(l => l.AnimalId)
+                .ToDictionary(g => g.Key, g => (IEnumerable<Lactation>)g.ToList());
+            var now = DateTime.UtcNow;
+
             var items = animals.Select(animal =>
             {
                 var dto = _mapper.Map<AnimalListItemDto>(animal);
                 if (statusMap.TryGetValue(animal.Id, out var status))
                     dto.ReproductiveStatus = new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
+
+                if (animal.Classification == AnimalClassification.Cow
+                    || animal.Classification == AnimalClassification.Heifer)
+                {
+                    var animalLactations = lactationsByAnimal.TryGetValue(animal.Id, out var ls)
+                        ? ls : Enumerable.Empty<Lactation>();
+                    var productive = ProductiveStatusResolver.Resolve(animalLactations, now);
+                    dto.ProductiveStatus = new EnumValueDto { Value = (int)productive, Label = productive.GetDescription() };
+                    dto.DaysInMilk = ProductiveStatusResolver.CurrentDaysInMilk(animalLactations, now);
+                }
                 return dto;
             });
 
@@ -69,6 +90,7 @@ namespace MuuBoi.Application.Services
 
             var dto = _mapper.Map<AnimalDto>(animal);
             dto.ReproductiveStatus = await DeriveReproductiveStatusAsync(animal);
+            await ApplyProductiveStatusAsync(dto, animal);
             return dto;
         }
 
@@ -77,11 +99,20 @@ namespace MuuBoi.Application.Services
             if (await _animalRepository.TagNumberExistsAsync(dto.TagNumber))
                 throw new ConflictException($"Já existe um animal com o brinco '{dto.TagNumber}' nesta propriedade.");
 
+            if (dto.InitialLactation != null
+                && dto.Classification != AnimalClassification.Cow
+                && dto.Classification != AnimalClassification.Heifer)
+                throw new BusinessRuleException("A lactação inicial só se aplica a vacas e novilhas.");
+
             var animal = _mapper.Map<Animal>(dto);
             CreateWeightRecord(dto, animal);
             CreateBodyConditionRecord(dto, animal);
 
             var created = await _animalRepository.CreateAnimalAsync(animal);
+
+            if (dto.InitialLactation != null)
+                await SeedInitialLactationAsync(created, dto.InitialLactation);
+
             return _mapper.Map<AnimalDto>(created);
         }
 
@@ -161,6 +192,34 @@ namespace MuuBoi.Application.Services
 
             var records = await _exitRecordRepository.GetByAnimalIdAsync(animalId);
             return _mapper.Map<IEnumerable<AnimalExitRecordDto>>(records);
+        }
+
+        private async Task ApplyProductiveStatusAsync(AnimalDto dto, Animal animal)
+        {
+            if (animal.Classification != AnimalClassification.Cow &&
+                animal.Classification != AnimalClassification.Heifer)
+                return;
+
+            var lactations = (await _lactationRepository.GetByAnimalIdAsync(animal.Id)).ToList();
+            var now = DateTime.UtcNow;
+            var status = ProductiveStatusResolver.Resolve(lactations, now);
+            dto.ProductiveStatus = new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
+            dto.DaysInMilk = ProductiveStatusResolver.CurrentDaysInMilk(lactations, now);
+        }
+
+        private async Task SeedInitialLactationAsync(Animal animal, LactationSeedDto seed)
+        {
+            await _lactationRepository.CreateAsync(new Lactation
+            {
+                AnimalId = animal.Id,
+                StartDate = seed.StartDate,
+                EndDate = seed.EndDate,
+                CalvingId = null,
+                Origin = LactationOrigin.InitialSeed,
+                PropertyId = animal.PropertyId,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
         }
 
         private async Task<EnumValueDto?> DeriveReproductiveStatusAsync(Animal animal)

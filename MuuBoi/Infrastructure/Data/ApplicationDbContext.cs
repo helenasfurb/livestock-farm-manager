@@ -28,6 +28,7 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<AnimalCalving> AnimalCalvings { get; set; }
         public DbSet<AnimalCalvingCalf> AnimalCalvingCalves { get; set; }
         public DbSet<MilkProduction> MilkProductions { get; set; }
+        public DbSet<Lactation> Lactations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -201,6 +202,32 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<MilkProduction>()
                 .HasIndex(m => new { m.PropertyId, m.Date })
                 .HasDatabaseName("IX_MilkProductions_PropertyId_Date");
+
+            builder.Entity<Lactation>().HasQueryFilter(l => l.PropertyId == _propertyId);
+
+            builder.Entity<Lactation>()
+                .HasOne(l => l.Animal)
+                .WithMany()
+                .HasForeignKey(l => l.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Lactation>()
+                .HasOne(l => l.Calving)
+                .WithMany()
+                .HasForeignKey(l => l.CalvingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Lactation>()
+                .HasIndex(l => l.PropertyId)
+                .HasDatabaseName("IX_Lactations_PropertyId");
+
+            builder.Entity<Lactation>()
+                .HasIndex(l => new { l.PropertyId, l.AnimalId, l.EndDate })
+                .HasDatabaseName("IX_Lactations_PropertyId_AnimalId_EndDate");
+
+            builder.Entity<Lactation>()
+                .HasIndex(l => l.CalvingId)
+                .HasDatabaseName("IX_Lactations_CalvingId");
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)
