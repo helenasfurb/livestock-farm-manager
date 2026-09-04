@@ -63,6 +63,9 @@ namespace MuuBoi.Api.Controllers
                 return BadRequest(new { message = "Erro ao criar usuário.", errors });
             }
 
+            // Every new farm starts with the default vaccine catalog.
+            await VaccineCatalogSeeder.SeedForPropertyAsync(_context, property.Id);
+
             await transaction.CommitAsync();
 
             var token = GenerateJwtToken(user, property);

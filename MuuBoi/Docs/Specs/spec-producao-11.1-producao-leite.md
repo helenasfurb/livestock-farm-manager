@@ -8,7 +8,8 @@
 
 > **Alterações da 1.1 (durante a implementação):**
 > - Campo `Liters` renomeado para **`Volume`** — nome desacoplado da unidade de medida (D7).
-> - O `GET /api/milk-productions` passa a retornar **agrupado por dia** (total do dia + lançamentos aninhados), como agregação **apenas de exibição** (D8). Índices reais continuam fora de escopo (→ 11.2).
+> - O `GET /api/milk-productions` passa a retornar **agrupado por dia** — cada item é um **resumo do dia** (`Date`, `TotalVolume`, `RecordCount`), como agregação **apenas de exibição** (D8). Índices reais continuam fora de escopo (→ 11.2).
+> - Os **lançamentos de um dia** deixaram de vir aninhados na listagem; passam a ser obtidos sob demanda por **`GET /api/milk-productions/by-date?date=...`**, que devolve a **lista simples de registros** daquele dia (sem totais) (D9).
 **Depende de:** Spec #1 (Animais) — para o paradigma de tenant/`BaseEntity`.
 **Parte de:** Spec #11 (Produção). **Antecede:** Spec 11.2 (Lactação e Secagem).
 
@@ -37,7 +38,8 @@ O produtor-piloto **não mede o leite por animal** — ele registra apenas o **t
 - CRUD completo com **soft delete**.
 - Filtros de consulta (período, turno de ordenha).
 - Enum `MilkingShift` (turno de ordenha), opcional.
-- **Agrupamento de exibição por dia** na listagem (`GET`): total do dia + lançamentos aninhados, calculado em memória a partir dos fatos filtrados (D8). Não persiste nem indexa nada.
+- **Agrupamento de exibição por dia** na listagem (`GET`): cada item é o resumo do dia (`Date`, `TotalVolume`, `RecordCount`), calculado em memória a partir dos fatos filtrados (D8). Não persiste nem indexa nada.
+- **Listagem de registros de um dia** sob demanda (`GET /by-date?date=...`): lista simples dos lançamentos daquele dia, sem totais (D9).
 
 **Fora (→ 11.2 / futuro):**
 - Lactação, secagem, DEL, status "em lactação".
@@ -57,7 +59,8 @@ O produtor-piloto **não mede o leite por animal** — ele registra apenas o **t
 | D5 | Alinhar ao **backend atual**: `Id int`, `PropertyId`, `BaseEntity`, soft delete, `ExceptionMiddleware`. | Decisão do TCC (30/Ago): implementável já; **offline-first fica para frente futura** (ver §8), sem retrabalho de modelo. |
 | D6 | **Nenhum índice persistido/por período** nesta spec. | Decisão do TCC (30/Ago): 11.1 é estritamente registro/CRUD. |
 | D7 | Campo renomeado de `Liters` para **`Volume`**. | Decisão do TCC (31/Ago): nome desacoplado da unidade — se a unidade mudar, `Volume` continua legível/correto. |
-| D8 | `GET` retorna **agrupado por dia** (total do dia + lançamentos aninhados), agregação **apenas de exibição** (em memória, sobre os fatos já filtrados). | Decisão do TCC (31/Ago): melhora o consumo pelo frontend e reduz requisições (ambiente com internet fraca). Não é índice — não persiste nem cria contrato de período. |
+| D8 | `GET` retorna **agrupado por dia** — resumo do dia (`Date`, `TotalVolume`, `RecordCount`), agregação **apenas de exibição** (em memória, sobre os fatos já filtrados). | Decisão do TCC (31/Ago): melhora o consumo pelo frontend e reduz requisições (ambiente com internet fraca). Não é índice — não persiste nem cria contrato de período. |
+| D9 | Os **lançamentos de um dia** não vêm aninhados na listagem; são obtidos por **`GET /by-date?date=...`** (lista simples de registros, sem totais). | Decisão do TCC (31/Ago): a listagem principal fica leve (só resumo por dia); o detalhamento dos registros é carregado sob demanda ao abrir um dia. |
 
 ---
 
@@ -80,7 +83,8 @@ O produtor-piloto **não mede o leite por animal** — ele registra apenas o **t
 
 **Critérios de aceite:**
 - Listo com filtros opcionais de período (`DateFrom`/`DateTo`) e turno (`Milking`).
-- A listagem vem **agrupada por dia**: cada item mostra a data e o **total do dia** (`totalVolume`), e traz os lançamentos daquele dia aninhados, cada um com turno (rótulo), volume individual e observações.
+- A listagem vem **agrupada por dia**: cada item mostra a data, o **total do dia** (`totalVolume`) e a **quantidade de lançamentos** do dia (`recordCount`) — sem os lançamentos aninhados.
+- Ao abrir um dia, consulto **`GET /api/milk-productions/by-date?date=...`** e recebo a **lista de lançamentos** daquele dia (cada um com turno/rótulo, volume individual e observações).
 
 ### US-03 — Corrigir/excluir um lançamento
 > **Como** produtor,
@@ -101,7 +105,8 @@ O produtor-piloto **não mede o leite por animal** — ele registra apenas o **t
 3. Cria (`IsActive = true`) e retorna `201 Created`.
 
 ### CU-02 — Consultar
-- `GET /api/milk-productions` — lista **agrupada por dia** (`MilkProductionDayDto`) com `MilkProductionFilterDto`.
+- `GET /api/milk-productions` — lista **agrupada por dia** (`MilkProductionDayDto`: `Date`, `TotalVolume`, `RecordCount`) com `MilkProductionFilterDto`.
+- `GET /api/milk-productions/by-date?date=...` — lista os **lançamentos de um dia** (`[MilkProductionListItemDto]`), sem totais.
 - `GET /api/milk-productions/{id}` — detalhe de um lançamento (`MilkProductionDto`); inexistente → `404`.
 
 ### CU-03 — Editar
@@ -157,11 +162,11 @@ public enum MilkingShift
 - **`MilkProductionCreateDto`** — `Date` (`[Required]`; não futura via `IValidatableObject`), `Milking?`, `Volume` (`[Required]`, `[Range(0.01, 9999999.99)]`), `Notes?` (`[MaxLength(500)]`).
 - **`MilkProductionUpdateDto`** — `Date?` (não futura via `IValidatableObject`), `Milking?`, `Volume?` (`[Range]`), `Notes?` — todos opcionais (PATCH parcial, padrão do projeto: null = não altera).
 - **`MilkProductionDto`** (resposta / detalhe) — `Id`, `Date`, `Milking` (`EnumValueDto?`), `Volume`, `Notes`, `IsActive`, `CreatedAt`, `UpdatedAt`.
-- **`MilkProductionDayDto`** (item da listagem — agrupamento por dia, D8) — `Date`, `TotalVolume`, `Records` (`List<MilkProductionListItemDto>`).
-- **`MilkProductionListItemDto`** (lançamento aninhado no dia) — `Id`, `Milking` (`EnumValueDto?`), `Volume`, `Notes`.
+- **`MilkProductionDayDto`** (item da listagem — resumo por dia, D8) — `Date`, `TotalVolume`, `RecordCount`.
+- **`MilkProductionListItemDto`** (item da lista de registros de um dia, `by-date`) — `Id`, `Milking` (`EnumValueDto?`), `Volume`, `Notes`.
 - **`MilkProductionFilterDto`** — `DateFrom?`, `DateTo?`, `Milking?`, `IsActive?`.
 
-Mapeamento em `Application/Mappings/MilkProductionProfile.cs` (turno como `EnumValueDto` com `GetDescription()`, no padrão dos demais). O agrupamento/soma do `MilkProductionDayDto` é montado no service (em memória); apenas os `Records` passam pelo AutoMapper.
+Mapeamento em `Application/Mappings/MilkProductionProfile.cs` (turno como `EnumValueDto` com `GetDescription()`, no padrão dos demais). O resumo/soma/contagem do `MilkProductionDayDto` é montado no service (em memória); a lista do `by-date` (`MilkProductionListItemDto`) passa pelo AutoMapper.
 
 ### 6.4 Endpoints da API
 > Auth: Bearer Token obrigatório. **Recurso de nível de rebanho — não aninhado sob animal.**
@@ -169,7 +174,8 @@ Mapeamento em `Application/Mappings/MilkProductionProfile.cs` (turno como `EnumV
 | Método | Rota | Descrição | Retorno |
 |--------|------|-----------|---------|
 | `POST` | `/api/milk-productions` | Registrar lançamento | `201 MilkProductionDto` / `400` |
-| `GET` | `/api/milk-productions` | Listar (agrupado por dia) com filtro | `200 [MilkProductionDayDto]` |
+| `GET` | `/api/milk-productions` | Listar (resumo por dia) com filtro | `200 [MilkProductionDayDto]` |
+| `GET` | `/api/milk-productions/by-date?date=` | Listar lançamentos de um dia | `200 [MilkProductionListItemDto]` |
 | `GET` | `/api/milk-productions/{id}` | Detalhe | `200 MilkProductionDto` / `404` |
 | `PATCH` | `/api/milk-productions/{id}` | Editar (parcial) | `200 MilkProductionDto` / `400` / `404` |
 | `DELETE` | `/api/milk-productions/{id}` | Inativar (soft delete) | `204` / `404` / `409` |

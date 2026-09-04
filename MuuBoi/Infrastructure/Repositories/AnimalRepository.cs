@@ -80,6 +80,17 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 
+        public async Task<List<int>> GetExistingAnimalIdsAsync(IReadOnlyCollection<int> ids)
+        {
+            if (ids == null || ids.Count == 0)
+                return new List<int>();
+
+            return await _context.Animals
+                .Where(a => ids.Contains(a.Id))
+                .Select(a => a.Id)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<Animal>> GetBreedingEligibleAnimalsAsync(string? search)
         {
             var query = _context.Animals.Where(a =>

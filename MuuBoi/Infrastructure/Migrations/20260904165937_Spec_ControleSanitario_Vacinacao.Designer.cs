@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MuuBoi.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using MuuBoi.Infrastructure.Data;
 namespace MuuBoi.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260904165937_Spec_ControleSanitario_Vacinacao")]
+    partial class Spec_ControleSanitario_Vacinacao
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -472,6 +475,65 @@ namespace MuuBoi.Infrastructure.Migrations
                         .HasDatabaseName("IX_AnimalPregnancies_AnimalId_Status_IsActive");
 
                     b.ToTable("AnimalPregnancies");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalVaccination", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AnimalId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ApplicationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("BatchNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("DosageMl")
+                        .HasColumnType("decimal(8,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("NextApplicationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Observations")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Responsible")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("VaccineId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimalId");
+
+                    b.HasIndex("PropertyId")
+                        .HasDatabaseName("IX_AnimalVaccinations_PropertyId");
+
+                    b.HasIndex("VaccineId");
+
+                    b.ToTable("AnimalVaccinations");
                 });
 
             modelBuilder.Entity("MuuBoi.Domain.Models.ApplicationUser", b =>
@@ -1037,9 +1099,6 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<int?>("RecommendedIntervalDays")
                         .HasColumnType("int");
 
-                    b.Property<bool>("RequiresBooster")
-                        .HasColumnType("bit");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -1231,6 +1290,25 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Navigation("BreedingEvent");
                 });
 
+            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalVaccination", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.Animal", "Animal")
+                        .WithMany("AnimalVaccinations")
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MuuBoi.Domain.Models.Vaccine", "Vaccine")
+                        .WithMany("AnimalVaccinations")
+                        .HasForeignKey("VaccineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Animal");
+
+                    b.Navigation("Vaccine");
+                });
+
             modelBuilder.Entity("MuuBoi.Domain.Models.ApplicationUser", b =>
                 {
                     b.HasOne("MuuBoi.Domain.Models.Property", "Property")
@@ -1365,6 +1443,8 @@ namespace MuuBoi.Infrastructure.Migrations
                 {
                     b.Navigation("AnimalMedications");
 
+                    b.Navigation("AnimalVaccinations");
+
                     b.Navigation("BodyConditionRecords");
 
                     b.Navigation("BreedingEvents");
@@ -1411,6 +1491,11 @@ namespace MuuBoi.Infrastructure.Migrations
             modelBuilder.Entity("MuuBoi.Domain.Models.VaccinationEvent", b =>
                 {
                     b.Navigation("EventAnimals");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.Vaccine", b =>
+                {
+                    b.Navigation("AnimalVaccinations");
                 });
 #pragma warning restore 612, 618
         }

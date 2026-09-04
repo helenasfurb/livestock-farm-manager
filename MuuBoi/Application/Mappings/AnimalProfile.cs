@@ -70,7 +70,6 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
                 .ForMember(dest => dest.WeightRecords, opt => opt.Ignore())
-                .ForMember(dest => dest.AnimalVaccinations, opt => opt.Ignore())
                 .ForMember(dest => dest.AnimalMedications, opt => opt.Ignore())
                 .ForMember(dest => dest.BodyConditionRecords, opt => opt.Ignore())
                 .ForMember(dest => dest.ExitRecords, opt => opt.Ignore());

@@ -16,8 +16,9 @@ namespace MuuBoi.Domain.Models
 
         public int? RecommendedIntervalDays { get; set; }
 
-        public Guid PropertyId { get; set; }
+        // Informational only: whether this vaccine requires a booster dose.
+        public bool RequiresBooster { get; set; }
 
-        public ICollection<AnimalVaccination>? AnimalVaccinations { get; set; }
+        public Guid PropertyId { get; set; }
     }
 }

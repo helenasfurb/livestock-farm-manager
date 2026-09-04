@@ -13,10 +13,21 @@ namespace MuuBoi.Api.Controllers
     public class AnimalsController : ControllerBase
     {
         private readonly IAnimalService _animalService;
+        private readonly IVaccinationEventService _vaccinationEventService;
 
-        public AnimalsController(IAnimalService animalService)
+        public AnimalsController(
+            IAnimalService animalService,
+            IVaccinationEventService vaccinationEventService)
         {
             _animalService = animalService;
+            _vaccinationEventService = vaccinationEventService;
+        }
+
+        [HttpGet("{id:int}/vaccination-history")]
+        public async Task<ActionResult<IEnumerable<VaccinationHistoryItemDto>>> GetVaccinationHistory(int id)
+        {
+            var history = await _vaccinationEventService.GetAnimalHistoryAsync(id);
+            return Ok(history);
         }
 
         [HttpGet("genders")]
