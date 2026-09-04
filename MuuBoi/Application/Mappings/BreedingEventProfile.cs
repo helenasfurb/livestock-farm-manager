@@ -34,6 +34,8 @@ namespace MuuBoi.Application.Mappings
             CreateMap<BreedingEvent, BreedingEventListItemDto>()
                 .ForMember(dest => dest.AnimalTagNumber,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : string.Empty))
+                .ForMember(dest => dest.AnimalName,
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.Name : null))
                 .ForMember(dest => dest.ReproductionType,
                     opt => opt.MapFrom(src => new EnumValueDto
                     {
