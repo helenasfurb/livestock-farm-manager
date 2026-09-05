@@ -71,10 +71,17 @@ namespace MuuBoi.Infrastructure.Repositories
         {
             var cutoff = DateTime.UtcNow.AddMonths(-months);
 
-            var raw = await _context.AnimalVaccinations
-                .Where(av => av.Animal!.IsActive)
-                .Where(av => av.ApplicationDate >= cutoff)
-                .GroupBy(av => new { av.ApplicationDate.Year, av.ApplicationDate.Month })
+            // Counts applied doses per month over the new VaccinationEvent model: one dose per
+            // animal in each applied event (VaccinationEventAnimal), preserving the previous metric.
+            var raw = await _context.VaccinationEventAnimals
+                .Where(ea => ea.Animal!.IsActive)
+                .Where(ea => ea.VaccinationEvent!.IsActive)
+                .Where(ea => ea.VaccinationEvent!.ApplicationDate >= cutoff)
+                .GroupBy(ea => new
+                {
+                    ea.VaccinationEvent!.ApplicationDate!.Value.Year,
+                    ea.VaccinationEvent!.ApplicationDate!.Value.Month
+                })
                 .Select(g => new { g.Key.Year, g.Key.Month, Count = g.Count() })
                 .OrderBy(x => x.Year).ThenBy(x => x.Month)
                 .ToListAsync();

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MuuBoi.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using MuuBoi.Infrastructure.Data;
 namespace MuuBoi.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260904170712_Deprecate_AnimalVaccination")]
+    partial class Deprecate_AnimalVaccination
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1036,9 +1039,6 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.Property<int?>("RecommendedIntervalDays")
                         .HasColumnType("int");
-
-                    b.Property<bool>("RequiresBooster")
-                        .HasColumnType("bit");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");

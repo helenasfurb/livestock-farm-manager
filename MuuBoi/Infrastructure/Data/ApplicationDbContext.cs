@@ -16,7 +16,6 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<Animal> Animals { get; set; }
         public DbSet<WeightRecord> WeightRecords { get; set; }
         public DbSet<Vaccine> Vaccines { get; set; }
-        public DbSet<AnimalVaccination> AnimalVaccinations { get; set; }
         public DbSet<Medication> Medications { get; set; }
         public DbSet<AnimalMedication> AnimalMedications { get; set; }
         public DbSet<BodyConditionRecord> BodyConditionRecords { get; set; }
@@ -29,6 +28,8 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<AnimalCalvingCalf> AnimalCalvingCalves { get; set; }
         public DbSet<MilkProduction> MilkProductions { get; set; }
         public DbSet<Lactation> Lactations { get; set; }
+        public DbSet<VaccinationEvent> VaccinationEvents { get; set; }
+        public DbSet<VaccinationEventAnimal> VaccinationEventAnimals { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -44,14 +45,12 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<Vaccine>().HasQueryFilter(v => v.PropertyId == _propertyId);
             builder.Entity<Medication>().HasQueryFilter(m => m.PropertyId == _propertyId);
             builder.Entity<WeightRecord>().HasQueryFilter(w => w.PropertyId == _propertyId);
-            builder.Entity<AnimalVaccination>().HasQueryFilter(av => av.PropertyId == _propertyId);
             builder.Entity<AnimalMedication>().HasQueryFilter(am => am.PropertyId == _propertyId);
 
             builder.Entity<Animal>().HasIndex(a => a.PropertyId).HasDatabaseName("IX_Animals_PropertyId");
             builder.Entity<Vaccine>().HasIndex(v => v.PropertyId).HasDatabaseName("IX_Vaccines_PropertyId");
             builder.Entity<Medication>().HasIndex(m => m.PropertyId).HasDatabaseName("IX_Medications_PropertyId");
             builder.Entity<WeightRecord>().HasIndex(w => w.PropertyId).HasDatabaseName("IX_WeightRecords_PropertyId");
-            builder.Entity<AnimalVaccination>().HasIndex(av => av.PropertyId).HasDatabaseName("IX_AnimalVaccinations_PropertyId");
             builder.Entity<AnimalMedication>().HasIndex(am => am.PropertyId).HasDatabaseName("IX_AnimalMedications_PropertyId");
 
             builder.Entity<BodyConditionRecord>()
@@ -228,6 +227,65 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<Lactation>()
                 .HasIndex(l => l.CalvingId)
                 .HasDatabaseName("IX_Lactations_CalvingId");
+
+            builder.Entity<VaccinationEvent>().HasQueryFilter(e => e.PropertyId == _propertyId);
+
+            builder.Entity<VaccinationEvent>()
+                .HasOne(e => e.Vaccine)
+                .WithMany()
+                .HasForeignKey(e => e.VaccineId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Self-reference (lineage) as one-to-many with no inverse collection, so no
+            // automatic unique index is created on ParentEventId (which would reject the
+            // many NULLs of root events on SQL Server).
+            builder.Entity<VaccinationEvent>()
+                .HasOne(e => e.ParentEvent)
+                .WithMany()
+                .HasForeignKey(e => e.ParentEventId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<VaccinationEvent>()
+                .HasIndex(e => e.PropertyId)
+                .HasDatabaseName("IX_VaccinationEvents_PropertyId");
+
+            builder.Entity<VaccinationEvent>()
+                .HasIndex(e => new { e.PropertyId, e.VaccineId })
+                .HasDatabaseName("IX_VaccinationEvents_PropertyId_VaccineId");
+
+            builder.Entity<VaccinationEvent>()
+                .HasIndex(e => new { e.PropertyId, e.ApplicationDate })
+                .HasDatabaseName("IX_VaccinationEvents_PropertyId_ApplicationDate");
+
+            // Enforces "one active booster child per parent" (D5) at the database level.
+            // Filtered so it excludes root events (ParentEventId NULL) and soft-deleted rows.
+            builder.Entity<VaccinationEvent>()
+                .HasIndex(e => e.ParentEventId)
+                .IsUnique()
+                .HasFilter("[ParentEventId] IS NOT NULL AND [IsActive] = 1")
+                .HasDatabaseName("UX_VaccinationEvents_ParentEventId_Active");
+
+            builder.Entity<VaccinationEventAnimal>()
+                .HasKey(x => new { x.VaccinationEventId, x.AnimalId });
+
+            builder.Entity<VaccinationEventAnimal>()
+                .HasQueryFilter(x => x.PropertyId == _propertyId);
+
+            builder.Entity<VaccinationEventAnimal>()
+                .HasOne(x => x.VaccinationEvent)
+                .WithMany(e => e.EventAnimals)
+                .HasForeignKey(x => x.VaccinationEventId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<VaccinationEventAnimal>()
+                .HasOne(x => x.Animal)
+                .WithMany()
+                .HasForeignKey(x => x.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<VaccinationEventAnimal>()
+                .HasIndex(x => x.AnimalId)
+                .HasDatabaseName("IX_VaccinationEventAnimals_AnimalId");
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

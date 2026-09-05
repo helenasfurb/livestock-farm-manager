@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using MuuBoi.Domain.Models;
 
 namespace MuuBoi.Infrastructure.Data
@@ -46,6 +47,11 @@ namespace MuuBoi.Infrastructure.Data
                 systemUser.PropertyId = SystemPropertyId;
                 await userManager.UpdateAsync(systemUser);
             }
+
+            // Backfill the default vaccine catalog for every existing property (idempotent).
+            var propertyIds = await db.Properties.Select(p => p.Id).ToListAsync();
+            foreach (var propertyId in propertyIds)
+                await VaccineCatalogSeeder.SeedForPropertyAsync(db, propertyId);
         }
     }
 }

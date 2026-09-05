@@ -18,9 +18,9 @@ namespace MuuBoi.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<VaccineDto>>> GetAll()
+        public async Task<ActionResult<IEnumerable<VaccineDto>>> GetAll([FromQuery] VaccineFilterDto filter)
         {
-            var vaccines = await _vaccineService.GetAllVaccinesAsync();
+            var vaccines = await _vaccineService.GetAllVaccinesAsync(filter);
             return Ok(vaccines);
         }
 

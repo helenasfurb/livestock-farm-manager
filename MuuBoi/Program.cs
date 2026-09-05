@@ -53,9 +53,6 @@ builder.Services.AddScoped<IWeightRecordService, WeightRecordService>();
 builder.Services.AddScoped<IVaccineRepository, VaccineRepository>();
 builder.Services.AddScoped<IVaccineService, VaccineService>();
 
-builder.Services.AddScoped<IAnimalVaccinationRepository, AnimalVaccinationRepository>();
-builder.Services.AddScoped<IAnimalVaccinationService, AnimalVaccinationService>();
-
 builder.Services.AddScoped<IMedicationRepository, MedicationRepository>();
 builder.Services.AddScoped<IMedicationService, MedicationService>();
 
@@ -86,6 +83,9 @@ builder.Services.AddScoped<IMilkProductionService, MilkProductionService>();
 
 builder.Services.AddScoped<ILactationRepository, LactationRepository>();
 builder.Services.AddScoped<ILactationService, LactationService>();
+
+builder.Services.AddScoped<IVaccinationEventRepository, VaccinationEventRepository>();
+builder.Services.AddScoped<IVaccinationEventService, VaccinationEventService>();
 
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();

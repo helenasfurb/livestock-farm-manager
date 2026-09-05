@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Infrastructure.Data;
 using MuuBoi.Domain.Models;
@@ -14,9 +15,17 @@ namespace MuuBoi.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Vaccine>> GetAllVaccinesAsync()
+        public async Task<IEnumerable<Vaccine>> GetAllVaccinesAsync(VaccineFilterDto filter)
         {
-            return await _context.Vaccines.OrderBy(v => v.Name).ToListAsync();
+            var query = _context.Vaccines.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(filter.Name))
+                query = query.Where(v => v.Name.Contains(filter.Name));
+
+            if (filter.IsActive.HasValue)
+                query = query.Where(v => v.IsActive == filter.IsActive.Value);
+
+            return await query.OrderBy(v => v.Name).ToListAsync();
         }
 
         public async Task<Vaccine?> GetVaccineByIdAsync(int id)
@@ -43,7 +52,10 @@ namespace MuuBoi.Infrastructure.Repositories
             var vaccine = await GetVaccineByIdAsync(id);
             if (vaccine == null) return null;
 
-            _context.Vaccines.Remove(vaccine);
+            // Soft delete: keep the row, flag it inactive (padrão do projeto).
+            vaccine.IsActive = false;
+            vaccine.UpdatedAt = DateTime.UtcNow;
+            _context.Vaccines.Update(vaccine);
             await _context.SaveChangesAsync();
             return vaccine;
         }
