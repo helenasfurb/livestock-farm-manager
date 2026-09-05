@@ -10,7 +10,7 @@ namespace MuuBoi.Domain.Enums
         [Description("Parto realizado")]
         Calved = 2,
 
-        [Description("Parto interrompido")]
+        [Description("Perda gestacional")]
         LostPregnancy = 3
     }
 }

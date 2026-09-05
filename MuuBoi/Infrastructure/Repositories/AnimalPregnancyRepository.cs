@@ -88,5 +88,14 @@ namespace MuuBoi.Infrastructure.Repositories
                     && p.IsActive
                     && p.Status == AnimalPregnancyStatus.Confirmed);
         }
+
+        public async Task<AnimalPregnancy?> GetByClientRequestIdAsync(Guid clientRequestId)
+        {
+            return await _context.AnimalPregnancies
+                .Include(p => p.Animal)
+                .Include(p => p.SireAnimal)
+                .Include(p => p.SemenSample)
+                .FirstOrDefaultAsync(p => p.ClientRequestId == clientRequestId);
+        }
     }
 }

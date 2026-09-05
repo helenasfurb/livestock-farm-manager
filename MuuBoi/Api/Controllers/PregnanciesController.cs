@@ -43,6 +43,13 @@ namespace MuuBoi.Api.Controllers
             return Ok(pregnancy);
         }
 
+        [HttpPost("api/animals/{animalId:int}/pregnancies")]
+        public async Task<ActionResult<AnimalPregnancyDto>> CreateRetroactive(int animalId, [FromBody] AnimalPregnancyRetroactiveCreateDto dto)
+        {
+            var created = await _service.CreateRetroactiveAsync(animalId, dto);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+
         [HttpPatch("api/pregnancies/{id:int}/status")]
         public async Task<ActionResult<AnimalPregnancyDto>> RegisterLoss(int id, [FromBody] AnimalPregnancyStatusUpdateDto dto)
         {

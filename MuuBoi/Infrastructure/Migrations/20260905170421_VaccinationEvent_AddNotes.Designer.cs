@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MuuBoi.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using MuuBoi.Infrastructure.Data;
 namespace MuuBoi.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260905170421_VaccinationEvent_AddNotes")]
+    partial class VaccinationEvent_AddNotes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -428,11 +431,8 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<int>("AnimalId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("BreedingEventId")
+                    b.Property<int>("BreedingEventId")
                         .HasColumnType("int");
-
-                    b.Property<Guid?>("ClientRequestId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("ConfirmationDate")
                         .HasColumnType("datetime2");
@@ -456,12 +456,6 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int?>("SemenSampleId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("SireAnimalId")
-                        .HasColumnType("int");
-
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -472,17 +466,7 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.HasIndex("BreedingEventId")
                         .IsUnique()
-                        .HasDatabaseName("IX_AnimalPregnancies_BreedingEventId")
-                        .HasFilter("[BreedingEventId] IS NOT NULL");
-
-                    b.HasIndex("ClientRequestId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_AnimalPregnancies_ClientRequestId")
-                        .HasFilter("[ClientRequestId] IS NOT NULL");
-
-                    b.HasIndex("SemenSampleId");
-
-                    b.HasIndex("SireAnimalId");
+                        .HasDatabaseName("IX_AnimalPregnancies_BreedingEventId");
 
                     b.HasIndex("PropertyId", "IsActive")
                         .HasDatabaseName("IX_AnimalPregnancies_PropertyId_IsActive");
@@ -1246,25 +1230,12 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.HasOne("MuuBoi.Domain.Models.BreedingEvent", "BreedingEvent")
                         .WithOne("Pregnancy")
                         .HasForeignKey("MuuBoi.Domain.Models.AnimalPregnancy", "BreedingEventId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("MuuBoi.Domain.Models.SemenSample", "SemenSample")
-                        .WithMany()
-                        .HasForeignKey("SemenSampleId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("MuuBoi.Domain.Models.Animal", "SireAnimal")
-                        .WithMany()
-                        .HasForeignKey("SireAnimalId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Animal");
 
                     b.Navigation("BreedingEvent");
-
-                    b.Navigation("SemenSample");
-
-                    b.Navigation("SireAnimal");
                 });
 
             modelBuilder.Entity("MuuBoi.Domain.Models.ApplicationUser", b =>
