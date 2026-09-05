@@ -129,12 +129,34 @@ namespace MuuBoi.Infrastructure.Data
                 .HasOne(p => p.BreedingEvent)
                 .WithOne(e => e.Pregnancy)
                 .HasForeignKey<AnimalPregnancy>(p => p.BreedingEventId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Índice único filtrado: só se aplica quando há cobertura vinculada.
+            // Gestações retroativas (BreedingEventId IS NULL) ficam de fora do UNIQUE.
             builder.Entity<AnimalPregnancy>()
                 .HasIndex(p => p.BreedingEventId)
                 .IsUnique()
+                .HasFilter("[BreedingEventId] IS NOT NULL")
                 .HasDatabaseName("IX_AnimalPregnancies_BreedingEventId");
+
+            builder.Entity<AnimalPregnancy>()
+                .HasOne(p => p.SireAnimal)
+                .WithMany()
+                .HasForeignKey(p => p.SireAnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalPregnancy>()
+                .HasOne(p => p.SemenSample)
+                .WithMany()
+                .HasForeignKey(p => p.SemenSampleId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalPregnancy>()
+                .HasIndex(p => p.ClientRequestId)
+                .IsUnique()
+                .HasFilter("[ClientRequestId] IS NOT NULL")
+                .HasDatabaseName("IX_AnimalPregnancies_ClientRequestId");
 
             builder.Entity<AnimalPregnancy>()
                 .HasIndex(p => new { p.AnimalId, p.Status, p.IsActive })

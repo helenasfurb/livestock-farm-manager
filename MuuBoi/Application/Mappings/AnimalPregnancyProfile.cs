@@ -12,6 +12,10 @@ namespace MuuBoi.Application.Mappings
             CreateMap<AnimalPregnancy, AnimalPregnancyDto>()
                 .ForMember(dest => dest.AnimalTagNumber,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : string.Empty))
+                .ForMember(dest => dest.SireAnimalTagNumber,
+                    opt => opt.MapFrom(src => src.SireAnimal != null ? src.SireAnimal.TagNumber : null))
+                .ForMember(dest => dest.SemenSampleName,
+                    opt => opt.MapFrom(src => src.SemenSample != null ? src.SemenSample.Name : null))
                 .ForMember(dest => dest.Status,
                     opt => opt.MapFrom(src => new EnumValueDto
                     {

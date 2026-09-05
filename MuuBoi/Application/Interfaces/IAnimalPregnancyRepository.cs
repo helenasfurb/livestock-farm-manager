@@ -12,5 +12,6 @@ namespace MuuBoi.Application.Interfaces
         Task<AnimalPregnancy> UpdateAsync(AnimalPregnancy pregnancy);
         Task<bool> ExistsActiveForBreedingEventAsync(int breedingEventId);
         Task<bool> HasActiveConfirmedByAnimalIdAsync(int animalId);
+        Task<AnimalPregnancy?> GetByClientRequestIdAsync(Guid clientRequestId);
     }
 }

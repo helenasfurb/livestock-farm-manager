@@ -8,6 +8,7 @@ namespace MuuBoi.Application.Interfaces
         Task<IEnumerable<AnimalPregnancyListItemDto>> GetAllAsync(AnimalPregnancyFilterDto filter);
         Task<IEnumerable<AnimalPregnancyListItemDto>> GetByAnimalIdAsync(int animalId, bool? isActive);
         Task<AnimalPregnancyDto> GetByIdAsync(int id);
+        Task<AnimalPregnancyDto> CreateRetroactiveAsync(int animalId, AnimalPregnancyRetroactiveCreateDto dto);
         Task<AnimalPregnancyDto> RegisterLossAsync(int id, AnimalPregnancyStatusUpdateDto dto);
         Task<bool> InactivateAsync(int id);
         Task<bool> CreateForBreedingEventAsync(BreedingEvent breedingEvent, DateTime confirmationDate);
