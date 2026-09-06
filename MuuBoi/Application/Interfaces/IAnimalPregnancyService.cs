@@ -11,6 +11,6 @@ namespace MuuBoi.Application.Interfaces
         Task<AnimalPregnancyDto> CreateRetroactiveAsync(int animalId, AnimalPregnancyRetroactiveCreateDto dto);
         Task<AnimalPregnancyDto> RegisterLossAsync(int id, AnimalPregnancyStatusUpdateDto dto);
         Task<bool> InactivateAsync(int id);
-        Task<bool> CreateForBreedingEventAsync(BreedingEvent breedingEvent, DateTime confirmationDate);
+        Task<bool> CreateForBreedingEventAsync(BreedingEvent breedingEvent, DateTime confirmationDate, int? gestationalAge = null);
     }
 }

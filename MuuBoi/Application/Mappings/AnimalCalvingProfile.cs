@@ -18,6 +18,10 @@ namespace MuuBoi.Application.Mappings
             CreateMap<AnimalCalvingCalf, AnimalCalvingCalfDto>()
                 .ForMember(dest => dest.Name,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.Name : null))
+                .ForMember(dest => dest.TagNumber,
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : null))
+                .ForMember(dest => dest.PropertyTagNumber,
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.PropertyTagNumber : null))
                 .ForMember(dest => dest.Breed,
                     opt => opt.MapFrom(src => src.Animal != null && src.Animal.Breed.HasValue
                         ? new EnumValueDto

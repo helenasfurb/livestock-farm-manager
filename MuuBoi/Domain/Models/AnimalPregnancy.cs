@@ -20,6 +20,9 @@ namespace MuuBoi.Domain.Models
 
         public DateTime ExpectedCalvingDate { get; set; }
 
+        // Idade gestacional em dias no momento da confirmação (Spec #15); nula quando não informada.
+        public int? GestationalAge { get; set; }
+
         public DateTime? LossDate { get; set; }
 
         public AnimalPregnancyStatus Status { get; set; } = AnimalPregnancyStatus.Confirmed;
