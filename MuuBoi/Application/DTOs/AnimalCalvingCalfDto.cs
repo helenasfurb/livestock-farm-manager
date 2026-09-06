@@ -5,6 +5,8 @@ namespace MuuBoi.Application.DTOs
         public int Id { get; set; }
         public int? AnimalId { get; set; }
         public string? Name { get; set; }
+        public string? TagNumber { get; set; }
+        public string? PropertyTagNumber { get; set; }
         public EnumValueDto? Sex { get; set; }
         public EnumValueDto? Breed { get; set; }
         public decimal? WeightKg { get; set; }

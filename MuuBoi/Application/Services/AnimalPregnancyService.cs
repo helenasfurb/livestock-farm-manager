@@ -173,14 +173,20 @@ namespace MuuBoi.Application.Services
             return true;
         }
 
-        public async Task<bool> CreateForBreedingEventAsync(BreedingEvent breedingEvent, DateTime confirmationDate)
+        public async Task<bool> CreateForBreedingEventAsync(BreedingEvent breedingEvent, DateTime confirmationDate, int? gestationalAge = null)
         {
+            // RN-04: com idade gestacional, a data prevista deriva do diagnóstico; sem ela, da cobertura.
+            var expectedCalvingDate = gestationalAge.HasValue
+                ? confirmationDate.AddDays(GestationDays - gestationalAge.Value)
+                : breedingEvent.BreedingDate.AddDays(GestationDays);
+
             var pregnancy = new AnimalPregnancy
             {
                 AnimalId = breedingEvent.AnimalId,
                 BreedingEventId = breedingEvent.Id,
                 ConfirmationDate = confirmationDate,
-                ExpectedCalvingDate = breedingEvent.BreedingDate.AddDays(GestationDays),
+                ExpectedCalvingDate = expectedCalvingDate,
+                GestationalAge = gestationalAge,
                 Status = AnimalPregnancyStatus.Confirmed,
                 PropertyId = breedingEvent.PropertyId,
                 IsActive = true,

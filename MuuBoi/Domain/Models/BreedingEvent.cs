@@ -19,6 +19,9 @@ namespace MuuBoi.Domain.Models
 
         public DateTime? DiagnosisDate { get; set; }
 
+        // Método do diagnóstico (Spec #15); nulo enquanto aguardando diagnóstico.
+        public DiagnosisMethod? DiagnosisMethod { get; set; }
+
         public int ServiceNumber { get; set; }
 
         [MaxLength(500)]

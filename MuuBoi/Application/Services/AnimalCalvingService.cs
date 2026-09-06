@@ -13,6 +13,7 @@ namespace MuuBoi.Application.Services
         private readonly IAnimalPregnancyRepository _pregnancyRepository;
         private readonly IBodyConditionRecordService _bodyConditionRecordService;
         private readonly ILactationRepository _lactationRepository;
+        private readonly IAnimalRepository _animalRepository;
         private readonly IMapper _mapper;
 
         public AnimalCalvingService(
@@ -20,12 +21,14 @@ namespace MuuBoi.Application.Services
             IAnimalPregnancyRepository pregnancyRepository,
             IBodyConditionRecordService bodyConditionRecordService,
             ILactationRepository lactationRepository,
+            IAnimalRepository animalRepository,
             IMapper mapper)
         {
             _repository = repository;
             _pregnancyRepository = pregnancyRepository;
             _bodyConditionRecordService = bodyConditionRecordService;
             _lactationRepository = lactationRepository;
+            _animalRepository = animalRepository;
             _mapper = mapper;
         }
 
@@ -45,6 +48,8 @@ namespace MuuBoi.Application.Services
 
             if (await _lactationRepository.HasOpenByAnimalIdAsync(pregnancy.AnimalId))
                 throw new BusinessRuleException("O animal possui uma lactação em aberto. Registre a secagem antes de lançar um novo parto.");
+
+            await ValidateCalfTagsAsync(dto.Calves);
 
             var calving = new AnimalCalving
             {
@@ -172,6 +177,25 @@ namespace MuuBoi.Application.Services
             return true;
         }
 
+        // RN-06: brinco de cria viva deve ser único na base e entre as crias do próprio parto.
+        private async Task ValidateCalfTagsAsync(IEnumerable<AnimalCalvingCalfCreateDto> calves)
+        {
+            var tags = calves
+                .Where(c => c.VitalStatus == CalfVitalStatus.Live && !string.IsNullOrWhiteSpace(c.TagNumber))
+                .Select(c => c.TagNumber!.Trim())
+                .ToList();
+
+            var duplicateInBatch = tags
+                .GroupBy(t => t, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault(g => g.Count() > 1);
+            if (duplicateInBatch != null)
+                throw new ConflictException($"O brinco '{duplicateInBatch.Key}' está repetido entre as crias deste parto.");
+
+            foreach (var tag in tags)
+                if (await _animalRepository.TagNumberExistsAsync(tag))
+                    throw new ConflictException($"Já existe um animal com o brinco '{tag}'.");
+        }
+
         private static Animal BuildCalfAnimal(AnimalCalvingCalfCreateDto calfDto, DateTime calvingDate, Guid propertyId)
         {
             var animal = new Animal
@@ -182,7 +206,8 @@ namespace MuuBoi.Application.Services
                 Classification = AnimalClassification.Calf,
                 Origin = AnimalOrigin.BornOnFarm,
                 BirthDate = calvingDate,
-                TagNumber = null,
+                TagNumber = string.IsNullOrWhiteSpace(calfDto.TagNumber) ? null : calfDto.TagNumber,
+                PropertyTagNumber = string.IsNullOrWhiteSpace(calfDto.PropertyTagNumber) ? null : calfDto.PropertyTagNumber,
                 PropertyId = propertyId,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow

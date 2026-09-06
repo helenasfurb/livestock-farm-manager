@@ -21,6 +21,13 @@ namespace MuuBoi.Application.DTOs
         [Required(ErrorMessage = "O status vital da cria é obrigatório.")]
         public CalfVitalStatus VitalStatus { get; set; }
 
+        // Brinco oficial: alfanumérico, sem padrão definido; limite de 6 caracteres da coluna Animals.TagNumber.
+        [MaxLength(6, ErrorMessage = "O brinco deve ter no máximo 6 caracteres.")]
+        public string? TagNumber { get; set; }
+
+        [MaxLength(100)]
+        public string? PropertyTagNumber { get; set; }
+
         [MaxLength(500)]
         public string? Notes { get; set; }
 
@@ -35,6 +42,12 @@ namespace MuuBoi.Application.DTOs
                 yield return new ValidationResult(
                     "A raça é obrigatória para crias nascidas vivas.",
                     new[] { nameof(Breed) });
+
+            if (VitalStatus != CalfVitalStatus.Live &&
+                (!string.IsNullOrWhiteSpace(TagNumber) || !string.IsNullOrWhiteSpace(PropertyTagNumber)))
+                yield return new ValidationResult(
+                    "Brinco e brinco de fazenda só se aplicam a crias nascidas vivas.",
+                    new[] { nameof(TagNumber), nameof(PropertyTagNumber) });
         }
     }
 }

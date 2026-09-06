@@ -29,7 +29,15 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.SireAnimalTagNumber,
                     opt => opt.MapFrom(src => src.SireAnimal != null ? src.SireAnimal.TagNumber : null))
                 .ForMember(dest => dest.SireAnimalName,
-                    opt => opt.MapFrom(src => src.SireAnimal != null ? src.SireAnimal.Name : null));
+                    opt => opt.MapFrom(src => src.SireAnimal != null ? src.SireAnimal.Name : null))
+                .ForMember(dest => dest.DiagnosisMethod,
+                    opt => opt.MapFrom(src => src.DiagnosisMethod.HasValue
+                        ? new EnumValueDto
+                        {
+                            Value = (int)src.DiagnosisMethod.Value,
+                            Label = src.DiagnosisMethod.Value.GetDescription()
+                        }
+                        : null));
 
             CreateMap<BreedingEvent, BreedingEventListItemDto>()
                 .ForMember(dest => dest.AnimalTagNumber,

@@ -189,12 +189,13 @@ namespace MuuBoi.Application.Services
 
             ev.Status = dto.Status;
             ev.DiagnosisDate = dto.DiagnosisDate;
+            ev.DiagnosisMethod = dto.DiagnosisMethod;
             ev.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _repository.UpdateAsync(ev);
 
             if (updated.Status == ReproductiveEventStatus.Successful)
-                await _pregnancyService.CreateForBreedingEventAsync(updated, dto.DiagnosisDate);
+                await _pregnancyService.CreateForBreedingEventAsync(updated, dto.DiagnosisDate, dto.GestationalAge);
 
             updated.Animal = await _animalRepository.GetAnimalByIdAsync(ev.AnimalId);
             if (updated.SemenSampleId.HasValue)

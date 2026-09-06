@@ -9,6 +9,7 @@ namespace MuuBoi.Application.DTOs
         public int? BreedingEventId { get; set; }
         public DateTime ConfirmationDate { get; set; }
         public DateTime ExpectedCalvingDate { get; set; }
+        public int? GestationalAge { get; set; }
         public DateTime? LossDate { get; set; }
         public EnumValueDto? Status { get; set; }
         public bool IsActive { get; set; }
