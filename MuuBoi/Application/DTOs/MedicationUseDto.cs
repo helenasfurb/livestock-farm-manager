@@ -1,24 +1,24 @@
-﻿using MuuBoi.Application.Helpers;
+using MuuBoi.Application.Helpers;
 using System.Text.Json.Serialization;
 
 namespace MuuBoi.Application.DTOs
 {
-    public class AnimalMedicationDto
+    /// <summary>A medication application of a health case, with the derived milk liberation date.</summary>
+    public class MedicationUseDto
     {
         public int Id { get; set; }
-        public int MedicationId { get; set; }
         public string MedicationName { get; set; } = string.Empty;
-        public string? Diagnosis { get; set; }
 
         [JsonConverter(typeof(DateFormatConverter))]
         public DateTime ApplicationDate { get; set; }
 
-        [JsonConverter(typeof(NullableDateFormatConverter))]
-        public DateTime? EndDate { get; set; }
-
-        public string? DosageDescription { get; set; }
         public int? WithdrawalPeriodDays { get; set; }
+
+        // Derived: ApplicationDate + WithdrawalPeriodDays.
+        [JsonConverter(typeof(NullableDateFormatConverter))]
+        public DateTime? MilkLiberationDate { get; set; }
+
+        public string? Dose { get; set; }
         public string? Responsible { get; set; }
-        public string? Observations { get; set; }
     }
 }

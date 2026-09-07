@@ -30,6 +30,8 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<Lactation> Lactations { get; set; }
         public DbSet<VaccinationEvent> VaccinationEvents { get; set; }
         public DbSet<VaccinationEventAnimal> VaccinationEventAnimals { get; set; }
+        public DbSet<HealthCase> HealthCases { get; set; }
+        public DbSet<MastitisTest> MastitisTests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -308,6 +310,56 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<VaccinationEventAnimal>()
                 .HasIndex(x => x.AnimalId)
                 .HasDatabaseName("IX_VaccinationEventAnimals_AnimalId");
+
+            // ----- Health cases (curative axis) -----
+            builder.Entity<HealthCase>().HasQueryFilter(c => c.PropertyId == _propertyId);
+            builder.Entity<MastitisTest>().HasQueryFilter(t => t.PropertyId == _propertyId);
+
+            builder.Entity<HealthCase>()
+                .HasOne(c => c.Animal)
+                .WithMany()
+                .HasForeignKey(c => c.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<HealthCase>()
+                .HasMany(c => c.Tests)
+                .WithOne(t => t.HealthCase!)
+                .HasForeignKey(t => t.HealthCaseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<HealthCase>()
+                .HasMany(c => c.Medications)
+                .WithOne(m => m.HealthCase!)
+                .HasForeignKey(m => m.HealthCaseId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<HealthCase>()
+                .HasIndex(c => c.PropertyId)
+                .HasDatabaseName("IX_HealthCases_PropertyId");
+
+            builder.Entity<HealthCase>()
+                .HasIndex(c => new { c.PropertyId, c.AnimalId })
+                .HasDatabaseName("IX_HealthCases_PropertyId_AnimalId");
+
+            builder.Entity<HealthCase>()
+                .HasIndex(c => new { c.PropertyId, c.DiagnosisDate })
+                .HasDatabaseName("IX_HealthCases_PropertyId_DiagnosisDate");
+
+            builder.Entity<HealthCase>()
+                .HasIndex(c => new { c.PropertyId, c.DiseaseType })
+                .HasDatabaseName("IX_HealthCases_PropertyId_DiseaseType");
+
+            builder.Entity<MastitisTest>()
+                .HasIndex(t => t.HealthCaseId)
+                .HasDatabaseName("IX_MastitisTests_HealthCaseId");
+
+            builder.Entity<MastitisTest>()
+                .HasIndex(t => t.PropertyId)
+                .HasDatabaseName("IX_MastitisTests_PropertyId");
+
+            builder.Entity<AnimalMedication>()
+                .HasIndex(m => m.HealthCaseId)
+                .HasDatabaseName("IX_AnimalMedications_HealthCaseId");
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

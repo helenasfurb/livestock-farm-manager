@@ -49,7 +49,7 @@ namespace MuuBoi.Application.Services
                 AnimalId = animal.Id,
                 MedicationId = dto.MedicationId.Value,
                 Diagnosis = dto.Diagnosis,
-                StartDate = dto.StartDate ?? DateTime.UtcNow,
+                ApplicationDate = dto.ApplicationDate ?? DateTime.UtcNow,
                 EndDate = dto.EndDate,
                 DosageDescription = dto.DosageDescription,
                 WithdrawalPeriodDays = dto.WithdrawalPeriodDays,

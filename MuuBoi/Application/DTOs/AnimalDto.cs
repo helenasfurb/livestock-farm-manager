@@ -23,5 +23,7 @@ namespace MuuBoi.Application.DTOs
         public EnumValueDto? ReproductiveStatus { get; set; }
         public EnumValueDto? ProductiveStatus { get; set; }
         public int? DaysInMilk { get; set; }
+        public EnumValueDto? SanitaryStatus { get; set; }
+        public DateTime? MilkWithheldUntil { get; set; }
     }
 }
