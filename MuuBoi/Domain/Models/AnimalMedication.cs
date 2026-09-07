@@ -7,15 +7,19 @@ namespace MuuBoi.Domain.Models
         [Required]
         public int AnimalId { get; set; }
 
-        [Required]
-        public int MedicationId { get; set; }
+        public int? MedicationId { get; set; }           // catalog reference (legacy standalone use); null for free-text uses
+
+        [MaxLength(200)]
+        public string? MedicationName { get; set; }      // free-text medication name (health case flow — no catalog)
+
+        public int? HealthCaseId { get; set; }          // null = standalone use; set = medication of a health case
 
         [MaxLength(200)]
         public string? Diagnosis { get; set; }
 
-        public DateTime StartDate { get; set; } = DateTime.UtcNow;
+        public DateTime ApplicationDate { get; set; } = DateTime.UtcNow;  // date of this application (was StartDate)
 
-        public DateTime? EndDate { get; set; }
+        public DateTime? EndDate { get; set; }          // legacy course end; not used for milk withdrawal
 
         [MaxLength(200)]
         public string? DosageDescription { get; set; }
@@ -32,5 +36,6 @@ namespace MuuBoi.Domain.Models
 
         public Animal? Animal { get; set; }
         public Medication? Medication { get; set; }
+        public HealthCase? HealthCase { get; set; }
     }
 }

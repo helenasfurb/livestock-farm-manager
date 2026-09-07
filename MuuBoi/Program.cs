@@ -87,6 +87,9 @@ builder.Services.AddScoped<ILactationService, LactationService>();
 builder.Services.AddScoped<IVaccinationEventRepository, VaccinationEventRepository>();
 builder.Services.AddScoped<IVaccinationEventService, VaccinationEventService>();
 
+builder.Services.AddScoped<IHealthCaseRepository, HealthCaseRepository>();
+builder.Services.AddScoped<IHealthCaseService, HealthCaseService>();
+
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 

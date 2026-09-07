@@ -16,6 +16,7 @@ namespace MuuBoi.Application.Services
         private readonly IAnimalPregnancyRepository _pregnancyRepository;
         private readonly IAnimalCalvingRepository _calvingRepository;
         private readonly ILactationRepository _lactationRepository;
+        private readonly IHealthCaseService _healthCaseService;
         private readonly IMapper _mapper;
 
         public AnimalService(
@@ -25,8 +26,10 @@ namespace MuuBoi.Application.Services
             IAnimalPregnancyRepository pregnancyRepository,
             IAnimalCalvingRepository calvingRepository,
             ILactationRepository lactationRepository,
+            IHealthCaseService healthCaseService,
             IMapper mapper)
         {
+            _healthCaseService = healthCaseService;
             _animalRepository = animalRepository;
             _exitRecordRepository = exitRecordRepository;
             _breedingEventRepository = breedingEventRepository;
@@ -58,6 +61,9 @@ namespace MuuBoi.Application.Services
                 .ToDictionary(g => g.Key, g => (IEnumerable<Lactation>)g.ToList());
             var now = DateTime.UtcNow;
 
+            var animalIds = animals.Select(a => a.Id).ToList();
+            var sanitaryMap = await _healthCaseService.GetSanitaryStatusMapAsync(animalIds);
+
             var items = animals.Select(animal =>
             {
                 var dto = _mapper.Map<AnimalListItemDto>(animal);
@@ -73,12 +79,21 @@ namespace MuuBoi.Application.Services
                     dto.ProductiveStatus = new EnumValueDto { Value = (int)productive, Label = productive.GetDescription() };
                     dto.DaysInMilk = ProductiveStatusResolver.CurrentDaysInMilk(animalLactations, now);
                 }
+
+                ApplySanitaryStatus(dto, animal.Id, sanitaryMap);
                 return dto;
             });
 
             if (filter.ReproductiveStatus.HasValue)
                 items = items.Where(dto => dto.ReproductiveStatus != null
                     && dto.ReproductiveStatus.Value == (int)filter.ReproductiveStatus.Value);
+
+            if (filter.SanitaryStatus.HasValue)
+                items = items.Where(dto => dto.SanitaryStatus != null
+                    && dto.SanitaryStatus.Value == (int)filter.SanitaryStatus.Value);
+
+            if (filter.MilkWithheldOnly == true)
+                items = items.Where(dto => dto.MilkWithheldUntil.HasValue);
 
             return items.ToList();
         }
@@ -91,6 +106,11 @@ namespace MuuBoi.Application.Services
             var dto = _mapper.Map<AnimalDto>(animal);
             dto.ReproductiveStatus = await DeriveReproductiveStatusAsync(animal);
             await ApplyProductiveStatusAsync(dto, animal);
+
+            var sanitaryMap = await _healthCaseService.GetSanitaryStatusMapAsync(new[] { animal.Id });
+            var (sanitaryStatus, milkWithheldUntil) = ResolveSanitary(animal.Id, sanitaryMap);
+            dto.SanitaryStatus = sanitaryStatus;
+            dto.MilkWithheldUntil = milkWithheldUntil;
             return dto;
         }
 
@@ -192,6 +212,24 @@ namespace MuuBoi.Application.Services
 
             var records = await _exitRecordRepository.GetByAnimalIdAsync(animalId);
             return _mapper.Map<IEnumerable<AnimalExitRecordDto>>(records);
+        }
+
+        private static void ApplySanitaryStatus(
+            AnimalListItemDto dto, int animalId, Dictionary<int, AnimalSanitaryStatusDto> map)
+        {
+            var (status, milkWithheldUntil) = ResolveSanitary(animalId, map);
+            dto.SanitaryStatus = status;
+            dto.MilkWithheldUntil = milkWithheldUntil;
+        }
+
+        private static (EnumValueDto Status, DateTime? MilkWithheldUntil) ResolveSanitary(
+            int animalId, Dictionary<int, AnimalSanitaryStatusDto> map)
+        {
+            if (map.TryGetValue(animalId, out var s) && s.Status != null)
+                return (s.Status, s.MilkWithheldUntil);
+
+            var healthy = SanitaryStatus.Healthy;
+            return (new EnumValueDto { Value = (int)healthy, Label = healthy.GetDescription() }, null);
         }
 
         private async Task ApplyProductiveStatusAsync(AnimalDto dto, Animal animal)
