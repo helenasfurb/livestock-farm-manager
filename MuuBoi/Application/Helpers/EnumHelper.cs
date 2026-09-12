@@ -13,6 +13,9 @@ namespace MuuBoi.Application.Helpers
             return attr?.Description ?? value.ToString();
         }
 
+        public static EnumValueDto ToEnumValue(this Enum value) =>
+            new EnumValueDto { Value = Convert.ToInt32(value), Label = value.GetDescription() };
+
         public static IEnumerable<LookupDto> ToLookup<TEnum>() where TEnum : struct, Enum =>
             Enum.GetValues<TEnum>().Select(e => new LookupDto
             {

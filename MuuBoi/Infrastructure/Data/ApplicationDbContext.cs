@@ -32,6 +32,10 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<VaccinationEventAnimal> VaccinationEventAnimals { get; set; }
         public DbSet<HealthCase> HealthCases { get; set; }
         public DbSet<MastitisTest> MastitisTests { get; set; }
+        public DbSet<StockCategory> StockCategories { get; set; }
+        public DbSet<UnitOfMeasure> UnitsOfMeasure { get; set; }
+        public DbSet<StockItem> StockItems { get; set; }
+        public DbSet<StockMovement> StockMovements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -360,6 +364,88 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<AnimalMedication>()
                 .HasIndex(m => m.HealthCaseId)
                 .HasDatabaseName("IX_AnimalMedications_HealthCaseId");
+
+            builder.Entity<StockItem>().HasQueryFilter(i => i.PropertyId == _propertyId);
+            builder.Entity<StockMovement>().HasQueryFilter(m => m.PropertyId == _propertyId);
+
+            builder.Entity<StockItem>()
+                .HasOne(i => i.StockCategory)
+                .WithMany(c => c.Items)
+                .HasForeignKey(i => i.StockCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<StockItem>()
+                .HasOne(i => i.UnitOfMeasure)
+                .WithMany(u => u.Items)
+                .HasForeignKey(i => i.UnitOfMeasureId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<StockItem>()
+                .Property(i => i.ReorderPoint)
+                .HasPrecision(12, 3);
+
+            builder.Entity<StockItem>()
+                .HasIndex(i => new { i.PropertyId, i.IsActive })
+                .HasDatabaseName("IX_StockItems_PropertyId_IsActive");
+
+            builder.Entity<StockItem>()
+                .HasIndex(i => new { i.PropertyId, i.StockCategoryId })
+                .HasDatabaseName("IX_StockItems_PropertyId_StockCategoryId");
+
+            builder.Entity<StockMovement>()
+                .HasOne(m => m.StockItem)
+                .WithMany(i => i.Movements)
+                .HasForeignKey(m => m.StockItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<StockMovement>()
+                .Property(m => m.Quantity)
+                .HasPrecision(12, 3);
+
+            builder.Entity<StockMovement>()
+                .Property(m => m.TotalValue)
+                .HasPrecision(12, 2);
+
+            builder.Entity<StockMovement>()
+                .Property(m => m.UnitCostSnapshot)
+                .HasPrecision(12, 4);
+
+            builder.Entity<StockMovement>()
+                .HasIndex(m => new { m.StockItemId, m.MovementType, m.IsActive })
+                .HasDatabaseName("IX_StockMovements_StockItemId_MovementType_IsActive");
+
+            builder.Entity<StockMovement>()
+                .HasIndex(m => new { m.PropertyId, m.IsActive })
+                .HasDatabaseName("IX_StockMovements_PropertyId_IsActive");
+
+            builder.Entity<StockMovement>()
+                .HasIndex(m => new { m.StockItemId, m.MovementDate })
+                .HasDatabaseName("IX_StockMovements_StockItemId_MovementDate");
+
+            builder.Entity<StockMovement>()
+                .HasIndex(m => new { m.PropertyId, m.MovementReason, m.MovementDate })
+                .HasDatabaseName("IX_StockMovements_PropertyId_MovementReason_MovementDate");
+
+            var stockSeedDate = new DateTime(2026, 9, 11, 0, 0, 0, DateTimeKind.Utc);
+
+            builder.Entity<StockCategory>().HasData(
+                new StockCategory { Id = 1, Name = "Concentrado", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 2, Name = "Volumoso", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 3, Name = "Minerais e Suplementos", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 4, Name = "Higiene e Limpeza", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 5, Name = "Combustível e Lubrificantes", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 6, Name = "Manutenção e Ferramentas", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 7, Name = "Insumos Agrícolas", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 8, Name = "Outro", IsActive = true, CreatedAt = stockSeedDate });
+
+            builder.Entity<UnitOfMeasure>().HasData(
+                new UnitOfMeasure { Id = 1, Name = "Quilograma", Abbreviation = "kg", IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 2, Name = "Litro", Abbreviation = "L", IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 3, Name = "Bola", Abbreviation = null, IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 4, Name = "Fardo", Abbreviation = null, IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 5, Name = "Saco", Abbreviation = null, IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 6, Name = "Tonelada", Abbreviation = "t", IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 7, Name = "Unidade", Abbreviation = "un", IsActive = true, CreatedAt = stockSeedDate });
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)
