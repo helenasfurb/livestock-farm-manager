@@ -90,6 +90,13 @@ builder.Services.AddScoped<IVaccinationEventService, VaccinationEventService>();
 builder.Services.AddScoped<IHealthCaseRepository, HealthCaseRepository>();
 builder.Services.AddScoped<IHealthCaseService, HealthCaseService>();
 
+builder.Services.AddScoped<IStockReferenceRepository, StockReferenceRepository>();
+builder.Services.AddScoped<IStockItemRepository, StockItemRepository>();
+builder.Services.AddScoped<IStockMovementRepository, StockMovementRepository>();
+builder.Services.AddScoped<IStockReferenceService, StockReferenceService>();
+builder.Services.AddScoped<IStockMovementService, StockMovementService>();
+builder.Services.AddScoped<IStockItemService, StockItemService>();
+
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 
