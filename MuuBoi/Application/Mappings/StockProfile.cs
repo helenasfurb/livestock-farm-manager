@@ -58,6 +58,10 @@ namespace MuuBoi.Application.Mappings
             CreateMap<StockMovement, StockMovementDto>()
                 .ForMember(dest => dest.StockItemName,
                     opt => opt.MapFrom(src => src.StockItem != null ? src.StockItem.Name : string.Empty))
+                .ForMember(dest => dest.UnitAbbreviation,
+                    opt => opt.MapFrom(src => src.StockItem != null && src.StockItem.UnitOfMeasure != null
+                        ? src.StockItem.UnitOfMeasure.Abbreviation
+                        : null))
                 .ForMember(dest => dest.MovementType,
                     opt => opt.MapFrom(src => src.MovementType.ToEnumValue()))
                 .ForMember(dest => dest.MovementReason,
@@ -70,6 +74,10 @@ namespace MuuBoi.Application.Mappings
                             : (decimal?)null)));
 
             CreateMap<StockMovement, StockMovementListItemDto>()
+                .ForMember(dest => dest.UnitAbbreviation,
+                    opt => opt.MapFrom(src => src.StockItem != null && src.StockItem.UnitOfMeasure != null
+                        ? src.StockItem.UnitOfMeasure.Abbreviation
+                        : null))
                 .ForMember(dest => dest.MovementType,
                     opt => opt.MapFrom(src => src.MovementType.ToEnumValue()))
                 .ForMember(dest => dest.MovementReason,

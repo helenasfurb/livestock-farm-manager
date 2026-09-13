@@ -26,20 +26,24 @@ namespace MuuBoi.Application.Services
 
         public async Task<IEnumerable<StockMovementListItemDto>> GetByStockItemIdAsync(int stockItemId, StockMovementFilterDto filter)
         {
-            _ = await _itemRepository.GetByIdAsync(stockItemId)
+            var item = await _itemRepository.GetByIdAsync(stockItemId)
                 ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
 
-            var movements = await _repository.GetByStockItemIdAsync(stockItemId, filter);
+            var movements = (await _repository.GetByStockItemIdAsync(stockItemId, filter)).ToList();
+            foreach (var movement in movements)
+                movement.StockItem = item;
+
             return _mapper.Map<IEnumerable<StockMovementListItemDto>>(movements);
         }
 
         public async Task<StockMovementDto> GetByIdAsync(int stockItemId, int movementId)
         {
-            _ = await _itemRepository.GetByIdAsync(stockItemId)
+            var item = await _itemRepository.GetByIdAsync(stockItemId)
                 ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
 
             var movement = await _repository.GetByIdAsync(movementId)
                 ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            movement.StockItem = item;
 
             return _mapper.Map<StockMovementDto>(movement);
         }
@@ -65,11 +69,12 @@ namespace MuuBoi.Application.Services
 
         public async Task<StockMovementDto> UpdateAsync(int stockItemId, int movementId, StockMovementUpdateDto dto)
         {
-            _ = await _itemRepository.GetByIdAsync(stockItemId)
+            var item = await _itemRepository.GetByIdAsync(stockItemId)
                 ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
 
             var movement = await _repository.GetByIdAsync(movementId)
                 ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            movement.StockItem = item;
 
             if (dto.MovementDate.HasValue)
             {

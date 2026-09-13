@@ -5,6 +5,7 @@ namespace MuuBoi.Application.DTOs
         public int Id { get; set; }
         public int StockItemId { get; set; }
         public string StockItemName { get; set; } = string.Empty;
+        public string? UnitAbbreviation { get; set; }
         public EnumValueDto MovementType { get; set; } = null!;
         public EnumValueDto MovementReason { get; set; } = null!;
         public DateTime MovementDate { get; set; }

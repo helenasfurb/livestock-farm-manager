@@ -3,6 +3,7 @@ namespace MuuBoi.Application.DTOs
     public class StockMovementListItemDto
     {
         public int Id { get; set; }
+        public string? UnitAbbreviation { get; set; }
         public EnumValueDto MovementType { get; set; } = null!;
         public EnumValueDto MovementReason { get; set; } = null!;
         public DateTime MovementDate { get; set; }
