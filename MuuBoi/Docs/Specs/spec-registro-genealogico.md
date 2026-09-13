@@ -4,8 +4,9 @@
 **Versão:** 0.1 (rascunho para discussão)
 **Data:** 30/Ago/2026
 **Fonte:** Definição de escopo do TCC — genealogia de nascidos na propriedade
-**Status:** 🟡 **Em discussão — NÃO aprovado para implementação.** Este documento apresenta **duas alternativas** para decisão conjunta.
+**Status:** 🟢 **Parcialmente decidido.** A **Alternativa A (derivação na leitura)** foi escolhida e materializada pela **Spec #18 §6.2.1** para a genealogia **imediata (pais)** de animais **nascidos na propriedade**, embutida no `AnimalDto` (campo `parentage`) do `GET /api/animals/{id}` — sem migração. Continua **em discussão / não implementado**: o **pedigree recursivo** (avós+, via endpoint dedicado `GET /api/animals/{id}/genealogy`) e a genealogia de **animais adquiridos** (que exigiria a Alternativa B). Ver §8.
 **Depende de:** Spec #5 (Eventos Reprodutivos), Spec #6 (6.1 Gestação / 6.2 Parto / 6.3 Cria), Spec 6.4 (Brinco opcional e cria → Animal), Spec #4/#8 (Banco de Sêmen)
+**Referenciado por:** Spec #18 (Dashboards — nível animal / ficha)
 
 ---
 
@@ -80,8 +81,11 @@ Monta a genealogia **em tempo de consulta**, percorrendo a cadeia do §2. Nada �
 Nenhuma mudança em entidades. Nenhuma migração.
 
 ### 4.2 Endpoint + DTO
+
+> **Implementado (Spec #18 §6.2.1):** para a profundidade 1 (pais imediatos), a genealogia já vem **embutida** no `AnimalDto` do `GET /api/animals/{id}`, no campo `parentage: { mother, father }`, dispensando uma requisição extra na ficha (ambiente instável — menos round-trips). A resolução do pai prefere o nível da **gestação** (`SireAnimalId`/`SemenSampleId`, cadastro retroativo #13) e cai para o da **cobertura** (`BreedingEvent`) quando ausente; a leitura da cadeia **não** filtra por `IsActive` (histórico). O endpoint dedicado abaixo permanece **proposta**, reservado ao **pedigree recursivo** (`depth > 1`).
+
 ```
-GET /api/animals/{id}/genealogy   [?depth=N]
+GET /api/animals/{id}/genealogy   [?depth=N]   (proposta — recursivo)
 ```
 ```jsonc
 {
@@ -179,7 +183,7 @@ Preenchimento em `AnimalCalvingService` ao montar o `Animal` da cria viva (já t
 
 ## 8. Recomendação preliminar (não vinculante)
 
-Para o escopo atual ("**nascido na propriedade**"), a **Alternativa A (derivação)** tende a ser mais adequada: zero migração, sem risco de dessincronização e histórico já íntegro. A **Alternativa B** passa a valer a pena **se** e **quando** entrar no escopo registrar genealogia de **animais adquiridos** (entrada manual), pois aí não há cadeia de parto para derivar.
+**Decidido (via Spec #18):** para o escopo atual ("**nascido na propriedade**") e profundidade 1, adotou-se a **Alternativa A (derivação)** — zero migração, sem risco de dessincronização e histórico já íntegro — embutida no `AnimalDto.parentage`. A **Alternativa B** permanece reservada para **se** e **quando** entrar no escopo registrar genealogia de **animais adquiridos** (entrada manual), pois aí não há cadeia de parto para derivar; o **pedigree recursivo** (endpoint dedicado) segue como evolução aditiva sobre a mesma Alternativa A.
 
 > Uma via intermediária: começar por **A** (contrato do endpoint já definido) e migrar para **B** depois, sem quebrar o contrato — o DTO de resposta é o mesmo nas duas.
 

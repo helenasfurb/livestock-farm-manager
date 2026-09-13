@@ -44,7 +44,11 @@ namespace MuuBoi.Application.Mappings
                     opt => opt.MapFrom(src => src.BodyConditionRecords != null ? src.BodyConditionRecords.FirstOrDefault() : null))
                 .ForMember(dest => dest.ReproductiveStatus, opt => opt.Ignore())
                 .ForMember(dest => dest.ProductiveStatus, opt => opt.Ignore())
-                .ForMember(dest => dest.DaysInMilk, opt => opt.Ignore());
+                .ForMember(dest => dest.DaysInMilk, opt => opt.Ignore())
+                .ForMember(dest => dest.LastCalvingDate, opt => opt.Ignore())
+                .ForMember(dest => dest.CalvingIntervalDays, opt => opt.Ignore())
+                .ForMember(dest => dest.NextCalving, opt => opt.Ignore())
+                .ForMember(dest => dest.Parentage, opt => opt.Ignore());
 
             CreateMap<Animal, AnimalListItemDto>()
                 .ForMember(dest => dest.Classification,
