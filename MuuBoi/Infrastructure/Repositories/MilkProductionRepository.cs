@@ -34,6 +34,14 @@ namespace MuuBoi.Infrastructure.Repositories
             return await query.OrderByDescending(m => m.Date).ToListAsync();
         }
 
+        public async Task<decimal> GetTotalVolumeAsync(DateTime from, DateTime to)
+        {
+            var upperExclusive = to.Date.AddDays(1);
+            return await _context.MilkProductions
+                .Where(m => m.IsActive && m.Date >= from.Date && m.Date < upperExclusive)
+                .SumAsync(m => (decimal?)m.Volume) ?? 0m;
+        }
+
         public async Task<MilkProduction?> GetByIdAsync(int id)
         {
             return await _context.MilkProductions.FirstOrDefaultAsync(m => m.Id == id);

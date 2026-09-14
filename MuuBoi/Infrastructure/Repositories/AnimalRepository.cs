@@ -51,6 +51,16 @@ namespace MuuBoi.Infrastructure.Repositories
                     r.HasConfirmedPregnancy, r.LastCalvingDate, r.LastAwaitingBreedingDate, now));
         }
 
+        public async Task<List<int>> GetAdultFemaleIdsAsync()
+        {
+            return await _context.Animals
+                .Where(a => a.IsActive
+                    && (a.Classification == AnimalClassification.Cow
+                        || a.Classification == AnimalClassification.Heifer))
+                .Select(a => a.Id)
+                .ToListAsync();
+        }
+
         private static IQueryable<Animal> ApplyFilters(IQueryable<Animal> query, AnimalFilterDto filter)
         {
             if (filter.IsActive.HasValue)

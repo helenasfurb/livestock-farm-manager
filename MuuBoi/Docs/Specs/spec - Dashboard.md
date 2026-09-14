@@ -212,6 +212,44 @@ Aplicar o período também aos cards de estado: incoerente — "saldo de estoque
 
 Camadas impactadas: Mobile (um PeriodSelector no DashboardScaffold por aba; layout em duas zonas rotuladas; recompute local por relógio/dado na zona "Agora").
 
+D14 — PEV como constante no resolver no v1; configurável por propriedade é melhoria futura
+
+Decisão: o período de espera voluntário (PEV) que alimenta a "elegibilidade para IA" (elegivelIA = hoje ≥ dataUltimoParto + PEV) entra no v1 como constante no ReproductiveDashboardResolver, ao lado de PostpartumDaysThreshold (#5 D12) — mesmo padrão de constante que a casa já usa. A elegibilidade para IA fica liberada no v1 (não depende mais de campo novo).
+
+Justificativa: o índice é útil já; travá-lo atrás de um campo/tabela configurável adiaria a entrega sem ganho real neste momento. O valor único por rebanho é o número honesto até haver demanda de configuração.
+
+Implementação futura (mantida): migrar o PEV para a tabela de parâmetros de referência por propriedade (D8) quando a configuração por propriedade for necessária — troca a constante pela leitura da config, sem mexer no resolver. Resolve Q5 para o v1.
+
+Camadas impactadas: Application (constante no ReproductiveDashboardResolver).
+
+D15 — Reprodutivo avançado (CU-03) implementável no v1
+
+Decisão: os índices reprodutivos avançados — serviços por concepção, dias em aberto (média do rebanho), intervalo entre partos (IEP médio), perda gestacional e % prenhez ao 1º serviço — entram no v1. Os repositórios de #6.1 (AnimalPregnancy) e #6.2 (AnimalCalving) já existem; ServiceNumber (#5), AnimalPregnancyStatus.LostPregnancy e AnimalCalving.CalvingDate já estão no modelo. Confirma o D7 (era dependência de spec aprovada, não bloqueio) — deixa de estar em aberto.
+
+Justificativa: as fontes existem e os índices são agregados de rebanho no período, derivados na leitura como os demais. O IEP/dias-em-aberto por animal já vive na ficha (§6.2.1); aqui é a versão agregada.
+
+Camadas impactadas: Application (ReproductiveDashboardResolver; DashboardService), Infrastructure (métodos batch em IBreedingEventRepository/IAnimalCalvingRepository/IAnimalPregnancyRepository), Api (GET /api/dashboard/reproductive/advanced).
+
+D16 — Parâmetros de referência como constantes no v1; sem tabela e sem migração
+
+Decisão: no v1 os parâmetros de referência (PEV, faixas de DEL, metas de IEP) ficam como constantes no resolver. Não se cria a tabela de parâmetros por propriedade (D8) nem migração associada.
+
+Justificativa: evita infra de config antes de haver demanda; alinha ao estado atual (280 dias de gestação e 60 de pós-parto já vivem como constante no código — Div-4).
+
+Implementação futura (mantida): a tabela por propriedade do D8 (global-por-tenant com seed dos defaults dos decks) permanece como evolução; quando entrar, os resolvers passam a ler os limiares da config em vez das constantes. Resolve Q2/Div-4 para o v1.
+
+Camadas impactadas: Application (constantes nos resolvers).
+
+D17 — Padrão de leitura set-based obrigatório (anti-N+1) e endpoints por aba autossuficientes
+
+Decisão: todo índice de rebanho resolve em nº fixo de queries via métodos batch de repositório (recebem uma janela from/to ou IReadOnlyCollection<int> e devolvem dicionário/agregado); nenhum método por-animal é chamado em loop. Os resolvers (ProductiveDashboardResolver, ReproductiveDashboardResolver) são puros e recebem today como parâmetro. Cada endpoint por aba é autossuficiente: devolve a zona "Agora" e a zona "No período" numa única resposta, e embute as listas de drill-down (elegíveis para IA, leite retido) inline reusando AnimalListItemDto — sem requisições de follow-up.
+
+Justificativa: os repositórios hoje são majoritariamente por-animal (GetLastActiveByAnimalIdAsync, GetActiveConfirmedByAnimalIdAsync, GetLastActiveAwaitingDiagnosisDateAsync); usá-los em loop seria N+1. O template já existe: GetReproductiveStatusMapAsync colapsa o rebanho numa query e resolve em memória. Autossuficiência por aba minimiza round trips (internet ruim) e mantém a fórmula pura sobre fatos brutos — a mesma que o cliente recomputa no offline (§8), com a zona "Agora" recomputada localmente na virada do dia (D13).
+
+Nota de reuso: GetReproductiveStatusMapAsync passa a derivar de um irmão GetReproductiveFactsMapAsync (devolve os fatos brutos HasConfirmedPregnancy/LastCalvingDate/LastAwaitingBreedingDate), para que status + elegibilidade para IA saiam da mesma query sem custo extra.
+
+Camadas impactadas: Infrastructure (métodos batch), Application (resolvers puros + DashboardService), Api (endpoints por aba).
+
 4. Histórias de Usuário
 
 US-01 — Ver o dashboard produtivo da propriedade
@@ -612,17 +650,19 @@ Questões futuras / dependências:
 
 Q1 — Retenção local (só relevante quando o offline (§8) entrar): janela do cache no device (proposta ≥ 13 meses para cobrir IEP e L/ano).
 
-Q2 — Config vs. constante dos parâmetros de referência (D8/Div-4).
+Q2 — Config vs. constante dos parâmetros de referência (D8/Div-4). Resolvida para o v1: constantes no resolver (D16); tabela por propriedade fica como melhoria futura.
 
 Q3 — MilkYield / pesagem individual: destrava curva, pico, persistência e produção por lactação (fora de escopo hoje, #11 D7).
 
 Q4 — Eixo de dieta: destrava consumo/previsão por categoria-animal no estoque (#17 §9).
 
-Q5 — PEV: hoje não há campo de período de espera voluntário; "elegibilidade para IA" exige adicioná-lo (per propriedade, D8) — confirmar antes de implementar o índice.
+Q5 — PEV: hoje não há campo de período de espera voluntário. Resolvida para o v1: PEV como constante no resolver (D14), elegibilidade para IA liberada; campo configurável por propriedade (D8) fica como melhoria futura.
 
 Q6 — Dashboard sanitário (D11): §6.4 já detalhada sobre #14/#16 (lidos na íntegra). Restam: confirmar prioridade de implementação e decidir se a distinção clínica × subclínica vira campo no #16 ou fica inferida (hoje não é modelada).
 
 Q7 — Faixas de DEL não sobrepostas: antes de reintroduzir o histograma de distribuição por faixa de DEL (§2.2), definir cortes mutuamente exclusivos — as faixas canônicas do D9 se sobrepõem em 45–60.
+
+Versão 0.3 — decisões de implementação dos dashboards de rebanho fechadas (D14–D17), para histórico, sem descartar a implementação futura. PEV como constante no resolver, elegibilidade para IA liberada no v1 (D14, resolve Q5); melhoria futura = PEV configurável por propriedade (D8). Reprodutivo avançado (CU-03) implementável no v1 pois #6.1/#6.2 já existem (D15, confirma D7). Parâmetros de referência como constantes, sem tabela e sem migração no v1 (D16, resolve Q2/Div-4); tabela por propriedade (D8) mantida como evolução. Padrão de leitura set-based/batch obrigatório contra N+1, resolvers puros recebendo today, endpoints por aba autossuficientes (Agora + No período numa resposta, listas de drill-down embutidas), mantendo a via aditiva do offline-first §8 (D17). Nenhuma decisão-base (D1–D13) alterada; nada implementado ainda.
 
 Versão 0.2 — refinado e implementado o nível animal (§6.2.1): índices da ficha embutidos no AnimalDto — lastCalvingDate, calvingIntervalDays (IEP), nextCalving { pregnancyId, expectedCalvingDate } e parentage (genealogia imediata pai/mãe, Alternativa A da Spec #10, derivada na leitura sem migração), somados aos já existentes DEL e MilkWithheldUntil. Derivação reprodutiva reaproveita queries (sem custo extra além de uma query de genealogia); tudo derivado na leitura, apto ao offline-first (§8). Dashboards de rebanho (produtivo/reprodutivo/estoque) seguem conforme v0.1 abaixo.
 
