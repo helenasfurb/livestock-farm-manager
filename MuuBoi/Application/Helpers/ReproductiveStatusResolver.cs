@@ -34,5 +34,12 @@ namespace MuuBoi.Application.Helpers
                 ? ReproductiveStatus.AwaitingConfirmation
                 : ReproductiveStatus.Open;
         }
+
+        public static int? CalvingIntervalDays(DateTime? lastCalvingDate, DateTime? previousCalvingDate)
+        {
+            if (!lastCalvingDate.HasValue || !previousCalvingDate.HasValue)
+                return null;
+            return Math.Max(0, (lastCalvingDate.Value.Date - previousCalvingDate.Value.Date).Days);
+        }
     }
 }

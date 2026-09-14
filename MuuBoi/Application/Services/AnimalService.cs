@@ -104,8 +104,9 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Animal com id '{id}' não encontrado.");
 
             var dto = _mapper.Map<AnimalDto>(animal);
-            dto.ReproductiveStatus = await DeriveReproductiveStatusAsync(animal);
+            await ApplyReproductiveFactsAsync(dto, animal);
             await ApplyProductiveStatusAsync(dto, animal);
+            await ApplyParentageAsync(dto, animal);
 
             var sanitaryMap = await _healthCaseService.GetSanitaryStatusMapAsync(new[] { animal.Id });
             var (sanitaryStatus, milkWithheldUntil) = ResolveSanitary(animal.Id, sanitaryMap);
@@ -260,27 +261,42 @@ namespace MuuBoi.Application.Services
             });
         }
 
-        private async Task<EnumValueDto?> DeriveReproductiveStatusAsync(Animal animal)
+        private async Task ApplyReproductiveFactsAsync(AnimalDto dto, Animal animal)
         {
             if (animal.Classification != AnimalClassification.Cow &&
                 animal.Classification != AnimalClassification.Heifer)
-                return null;
+                return;
 
-            var status = await ResolveReproductiveStatusAsync(animal.Id);
-            return new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
-        }
+            var recentCalvings = await _calvingRepository.GetRecentActiveByAnimalIdAsync(animal.Id, 2);
+            var activePregnancy = await _pregnancyRepository.GetActiveConfirmedByAnimalIdAsync(animal.Id);
+            var lastAwaitingBreedingDate = await _breedingEventRepository.GetLastActiveAwaitingDiagnosisDateAsync(animal.Id);
 
-        private async Task<ReproductiveStatus> ResolveReproductiveStatusAsync(int animalId)
-        {
-            var hasConfirmedPregnancy = await _pregnancyRepository.HasActiveConfirmedByAnimalIdAsync(animalId);
-            var lastCalving = await _calvingRepository.GetLastActiveByAnimalIdAsync(animalId);
-            var lastAwaitingBreedingDate = await _breedingEventRepository.GetLastActiveAwaitingDiagnosisDateAsync(animalId);
+            var lastCalving = recentCalvings.Count > 0 ? recentCalvings[0] : null;
+            var previousCalving = recentCalvings.Count > 1 ? recentCalvings[1] : null;
 
-            return ReproductiveStatusResolver.Resolve(
-                hasConfirmedPregnancy,
+            var status = ReproductiveStatusResolver.Resolve(
+                activePregnancy != null,
                 lastCalving?.CalvingDate,
                 lastAwaitingBreedingDate,
                 DateTime.UtcNow);
+
+            dto.ReproductiveStatus = new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
+            dto.LastCalvingDate = lastCalving?.CalvingDate;
+            dto.CalvingIntervalDays = ReproductiveStatusResolver.CalvingIntervalDays(
+                lastCalving?.CalvingDate, previousCalving?.CalvingDate);
+            dto.NextCalving = activePregnancy == null
+                ? null
+                : new NextCalvingDto
+                {
+                    PregnancyId = activePregnancy.Id,
+                    ExpectedCalvingDate = activePregnancy.ExpectedCalvingDate
+                };
+        }
+
+        private async Task ApplyParentageAsync(AnimalDto dto, Animal animal)
+        {
+            var birth = await _calvingRepository.GetParentageByAnimalIdAsync(animal.Id);
+            dto.Parentage = GenealogyResolver.Resolve(birth);
         }
 
         private static void CreateWeightRecord(AnimalCreateDto dto, Animal animal)

@@ -51,6 +51,38 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<IReadOnlyList<AnimalCalving>> GetRecentActiveByAnimalIdAsync(int animalId, int count)
+        {
+            return await _context.AnimalCalvings
+                .Where(c => c.AnimalId == animalId && c.IsActive)
+                .OrderByDescending(c => c.CalvingDate)
+                .Take(count)
+                .ToListAsync();
+        }
+
+        public async Task<AnimalCalvingCalf?> GetParentageByAnimalIdAsync(int animalId)
+        {
+            return await _context.AnimalCalvingCalves
+                .Include(cf => cf.Calving!)
+                    .ThenInclude(c => c.Animal)
+                .Include(cf => cf.Calving!)
+                    .ThenInclude(c => c.AnimalPregnancy!)
+                        .ThenInclude(p => p.SireAnimal)
+                .Include(cf => cf.Calving!)
+                    .ThenInclude(c => c.AnimalPregnancy!)
+                        .ThenInclude(p => p.SemenSample)
+                .Include(cf => cf.Calving!)
+                    .ThenInclude(c => c.AnimalPregnancy!)
+                        .ThenInclude(p => p.BreedingEvent!)
+                            .ThenInclude(be => be.SireAnimal)
+                .Include(cf => cf.Calving!)
+                    .ThenInclude(c => c.AnimalPregnancy!)
+                        .ThenInclude(p => p.BreedingEvent!)
+                            .ThenInclude(be => be.SemenSample)
+                .OrderByDescending(cf => cf.CreatedAt)
+                .FirstOrDefaultAsync(cf => cf.AnimalId == animalId);
+        }
+
         public async Task<AnimalCalvingCalf?> GetCalfByIdAsync(int calfId)
         {
             return await _context.AnimalCalvingCalves
