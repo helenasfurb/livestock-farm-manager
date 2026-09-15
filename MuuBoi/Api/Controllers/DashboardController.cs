@@ -30,5 +30,12 @@ namespace MuuBoi.Api.Controllers
             var dashboard = await _dashboardService.GetProductiveDashboardAsync(filter);
             return Ok(dashboard);
         }
+
+        [HttpGet("reproductive")]
+        public async Task<ActionResult<ReproductiveDashboardDto>> GetReproductive([FromQuery] ReproductiveDashboardFilterDto filter)
+        {
+            var dashboard = await _dashboardService.GetReproductiveDashboardAsync(filter);
+            return Ok(dashboard);
+        }
     }
 }

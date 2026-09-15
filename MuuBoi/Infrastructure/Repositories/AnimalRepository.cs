@@ -61,6 +61,29 @@ namespace MuuBoi.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<List<AnimalReproductiveFactsDto>> GetReproductiveFactsAsync()
+        {
+            return await _context.Animals
+                .Where(a => a.IsActive
+                    && (a.Classification == AnimalClassification.Cow
+                        || a.Classification == AnimalClassification.Heifer))
+                .Select(a => new AnimalReproductiveFactsDto
+                {
+                    AnimalId = a.Id,
+                    Name = a.Name,
+                    TagNumber = a.TagNumber,
+                    HasActiveConfirmedPregnancy = a.Pregnancies!.Any(p =>
+                        p.IsActive && p.Status == AnimalPregnancyStatus.Confirmed),
+                    LastCalvingDate = a.Calvings!
+                        .Where(c => c.IsActive)
+                        .Max(c => (DateTime?)c.CalvingDate),
+                    LastAwaitingBreedingDate = a.BreedingEvents!
+                        .Where(e => e.IsActive && e.Status == ReproductiveEventStatus.AwaitingDiagnosis)
+                        .Max(e => (DateTime?)e.BreedingDate)
+                })
+                .ToListAsync();
+        }
+
         private static IQueryable<Animal> ApplyFilters(IQueryable<Animal> query, AnimalFilterDto filter)
         {
             if (filter.IsActive.HasValue)

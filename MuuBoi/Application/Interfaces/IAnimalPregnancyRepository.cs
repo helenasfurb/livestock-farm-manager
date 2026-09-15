@@ -14,5 +14,6 @@ namespace MuuBoi.Application.Interfaces
         Task<bool> HasActiveConfirmedByAnimalIdAsync(int animalId);
         Task<AnimalPregnancy?> GetActiveConfirmedByAnimalIdAsync(int animalId);
         Task<AnimalPregnancy?> GetByClientRequestIdAsync(Guid clientRequestId);
+        Task<int> GetLostCountAsync(DateTime from, DateTime to);
     }
 }

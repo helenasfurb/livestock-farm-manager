@@ -13,5 +13,8 @@ namespace MuuBoi.Application.Interfaces
         Task<BreedingEvent> UpdateAsync(BreedingEvent breedingEvent);
         Task<bool> HasActiveByAnimalIdAsync(int animalId);
         Task<DateTime?> GetLastActiveAwaitingDiagnosisDateAsync(int animalId);
+        Task<(int Successful, int Unsuccessful, int Awaiting)> GetStatusCountsAsync(DateTime from, DateTime to);
+        Task<(int Successful, int Unsuccessful, int Awaiting)> GetFirstServiceStatusCountsAsync(DateTime from, DateTime to);
+        Task<List<(int AnimalId, DateTime BreedingDate)>> GetSuccessfulBreedingsAsync(DateTime from, DateTime to);
     }
 }

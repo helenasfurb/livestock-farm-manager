@@ -6,5 +6,6 @@ namespace MuuBoi.Application.Interfaces
     {
         Task<DashboardDto> GetDashboardAsync();
         Task<ProductiveDashboardDto> GetProductiveDashboardAsync(ProductiveDashboardFilterDto filter);
+        Task<ReproductiveDashboardDto> GetReproductiveDashboardAsync(ReproductiveDashboardFilterDto filter);
     }
 }
