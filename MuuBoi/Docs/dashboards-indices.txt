@@ -1,0 +1,113 @@
+========================================================================
+DASHBOARDS DE INDICES - EXPLICACAO DOS DADOS DE CADA INDICE
+Spec #18 (Dashboards de rebanho: Produtivo e Reprodutivo)
+========================================================================
+
+========================================================================
+ABA PRODUTIVO   ->   GET /api/dashboard/productive
+========================================================================
+
+TotalVolume  (zona: No periodo)
+  O que e: soma de todo o leite produzido no periodo escolhido.
+  Como e calculado: soma do campo Volume de todos os lancamentos de
+  producao (MilkProduction) com data dentro de [dateFrom, dateTo].
+  Fonte: lancamentos de producao de leite (total do rebanho por dia).
+
+AveragePerLactatingCow  (media por vaca lactante)  (zona: mista)
+  O que e: quanto de leite cabe, em media, a cada vaca que esta em
+  lactacao.
+  Como e calculado: TotalVolume dividido pelo numero de vacas em
+  lactacao HOJE. Nulo quando nao ha vaca em lactacao.
+  Atencao a unidade: o numerador e do periodo inteiro e o divisor e de
+  hoje. No padrao (mes) le-se como "litros no mes por vaca lactante".
+  Em janelas curtas (Hoje / 3 dias) fica proximo de litros/vaca/dia.
+
+PhaseDistribution  (distribuicao por fase)  (zona: Agora)
+  O que e: quantas femeas adultas estao em cada fase produtiva hoje.
+  Campos:
+    - Lactating     -> vacas em lactacao hoje.
+    - Dry           -> vacas secas (ja lactaram, hoje nao estao).
+    - NeverLactated -> femeas adultas que nunca lactaram.
+  Como e calculado: para cada vaca/novilha ativa, resolve-se o estado
+  produtivo a partir das lactacoes ativas dela na data de hoje.
+
+
+========================================================================
+ABA REPRODUTIVO   ->   GET /api/dashboard/reproductive
+========================================================================
+
+--- Zona "No periodo" -------------------------------------------------
+
+ConceptionRate  (taxa de concepcao)
+  O que e: % das coberturas diagnosticadas que resultaram em prenhez.
+  Campos:
+    - Rate              -> % (Successful / Diagnosed x 100).
+    - Successful        -> coberturas confirmadas prenhes no periodo.
+    - Diagnosed         -> denominador = Successful + Unsuccessful.
+    - AwaitingDiagnosis -> coberturas ainda aguardando diagnostico.
+  Regra importante: as coberturas "aguardando diagnostico" NAO entram
+  no denominador (ficam num balde a parte), para nao puxar a taxa para
+  baixo antes do resultado sair.
+  Janela curta: sempre leia o % junto do absoluto (ex.: "47% - 7 de
+  15"), pois em poucos dias o denominador e pequeno e o valor oscila.
+
+FirstServiceConceptionRate  (% prenhez ao 1o servico)
+  O que e: % de sucesso das coberturas que foram a PRIMEIRA cobertura
+  do animal (ServiceNumber = 1).
+  Como e calculado: mesma regra da taxa de concepcao, mas so entre
+  coberturas de 1o servico. Mede a qualidade da primeira inseminacao.
+
+ServicesPerConception  (servicos por concepcao)
+  O que e: quantas coberturas, em media, foram gastas para conseguir
+  cada prenhez. Quanto mais perto de 1, melhor.
+  Como e calculado: total de coberturas no periodo dividido pelo numero
+  de prenhezes confirmadas (Successful) no periodo. Nulo se nao houver
+  prenhez confirmada.
+
+AverageDaysOpen  (media de dias em aberto)
+  O que e: media do tempo entre o parto e a concepcao seguinte -
+  o "tempo ocioso" da vaca entre uma cria e a proxima.
+  Como e calculado: para cada cobertura confirmada (Successful) no
+  periodo, mede-se os dias desde o parto imediatamente anterior a ela;
+  tira-se a media. Nulo quando nao ha dados suficientes.
+
+AverageCalvingIntervalDays  (IEP - intervalo entre partos)
+  O que e: media de dias entre um parto e o parto anterior do mesmo
+  animal.
+  Como e calculado: consideram-se os animais cujo parto mais recente
+  caiu no periodo e que tem pelo menos 2 partos; mede-se a diferenca
+  entre os dois ultimos partos e tira-se a media. Nulo se nao houver.
+
+LostPregnancies  (perda gestacional)
+  O que e: numero de gestacoes perdidas no periodo.
+  Como e calculado: contagem de gestacoes com status "Perda
+  gestacional" cuja data de perda caiu no periodo.
+
+--- Zona "Agora" ------------------------------------------------------
+
+StatusDistribution  (distribuicao por status reprodutivo)
+  O que e: quantas femeas adultas estao em cada situacao reprodutiva
+  hoje.
+  Campos:
+    - Open                 -> Vazia (nao prenhe, nao coberta).
+    - AwaitingConfirmation -> coberta, aguardando diagnostico de prenhez.
+    - Pregnant             -> Prenhe (gestacao confirmada ativa).
+    - Postpartum           -> Pos-parto (ate 60 dias do parto).
+
+EligibleForAi  (elegiveis para IA / inseminacao)
+  O que e: lista das vacas que ja podem ser inseminadas hoje.
+  Cada item traz: AnimalId, Name (nome), TagNumber (brinco) e
+  LastCalvingDate (data do ultimo parto).
+  Regra (uma vaca so entra se passar por todas):
+    1. Nao pode estar prenhe.
+    2. Precisa ter um parto registrado (novilha que nunca pariu nao
+       entra por esta regra).
+    3. Nao pode ja ter sido coberta depois do parto e estar aguardando
+       diagnostico.
+    4. Precisa ter passado o periodo de espera voluntario (PEV):
+       hoje >= ultimo parto + 45 dias.
+  Ordenacao: quem pariu ha mais tempo aparece primeiro (prioridade).
+  Observacao: o PEV (45 dias) e menor que o limiar de pos-parto (60),
+  entao uma vaca entre 45 e 60 dias do parto pode aparecer como
+  elegivel para IA e, ao mesmo tempo, como "Pos-parto" na distribuicao.
+  Isso e proposital.

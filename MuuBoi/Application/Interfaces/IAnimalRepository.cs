@@ -9,6 +9,7 @@ namespace MuuBoi.Application.Interfaces
         Task<IEnumerable<Animal>> GetAllAnimalsAsync(AnimalFilterDto filter);
         Task<Dictionary<int, ReproductiveStatus>> GetReproductiveStatusMapAsync(IReadOnlyCollection<int> animalIds);
         Task<List<int>> GetAdultFemaleIdsAsync();
+        Task<List<AnimalReproductiveFactsDto>> GetReproductiveFactsAsync();
         Task<Animal?> GetAnimalByIdAsync(int id);
         Task<List<int>> GetExistingAnimalIdsAsync(IReadOnlyCollection<int> ids);
         Task<IEnumerable<Animal>> GetBreedingEligibleAnimalsAsync(string? search);

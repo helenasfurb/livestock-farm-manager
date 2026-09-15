@@ -107,5 +107,16 @@ namespace MuuBoi.Infrastructure.Repositories
                 .Include(p => p.SemenSample)
                 .FirstOrDefaultAsync(p => p.ClientRequestId == clientRequestId);
         }
+
+        public async Task<int> GetLostCountAsync(DateTime from, DateTime to)
+        {
+            var upperExclusive = to.Date.AddDays(1);
+            return await _context.AnimalPregnancies
+                .Where(p => p.IsActive
+                    && p.Status == AnimalPregnancyStatus.LostPregnancy
+                    && p.LossDate != null
+                    && p.LossDate >= from.Date && p.LossDate < upperExclusive)
+                .CountAsync();
+        }
     }
 }

@@ -23,6 +23,16 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
+        public async Task<List<(int AnimalId, DateTime CalvingDate)>> GetActiveCalvingDatesAsync()
+        {
+            var rows = await _context.AnimalCalvings
+                .Where(c => c.IsActive)
+                .Select(c => new { c.AnimalId, c.CalvingDate })
+                .ToListAsync();
+
+            return rows.Select(r => (r.AnimalId, r.CalvingDate)).ToList();
+        }
+
         public async Task<AnimalCalving> CreateAsync(AnimalCalving calving)
         {
             _context.AnimalCalvings.Add(calving);
