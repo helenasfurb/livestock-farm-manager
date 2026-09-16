@@ -1,11 +1,33 @@
-﻿using MuuBoi.Domain.Enums;
+using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Application.DTOs
 {
-    public class DashboardCardsDto
+    public class DashboardDto
+    {
+        public HerdCompositionDto Herd { get; set; } = new();
+        public SanitaryPulseDto Sanitary { get; set; } = new();
+        public IEnumerable<VaccinePerMonthDto> VaccinesPerMonth { get; set; } = [];
+    }
+
+    public class HerdCompositionDto
     {
         public int TotalAnimals { get; set; }
-        public int ActiveTreatments { get; set; }
+        public IEnumerable<ClassificationDistributionDto> ClassificationDistribution { get; set; } = [];
+        public IEnumerable<GenderDistributionDto> GenderDistribution { get; set; } = [];
+        public IEnumerable<BreedDistributionDto> BreedDistribution { get; set; } = [];
+    }
+
+    public class SanitaryPulseDto
+    {
+        public AnimalsUnderTreatmentDto UnderTreatment { get; set; } = new();
+        public OverdueVaccinationsDto OverdueVaccinations { get; set; } = new();
+    }
+
+    public class ClassificationDistributionDto
+    {
+        public AnimalClassification Classification { get; set; }
+        public string Label { get; set; } = string.Empty;
+        public int Count { get; set; }
     }
 
     public class GenderDistributionDto
@@ -30,20 +52,23 @@ namespace MuuBoi.Application.DTOs
         public int Count { get; set; }
     }
 
-    public class BirthForecastDto
+    public class AnimalsUnderTreatmentDto
     {
-        public int AnimalId { get; set; }
-        public string AnimalName { get; set; } = string.Empty;
-        public string? TagNumber { get; set; }
-        public DateTime ExpectedBirthDate { get; set; }
+        public int Count { get; set; }
+        public IEnumerable<AnimalListItemDto> Animals { get; set; } = [];
     }
 
-    public class DashboardDto
+    public class OverdueVaccinationsDto
     {
-        public DashboardCardsDto Cards { get; set; } = new();
-        public IEnumerable<GenderDistributionDto> GenderDistribution { get; set; } = [];
-        public IEnumerable<BreedDistributionDto> BreedDistribution { get; set; } = [];
-        public IEnumerable<VaccinePerMonthDto> VaccinesPerMonth { get; set; } = [];
-        public IEnumerable<BirthForecastDto> BirthForecast { get; set; } = [];
+        public int Count { get; set; }
+        public IEnumerable<OverdueVaccinationItemDto> Events { get; set; } = [];
+    }
+
+    public class OverdueVaccinationItemDto
+    {
+        public int VaccinationEventId { get; set; }
+        public string VaccineName { get; set; } = string.Empty;
+        public DateTime PredictedDate { get; set; }
+        public int AnimalCount { get; set; }
     }
 }

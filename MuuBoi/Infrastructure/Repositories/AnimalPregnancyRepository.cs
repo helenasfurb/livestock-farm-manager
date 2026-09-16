@@ -118,5 +118,16 @@ namespace MuuBoi.Infrastructure.Repositories
                     && p.LossDate >= from.Date && p.LossDate < upperExclusive)
                 .CountAsync();
         }
+
+        public async Task<IEnumerable<AnimalPregnancy>> GetActiveConfirmedForForecastAsync()
+        {
+            return await _context.AnimalPregnancies
+                .Include(p => p.Animal)
+                .Where(p => p.IsActive
+                    && p.Status == AnimalPregnancyStatus.Confirmed
+                    && p.Animal!.IsActive)
+                .OrderBy(p => p.ExpectedCalvingDate)
+                .ToListAsync();
+        }
     }
 }

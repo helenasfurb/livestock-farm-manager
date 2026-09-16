@@ -12,6 +12,16 @@ namespace MuuBoi.Application.DTOs
         public decimal? AverageDaysOpen { get; set; }
         public decimal? AverageCalvingIntervalDays { get; set; }
         public int LostPregnancies { get; set; }
+        public List<CalvingForecastItemDto> CalvingForecast { get; set; } = new();
+    }
+
+    public class CalvingForecastItemDto
+    {
+        public int AnimalId { get; set; }
+        public string? Name { get; set; }
+        public string? TagNumber { get; set; }
+        public int PregnancyId { get; set; }
+        public DateTime ExpectedCalvingDate { get; set; }
     }
 
     public class ConceptionRateDto
