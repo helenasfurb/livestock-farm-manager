@@ -15,6 +15,7 @@ namespace MuuBoi.Application.Services
         private readonly IBreedingEventRepository _breedingEventRepository;
         private readonly IAnimalCalvingRepository _animalCalvingRepository;
         private readonly IAnimalPregnancyRepository _animalPregnancyRepository;
+        private readonly IAnimalService _animalService;
 
         public DashboardService(
             IDashboardRepository repo,
@@ -23,7 +24,8 @@ namespace MuuBoi.Application.Services
             IAnimalRepository animalRepository,
             IBreedingEventRepository breedingEventRepository,
             IAnimalCalvingRepository animalCalvingRepository,
-            IAnimalPregnancyRepository animalPregnancyRepository)
+            IAnimalPregnancyRepository animalPregnancyRepository,
+            IAnimalService animalService)
         {
             _repo = repo;
             _milkProductionRepository = milkProductionRepository;
@@ -32,17 +34,118 @@ namespace MuuBoi.Application.Services
             _breedingEventRepository = breedingEventRepository;
             _animalCalvingRepository = animalCalvingRepository;
             _animalPregnancyRepository = animalPregnancyRepository;
+            _animalService = animalService;
         }
 
         public async Task<DashboardDto> GetDashboardAsync()
         {
+            var today = DateTime.UtcNow.Date;
+            var vaccineCutoff = today.AddMonths(-12);
+
+            var composition = await _repo.GetActiveAnimalCompositionFactsAsync();
+            var vaccinationFacts = await _repo.GetVaccinationEventFactsAsync(vaccineCutoff);
+
+            var underTreatment = (await _animalService.GetAllAnimalsAsync(
+                new AnimalFilterDto { IsActive = true, SanitaryStatus = SanitaryStatus.UnderTreatment }))
+                .ToList();
+
             return new DashboardDto
             {
-                Cards = await _repo.GetCardsAsync(),
-                GenderDistribution = await _repo.GetGenderDistributionAsync(),
-                BreedDistribution = await _repo.GetBreedDistributionAsync(),
-                VaccinesPerMonth = await _repo.GetVaccinesPerMonthAsync(),
-                BirthForecast = await _repo.GetBirthForecastAsync()
+                Herd = BuildHerdComposition(composition),
+                Sanitary = new SanitaryPulseDto
+                {
+                    UnderTreatment = new AnimalsUnderTreatmentDto
+                    {
+                        Count = underTreatment.Count,
+                        Animals = underTreatment
+                    },
+                    OverdueVaccinations = BuildOverdueVaccinations(vaccinationFacts, today)
+                },
+                VaccinesPerMonth = BuildVaccinesPerMonth(vaccinationFacts, today)
+            };
+        }
+
+        private static HerdCompositionDto BuildHerdComposition(IEnumerable<AnimalCompositionFact> facts)
+        {
+            var list = facts as IList<AnimalCompositionFact> ?? facts.ToList();
+            return new HerdCompositionDto
+            {
+                TotalAnimals = list.Count,
+                ClassificationDistribution = list
+                    .Where(f => f.Classification.HasValue)
+                    .GroupBy(f => f.Classification!.Value)
+                    .Select(g => new ClassificationDistributionDto
+                    {
+                        Classification = g.Key,
+                        Label = g.Key.GetDescription(),
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(d => d.Count)
+                    .ToList(),
+                GenderDistribution = list
+                    .Where(f => f.Gender.HasValue)
+                    .GroupBy(f => f.Gender!.Value)
+                    .Select(g => new GenderDistributionDto
+                    {
+                        Gender = g.Key.ToString(),
+                        Label = g.Key.GetDescription(),
+                        Count = g.Count()
+                    })
+                    .OrderBy(d => d.Gender)
+                    .ToList(),
+                BreedDistribution = list
+                    .Where(f => f.Breed.HasValue)
+                    .GroupBy(f => f.Breed!.Value)
+                    .Select(g => new BreedDistributionDto
+                    {
+                        Breed = g.Key,
+                        BreedName = g.Key.GetDescription(),
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(d => d.Count)
+                    .ToList()
+            };
+        }
+
+        private static IEnumerable<VaccinePerMonthDto> BuildVaccinesPerMonth(
+            IEnumerable<VaccinationEventFact> facts, DateTime today)
+        {
+            return facts
+                .Where(f => f.ApplicationDate.HasValue
+                    && VaccinationEventStatusResolver.Resolve(f.ApplicationDate, f.PredictedDate, today)
+                        == VaccinationEventStatus.Applied)
+                .GroupBy(f => new { f.ApplicationDate!.Value.Year, f.ApplicationDate!.Value.Month })
+                .Select(g => new VaccinePerMonthDto
+                {
+                    Year = g.Key.Year,
+                    Month = g.Key.Month,
+                    MonthLabel = $"{new DateTime(g.Key.Year, g.Key.Month, 1):MMM/yyyy}",
+                    Count = g.Sum(f => f.AnimalCount)
+                })
+                .OrderBy(x => x.Year).ThenBy(x => x.Month)
+                .ToList();
+        }
+
+        private static OverdueVaccinationsDto BuildOverdueVaccinations(
+            IEnumerable<VaccinationEventFact> facts, DateTime today)
+        {
+            var overdue = facts
+                .Where(f => VaccinationEventStatusResolver.Resolve(f.ApplicationDate, f.PredictedDate, today)
+                    == VaccinationEventStatus.Overdue)
+                .Select(f => new OverdueVaccinationItemDto
+                {
+                    VaccinationEventId = f.VaccinationEventId,
+                    VaccineName = f.VaccineName,
+                    PredictedDate = f.PredictedDate ?? default,
+                    AnimalCount = f.AnimalCount
+                })
+                .OrderBy(e => e.PredictedDate)
+                .ToList();
+
+            return new OverdueVaccinationsDto
+            {
+                Count = overdue.Count,
+                Events = overdue
             };
         }
 
@@ -139,6 +242,18 @@ namespace MuuBoi.Application.Services
             var successfulBreedings = await _breedingEventRepository.GetSuccessfulBreedingsAsync(from, to);
             var averageDaysOpen = ReproductiveDashboardResolver.AverageDaysOpen(successfulBreedings, calvingsByAnimal);
 
+            var forecastRows = await _animalPregnancyRepository.GetActiveConfirmedForForecastAsync();
+            var calvingForecast = forecastRows
+                .Select(p => new CalvingForecastItemDto
+                {
+                    AnimalId = p.AnimalId,
+                    Name = p.Animal?.Name,
+                    TagNumber = p.Animal?.TagNumber,
+                    PregnancyId = p.Id,
+                    ExpectedCalvingDate = p.ExpectedCalvingDate
+                })
+                .ToList();
+
             return new ReproductiveDashboardDto
             {
                 DateFrom = from,
@@ -163,7 +278,8 @@ namespace MuuBoi.Application.Services
                 ServicesPerConception = ReproductiveDashboardResolver.ServicesPerConception(totalServices, successful),
                 AverageDaysOpen = averageDaysOpen,
                 AverageCalvingIntervalDays = averageCalvingInterval,
-                LostPregnancies = lostPregnancies
+                LostPregnancies = lostPregnancies,
+                CalvingForecast = calvingForecast
             };
         }
     }
