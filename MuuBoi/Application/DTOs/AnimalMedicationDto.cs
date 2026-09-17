@@ -11,7 +11,7 @@ namespace MuuBoi.Application.DTOs
         public string? Diagnosis { get; set; }
 
         [JsonConverter(typeof(DateFormatConverter))]
-        public DateTime StartDate { get; set; }
+        public DateTime ApplicationDate { get; set; }
 
         [JsonConverter(typeof(NullableDateFormatConverter))]
         public DateTime? EndDate { get; set; }

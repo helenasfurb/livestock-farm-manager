@@ -13,24 +13,89 @@ namespace MuuBoi.Application.Services
         private readonly IAnimalRepository _animalRepository;
         private readonly IAnimalExitRecordRepository _exitRecordRepository;
         private readonly IBreedingEventRepository _breedingEventRepository;
+        private readonly IAnimalPregnancyRepository _pregnancyRepository;
+        private readonly IAnimalCalvingRepository _calvingRepository;
+        private readonly ILactationRepository _lactationRepository;
+        private readonly IHealthCaseService _healthCaseService;
         private readonly IMapper _mapper;
 
         public AnimalService(
             IAnimalRepository animalRepository,
             IAnimalExitRecordRepository exitRecordRepository,
             IBreedingEventRepository breedingEventRepository,
+            IAnimalPregnancyRepository pregnancyRepository,
+            IAnimalCalvingRepository calvingRepository,
+            ILactationRepository lactationRepository,
+            IHealthCaseService healthCaseService,
             IMapper mapper)
         {
+            _healthCaseService = healthCaseService;
             _animalRepository = animalRepository;
             _exitRecordRepository = exitRecordRepository;
             _breedingEventRepository = breedingEventRepository;
+            _pregnancyRepository = pregnancyRepository;
+            _calvingRepository = calvingRepository;
+            _lactationRepository = lactationRepository;
             _mapper = mapper;
         }
 
         public async Task<IEnumerable<AnimalListItemDto>> GetAllAnimalsAsync(AnimalFilterDto filter)
         {
             var animals = await _animalRepository.GetAllAnimalsAsync(filter);
-            return _mapper.Map<IEnumerable<AnimalListItemDto>>(animals);
+
+            var femaleIds = animals
+                .Where(a => a.Classification == AnimalClassification.Cow
+                    || a.Classification == AnimalClassification.Heifer)
+                .Select(a => a.Id)
+                .ToList();
+
+            var statusMap = femaleIds.Count > 0
+                ? await _animalRepository.GetReproductiveStatusMapAsync(femaleIds)
+                : new Dictionary<int, ReproductiveStatus>();
+
+            var lactations = femaleIds.Count > 0
+                ? await _lactationRepository.GetActiveByAnimalIdsAsync(femaleIds)
+                : Enumerable.Empty<Lactation>();
+            var lactationsByAnimal = lactations
+                .GroupBy(l => l.AnimalId)
+                .ToDictionary(g => g.Key, g => (IEnumerable<Lactation>)g.ToList());
+            var now = DateTime.UtcNow;
+
+            var animalIds = animals.Select(a => a.Id).ToList();
+            var sanitaryMap = await _healthCaseService.GetSanitaryStatusMapAsync(animalIds);
+
+            var items = animals.Select(animal =>
+            {
+                var dto = _mapper.Map<AnimalListItemDto>(animal);
+                if (statusMap.TryGetValue(animal.Id, out var status))
+                    dto.ReproductiveStatus = new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
+
+                if (animal.Classification == AnimalClassification.Cow
+                    || animal.Classification == AnimalClassification.Heifer)
+                {
+                    var animalLactations = lactationsByAnimal.TryGetValue(animal.Id, out var ls)
+                        ? ls : Enumerable.Empty<Lactation>();
+                    var productive = ProductiveStatusResolver.Resolve(animalLactations, now);
+                    dto.ProductiveStatus = new EnumValueDto { Value = (int)productive, Label = productive.GetDescription() };
+                    dto.DaysInMilk = ProductiveStatusResolver.CurrentDaysInMilk(animalLactations, now);
+                }
+
+                ApplySanitaryStatus(dto, animal.Id, sanitaryMap);
+                return dto;
+            });
+
+            if (filter.ReproductiveStatus.HasValue)
+                items = items.Where(dto => dto.ReproductiveStatus != null
+                    && dto.ReproductiveStatus.Value == (int)filter.ReproductiveStatus.Value);
+
+            if (filter.SanitaryStatus.HasValue)
+                items = items.Where(dto => dto.SanitaryStatus != null
+                    && dto.SanitaryStatus.Value == (int)filter.SanitaryStatus.Value);
+
+            if (filter.MilkWithheldOnly == true)
+                items = items.Where(dto => dto.MilkWithheldUntil.HasValue);
+
+            return items.ToList();
         }
 
         public async Task<AnimalDto> GetAnimalByIdAsync(int id)
@@ -39,7 +104,14 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Animal com id '{id}' não encontrado.");
 
             var dto = _mapper.Map<AnimalDto>(animal);
-            dto.ReproductiveStatus = await DeriveReproductiveStatusAsync(animal);
+            await ApplyReproductiveFactsAsync(dto, animal);
+            await ApplyProductiveStatusAsync(dto, animal);
+            await ApplyParentageAsync(dto, animal);
+
+            var sanitaryMap = await _healthCaseService.GetSanitaryStatusMapAsync(new[] { animal.Id });
+            var (sanitaryStatus, milkWithheldUntil) = ResolveSanitary(animal.Id, sanitaryMap);
+            dto.SanitaryStatus = sanitaryStatus;
+            dto.MilkWithheldUntil = milkWithheldUntil;
             return dto;
         }
 
@@ -48,11 +120,20 @@ namespace MuuBoi.Application.Services
             if (await _animalRepository.TagNumberExistsAsync(dto.TagNumber))
                 throw new ConflictException($"Já existe um animal com o brinco '{dto.TagNumber}' nesta propriedade.");
 
+            if (dto.InitialLactation != null
+                && dto.Classification != AnimalClassification.Cow
+                && dto.Classification != AnimalClassification.Heifer)
+                throw new BusinessRuleException("A lactação inicial só se aplica a vacas e novilhas.");
+
             var animal = _mapper.Map<Animal>(dto);
             CreateWeightRecord(dto, animal);
             CreateBodyConditionRecord(dto, animal);
 
             var created = await _animalRepository.CreateAnimalAsync(animal);
+
+            if (dto.InitialLactation != null)
+                await SeedInitialLactationAsync(created, dto.InitialLactation);
+
             return _mapper.Map<AnimalDto>(created);
         }
 
@@ -64,8 +145,20 @@ namespace MuuBoi.Application.Services
             if (dto.TagNumber != null && await _animalRepository.TagNumberExistsAsync(dto.TagNumber, excludeAnimalId: id))
                 throw new ConflictException($"Já existe um animal com o brinco '{dto.TagNumber}' nesta propriedade.");
 
+            var previousGender = animal.Gender;
+
             _mapper.Map(dto, animal);
             animal.UpdatedAt = DateTime.UtcNow;
+
+            if (dto.Gender.HasValue && dto.Gender.Value != previousGender)
+            {
+                var calf = await _calvingRepository.GetActiveCalfByAnimalIdAsync(id);
+                if (calf != null)
+                {
+                    calf.Sex = dto.Gender.Value;
+                    calf.UpdatedAt = DateTime.UtcNow;
+                }
+            }
 
             var updated = await _animalRepository.UpdateAnimalAsync(animal);
             return _mapper.Map<AnimalDto>(updated);
@@ -122,18 +215,88 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<IEnumerable<AnimalExitRecordDto>>(records);
         }
 
-        private async Task<EnumValueDto?> DeriveReproductiveStatusAsync(Animal animal)
+        private static void ApplySanitaryStatus(
+            AnimalListItemDto dto, int animalId, Dictionary<int, AnimalSanitaryStatusDto> map)
+        {
+            var (status, milkWithheldUntil) = ResolveSanitary(animalId, map);
+            dto.SanitaryStatus = status;
+            dto.MilkWithheldUntil = milkWithheldUntil;
+        }
+
+        private static (EnumValueDto Status, DateTime? MilkWithheldUntil) ResolveSanitary(
+            int animalId, Dictionary<int, AnimalSanitaryStatusDto> map)
+        {
+            if (map.TryGetValue(animalId, out var s) && s.Status != null)
+                return (s.Status, s.MilkWithheldUntil);
+
+            var healthy = SanitaryStatus.Healthy;
+            return (new EnumValueDto { Value = (int)healthy, Label = healthy.GetDescription() }, null);
+        }
+
+        private async Task ApplyProductiveStatusAsync(AnimalDto dto, Animal animal)
         {
             if (animal.Classification != AnimalClassification.Cow &&
                 animal.Classification != AnimalClassification.Heifer)
-                return null;
+                return;
 
-            var hasAwaitingDiagnosis = await _breedingEventRepository.HasActiveByAnimalIdAsync(animal.Id);
-            var status = hasAwaitingDiagnosis
-                ? ReproductiveStatus.AwaitingConfirmation
-                : ReproductiveStatus.Open;
+            var lactations = (await _lactationRepository.GetByAnimalIdAsync(animal.Id)).ToList();
+            var now = DateTime.UtcNow;
+            var status = ProductiveStatusResolver.Resolve(lactations, now);
+            dto.ProductiveStatus = new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
+            dto.DaysInMilk = ProductiveStatusResolver.CurrentDaysInMilk(lactations, now);
+        }
 
-            return new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
+        private async Task SeedInitialLactationAsync(Animal animal, LactationSeedDto seed)
+        {
+            await _lactationRepository.CreateAsync(new Lactation
+            {
+                AnimalId = animal.Id,
+                StartDate = seed.StartDate,
+                EndDate = seed.EndDate,
+                CalvingId = null,
+                Origin = LactationOrigin.InitialSeed,
+                PropertyId = animal.PropertyId,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        private async Task ApplyReproductiveFactsAsync(AnimalDto dto, Animal animal)
+        {
+            if (animal.Classification != AnimalClassification.Cow &&
+                animal.Classification != AnimalClassification.Heifer)
+                return;
+
+            var recentCalvings = await _calvingRepository.GetRecentActiveByAnimalIdAsync(animal.Id, 2);
+            var activePregnancy = await _pregnancyRepository.GetActiveConfirmedByAnimalIdAsync(animal.Id);
+            var lastAwaitingBreedingDate = await _breedingEventRepository.GetLastActiveAwaitingDiagnosisDateAsync(animal.Id);
+
+            var lastCalving = recentCalvings.Count > 0 ? recentCalvings[0] : null;
+            var previousCalving = recentCalvings.Count > 1 ? recentCalvings[1] : null;
+
+            var status = ReproductiveStatusResolver.Resolve(
+                activePregnancy != null,
+                lastCalving?.CalvingDate,
+                lastAwaitingBreedingDate,
+                DateTime.UtcNow);
+
+            dto.ReproductiveStatus = new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
+            dto.LastCalvingDate = lastCalving?.CalvingDate;
+            dto.CalvingIntervalDays = ReproductiveStatusResolver.CalvingIntervalDays(
+                lastCalving?.CalvingDate, previousCalving?.CalvingDate);
+            dto.NextCalving = activePregnancy == null
+                ? null
+                : new NextCalvingDto
+                {
+                    PregnancyId = activePregnancy.Id,
+                    ExpectedCalvingDate = activePregnancy.ExpectedCalvingDate
+                };
+        }
+
+        private async Task ApplyParentageAsync(AnimalDto dto, Animal animal)
+        {
+            var birth = await _calvingRepository.GetParentageByAnimalIdAsync(animal.Id);
+            dto.Parentage = GenealogyResolver.Resolve(birth);
         }
 
         private static void CreateWeightRecord(AnimalCreateDto dto, Animal animal)

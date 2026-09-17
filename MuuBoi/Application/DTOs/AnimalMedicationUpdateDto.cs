@@ -9,7 +9,7 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(200)]
         public string? Diagnosis { get; set; }
 
-        public DateTime? StartDate { get; set; }
+        public DateTime? ApplicationDate { get; set; }
 
         public DateTime? EndDate { get; set; }
 

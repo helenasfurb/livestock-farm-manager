@@ -4,7 +4,7 @@ namespace MuuBoi.Domain.Enums
 {
     public enum AnimalOrigin
     {
-        [Description("Nascido na Propriedade")]
+        [Description("Nascido na propriedade")]
         BornOnFarm = 1,
 
         [Description("Adquirido")]

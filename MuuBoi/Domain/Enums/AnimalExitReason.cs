@@ -7,13 +7,10 @@ namespace MuuBoi.Domain.Enums
         [Description("Venda")]
         Sale = 1,
 
-        [Description("Morte")]
-        Death = 2,
+        [Description("Morte natural")]
+        NaturalDeath = 2,
 
-        [Description("Descarte")]
-        Discard = 3,
-
-        [Description("Transferência")]
-        Transfer = 4
+        [Description("Consumo próprio")]
+        OwnConsumption = 3
     }
 }

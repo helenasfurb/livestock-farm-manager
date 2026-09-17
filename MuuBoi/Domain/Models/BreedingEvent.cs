@@ -19,6 +19,9 @@ namespace MuuBoi.Domain.Models
 
         public DateTime? DiagnosisDate { get; set; }
 
+        // Método do diagnóstico (Spec #15); nulo enquanto aguardando diagnóstico.
+        public DiagnosisMethod? DiagnosisMethod { get; set; }
+
         public int ServiceNumber { get; set; }
 
         [MaxLength(500)]
@@ -29,5 +32,6 @@ namespace MuuBoi.Domain.Models
         public Animal? Animal { get; set; }
         public SemenSample? SemenSample { get; set; }
         public Animal? SireAnimal { get; set; }
+        public AnimalPregnancy? Pregnancy { get; set; }
     }
 }

@@ -13,6 +13,8 @@ namespace MuuBoi.Application.Services
         private readonly IAnimalRepository _animalRepository;
         private readonly ISemenSampleRepository _semenSampleRepository;
         private readonly ISemenSampleMovementService _movementService;
+        private readonly IAnimalPregnancyService _pregnancyService;
+        private readonly IAnimalPregnancyRepository _pregnancyRepository;
         private readonly IMapper _mapper;
 
         public BreedingEventService(
@@ -20,12 +22,16 @@ namespace MuuBoi.Application.Services
             IAnimalRepository animalRepository,
             ISemenSampleRepository semenSampleRepository,
             ISemenSampleMovementService movementService,
+            IAnimalPregnancyService pregnancyService,
+            IAnimalPregnancyRepository pregnancyRepository,
             IMapper mapper)
         {
             _repository = repository;
             _animalRepository = animalRepository;
             _semenSampleRepository = semenSampleRepository;
             _movementService = movementService;
+            _pregnancyService = pregnancyService;
+            _pregnancyRepository = pregnancyRepository;
             _mapper = mapper;
         }
 
@@ -44,6 +50,12 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<IEnumerable<BreedingEventListItemDto>>(events);
         }
 
+        public async Task<IEnumerable<AnimalAutocompleteItemDto>> GetEligibleAnimalsAsync(string? search)
+        {
+            var animals = await _animalRepository.GetBreedingEligibleAnimalsAsync(search);
+            return _mapper.Map<IEnumerable<AnimalAutocompleteItemDto>>(animals);
+        }
+
         public async Task<BreedingEventDto> GetByIdAsync(int id)
         {
             var ev = await _repository.GetByIdAsync(id)
@@ -57,7 +69,19 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Animal com id '{animalId}' não encontrado.");
 
             if (!animal.IsActive)
-                throw new ConflictException("Não é possível registrar evento reprodutivo para um animal inativo.");
+                throw new ConflictException("Não é possível registrar coberturas para um animal inativo.");
+
+            if (animal.Classification != AnimalClassification.Cow &&
+                animal.Classification != AnimalClassification.Heifer)
+                throw new BusinessRuleException("Apenas vacas e novilhas podem ser submetidas a coberturas.");
+
+            var hasActiveEvent = await _repository.HasActiveByAnimalIdAsync(animalId);
+
+            if (hasActiveEvent)
+                throw new BusinessRuleException("O animal já possui uma cobertura aguardando diagnóstico. Registre o diagnóstico do serviço anterior antes de criar uma nova.");
+
+            if (await _pregnancyRepository.HasActiveConfirmedByAnimalIdAsync(animalId))
+                throw new BusinessRuleException("O animal possui uma gestação ativa. Não é possível registrar uma nova cobertura.");
 
             if (dto.ReproductionType == ReproductionType.ArtificialInsemination)
             {
@@ -104,10 +128,10 @@ namespace MuuBoi.Application.Services
         public async Task<BreedingEventDto> UpdateAsync(int id, BreedingEventUpdateDto dto)
         {
             var ev = await _repository.GetByIdAsync(id)
-                ?? throw new NotFoundException($"Evento reprodutivo com id '{id}' não encontrado.");
+                ?? throw new NotFoundException($"Cobertura com id '{id}' não encontrado.");
 
             if (ev.Status != ReproductiveEventStatus.AwaitingDiagnosis)
-                throw new ConflictException("Apenas eventos com diagnóstico pendente podem ser editados.");
+                throw new ConflictException("Apenas coberturas com diagnóstico pendente podem ser editados.");
 
             if (dto.BreedingDate.HasValue)
                 ev.BreedingDate = dto.BreedingDate.Value;
@@ -155,16 +179,23 @@ namespace MuuBoi.Application.Services
         public async Task<BreedingEventDto> UpdateStatusAsync(int id, BreedingEventStatusUpdateDto dto)
         {
             var ev = await _repository.GetByIdAsync(id)
-                ?? throw new NotFoundException($"Evento reprodutivo com id '{id}' não encontrado.");
+                ?? throw new NotFoundException($"Cobertura com id '{id}' não encontrada.");
 
             if (ev.Status != ReproductiveEventStatus.AwaitingDiagnosis)
-                throw new ConflictException("O diagnóstico deste evento já foi registrado.");
+                throw new ConflictException("O diagnóstico desta cobertura já foi registrado.");
+
+            if (dto.DiagnosisDate < ev.BreedingDate)
+                throw new BusinessRuleException("A data do diagnóstico não pode ser anterior à data da cobertura.");
 
             ev.Status = dto.Status;
             ev.DiagnosisDate = dto.DiagnosisDate;
+            ev.DiagnosisMethod = dto.DiagnosisMethod;
             ev.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _repository.UpdateAsync(ev);
+
+            if (updated.Status == ReproductiveEventStatus.Successful)
+                await _pregnancyService.CreateForBreedingEventAsync(updated, dto.DiagnosisDate, dto.GestationalAge);
 
             updated.Animal = await _animalRepository.GetAnimalByIdAsync(ev.AnimalId);
             if (updated.SemenSampleId.HasValue)
@@ -178,10 +209,13 @@ namespace MuuBoi.Application.Services
         public async Task DeactivateAsync(int id)
         {
             var ev = await _repository.GetByIdAsync(id)
-                ?? throw new NotFoundException($"Evento reprodutivo com id '{id}' não encontrado.");
+                ?? throw new NotFoundException($"Cobertura com id '{id}' não encontrada.");
 
             if (!ev.IsActive)
-                throw new ConflictException("O evento reprodutivo já está inativo.");
+                throw new ConflictException("A cobertura já está inativa.");
+
+            if (await _pregnancyRepository.ExistsActiveForBreedingEventAsync(ev.Id))
+                throw new ConflictException("Esta cobertura possui uma gestação ativa vinculada. Inative a gestação primeiro.");
 
             ev.IsActive = false;
             ev.UpdatedAt = DateTime.UtcNow;

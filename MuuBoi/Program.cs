@@ -53,9 +53,6 @@ builder.Services.AddScoped<IWeightRecordService, WeightRecordService>();
 builder.Services.AddScoped<IVaccineRepository, VaccineRepository>();
 builder.Services.AddScoped<IVaccineService, VaccineService>();
 
-builder.Services.AddScoped<IAnimalVaccinationRepository, AnimalVaccinationRepository>();
-builder.Services.AddScoped<IAnimalVaccinationService, AnimalVaccinationService>();
-
 builder.Services.AddScoped<IMedicationRepository, MedicationRepository>();
 builder.Services.AddScoped<IMedicationService, MedicationService>();
 
@@ -74,6 +71,31 @@ builder.Services.AddScoped<ISemenSampleService, SemenSampleService>();
 
 builder.Services.AddScoped<IBreedingEventRepository, BreedingEventRepository>();
 builder.Services.AddScoped<IBreedingEventService, BreedingEventService>();
+
+builder.Services.AddScoped<IAnimalPregnancyRepository, AnimalPregnancyRepository>();
+builder.Services.AddScoped<IAnimalPregnancyService, AnimalPregnancyService>();
+
+builder.Services.AddScoped<IAnimalCalvingRepository, AnimalCalvingRepository>();
+builder.Services.AddScoped<IAnimalCalvingService, AnimalCalvingService>();
+
+builder.Services.AddScoped<IMilkProductionRepository, MilkProductionRepository>();
+builder.Services.AddScoped<IMilkProductionService, MilkProductionService>();
+
+builder.Services.AddScoped<ILactationRepository, LactationRepository>();
+builder.Services.AddScoped<ILactationService, LactationService>();
+
+builder.Services.AddScoped<IVaccinationEventRepository, VaccinationEventRepository>();
+builder.Services.AddScoped<IVaccinationEventService, VaccinationEventService>();
+
+builder.Services.AddScoped<IHealthCaseRepository, HealthCaseRepository>();
+builder.Services.AddScoped<IHealthCaseService, HealthCaseService>();
+
+builder.Services.AddScoped<IStockReferenceRepository, StockReferenceRepository>();
+builder.Services.AddScoped<IStockItemRepository, StockItemRepository>();
+builder.Services.AddScoped<IStockMovementRepository, StockMovementRepository>();
+builder.Services.AddScoped<IStockReferenceService, StockReferenceService>();
+builder.Services.AddScoped<IStockMovementService, StockMovementService>();
+builder.Services.AddScoped<IStockItemService, StockItemService>();
 
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();

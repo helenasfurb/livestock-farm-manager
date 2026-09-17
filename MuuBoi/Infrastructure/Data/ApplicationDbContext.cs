@@ -16,7 +16,6 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<Animal> Animals { get; set; }
         public DbSet<WeightRecord> WeightRecords { get; set; }
         public DbSet<Vaccine> Vaccines { get; set; }
-        public DbSet<AnimalVaccination> AnimalVaccinations { get; set; }
         public DbSet<Medication> Medications { get; set; }
         public DbSet<AnimalMedication> AnimalMedications { get; set; }
         public DbSet<BodyConditionRecord> BodyConditionRecords { get; set; }
@@ -24,6 +23,19 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<SemenSample> SemenSamples { get; set; }
         public DbSet<SemenSampleMovement> SemenSampleMovements { get; set; }
         public DbSet<BreedingEvent> BreedingEvents { get; set; }
+        public DbSet<AnimalPregnancy> AnimalPregnancies { get; set; }
+        public DbSet<AnimalCalving> AnimalCalvings { get; set; }
+        public DbSet<AnimalCalvingCalf> AnimalCalvingCalves { get; set; }
+        public DbSet<MilkProduction> MilkProductions { get; set; }
+        public DbSet<Lactation> Lactations { get; set; }
+        public DbSet<VaccinationEvent> VaccinationEvents { get; set; }
+        public DbSet<VaccinationEventAnimal> VaccinationEventAnimals { get; set; }
+        public DbSet<HealthCase> HealthCases { get; set; }
+        public DbSet<MastitisTest> MastitisTests { get; set; }
+        public DbSet<StockCategory> StockCategories { get; set; }
+        public DbSet<UnitOfMeasure> UnitsOfMeasure { get; set; }
+        public DbSet<StockItem> StockItems { get; set; }
+        public DbSet<StockMovement> StockMovements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -39,14 +51,12 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<Vaccine>().HasQueryFilter(v => v.PropertyId == _propertyId);
             builder.Entity<Medication>().HasQueryFilter(m => m.PropertyId == _propertyId);
             builder.Entity<WeightRecord>().HasQueryFilter(w => w.PropertyId == _propertyId);
-            builder.Entity<AnimalVaccination>().HasQueryFilter(av => av.PropertyId == _propertyId);
             builder.Entity<AnimalMedication>().HasQueryFilter(am => am.PropertyId == _propertyId);
 
             builder.Entity<Animal>().HasIndex(a => a.PropertyId).HasDatabaseName("IX_Animals_PropertyId");
             builder.Entity<Vaccine>().HasIndex(v => v.PropertyId).HasDatabaseName("IX_Vaccines_PropertyId");
             builder.Entity<Medication>().HasIndex(m => m.PropertyId).HasDatabaseName("IX_Medications_PropertyId");
             builder.Entity<WeightRecord>().HasIndex(w => w.PropertyId).HasDatabaseName("IX_WeightRecords_PropertyId");
-            builder.Entity<AnimalVaccination>().HasIndex(av => av.PropertyId).HasDatabaseName("IX_AnimalVaccinations_PropertyId");
             builder.Entity<AnimalMedication>().HasIndex(am => am.PropertyId).HasDatabaseName("IX_AnimalMedications_PropertyId");
 
             builder.Entity<BodyConditionRecord>()
@@ -112,6 +122,330 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<BreedingEvent>()
                 .HasIndex(e => e.SemenSampleId)
                 .HasDatabaseName("IX_BreedingEvents_SemenSampleId");
+
+            builder.Entity<AnimalPregnancy>().HasQueryFilter(p => p.PropertyId == _propertyId);
+
+            builder.Entity<AnimalPregnancy>()
+                .HasOne(p => p.Animal)
+                .WithMany(a => a.Pregnancies)
+                .HasForeignKey(p => p.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalPregnancy>()
+                .HasOne(p => p.BreedingEvent)
+                .WithOne(e => e.Pregnancy)
+                .HasForeignKey<AnimalPregnancy>(p => p.BreedingEventId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Índice único filtrado: só se aplica quando há cobertura vinculada.
+            // Gestações retroativas (BreedingEventId IS NULL) ficam de fora do UNIQUE.
+            builder.Entity<AnimalPregnancy>()
+                .HasIndex(p => p.BreedingEventId)
+                .IsUnique()
+                .HasFilter("[BreedingEventId] IS NOT NULL")
+                .HasDatabaseName("IX_AnimalPregnancies_BreedingEventId");
+
+            builder.Entity<AnimalPregnancy>()
+                .HasOne(p => p.SireAnimal)
+                .WithMany()
+                .HasForeignKey(p => p.SireAnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalPregnancy>()
+                .HasOne(p => p.SemenSample)
+                .WithMany()
+                .HasForeignKey(p => p.SemenSampleId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalPregnancy>()
+                .HasIndex(p => p.ClientRequestId)
+                .IsUnique()
+                .HasFilter("[ClientRequestId] IS NOT NULL")
+                .HasDatabaseName("IX_AnimalPregnancies_ClientRequestId");
+
+            builder.Entity<AnimalPregnancy>()
+                .HasIndex(p => new { p.AnimalId, p.Status, p.IsActive })
+                .HasDatabaseName("IX_AnimalPregnancies_AnimalId_Status_IsActive");
+
+            builder.Entity<AnimalPregnancy>()
+                .HasIndex(p => new { p.PropertyId, p.IsActive })
+                .HasDatabaseName("IX_AnimalPregnancies_PropertyId_IsActive");
+
+            builder.Entity<AnimalCalving>().HasQueryFilter(c => c.PropertyId == _propertyId);
+
+            builder.Entity<AnimalCalving>()
+                .HasOne(c => c.AnimalPregnancy)
+                .WithMany(p => p.Calvings)
+                .HasForeignKey(c => c.AnimalPregnancyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalCalving>()
+                .HasOne(c => c.Animal)
+                .WithMany(a => a.Calvings)
+                .HasForeignKey(c => c.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalCalving>()
+                .HasIndex(c => c.AnimalPregnancyId)
+                .HasDatabaseName("IX_AnimalCalvings_AnimalPregnancyId");
+
+            builder.Entity<AnimalCalving>()
+                .HasIndex(c => new { c.AnimalId, c.CalvingDate })
+                .HasDatabaseName("IX_AnimalCalvings_AnimalId_CalvingDate");
+
+            builder.Entity<AnimalCalvingCalf>().HasQueryFilter(cf => cf.PropertyId == _propertyId);
+
+            builder.Entity<AnimalCalvingCalf>()
+                .HasOne(cf => cf.Calving)
+                .WithMany(c => c.Calves)
+                .HasForeignKey(cf => cf.CalvingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalCalvingCalf>()
+                .HasOne(cf => cf.Animal)
+                .WithOne()
+                .HasForeignKey<AnimalCalvingCalf>(cf => cf.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AnimalCalvingCalf>()
+                .Property(cf => cf.WeightKg)
+                .HasPrecision(6, 2);
+
+            builder.Entity<AnimalCalvingCalf>()
+                .HasIndex(cf => cf.CalvingId)
+                .HasDatabaseName("IX_AnimalCalvingCalves_CalvingId");
+
+            builder.Entity<MilkProduction>().HasQueryFilter(m => m.PropertyId == _propertyId);
+
+            builder.Entity<MilkProduction>()
+                .Property(m => m.Volume)
+                .HasPrecision(11, 2);
+
+            builder.Entity<MilkProduction>()
+                .HasIndex(m => m.PropertyId)
+                .HasDatabaseName("IX_MilkProductions_PropertyId");
+
+            builder.Entity<MilkProduction>()
+                .HasIndex(m => new { m.PropertyId, m.Date })
+                .HasDatabaseName("IX_MilkProductions_PropertyId_Date");
+
+            builder.Entity<Lactation>().HasQueryFilter(l => l.PropertyId == _propertyId);
+
+            builder.Entity<Lactation>()
+                .HasOne(l => l.Animal)
+                .WithMany()
+                .HasForeignKey(l => l.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Lactation>()
+                .HasOne(l => l.Calving)
+                .WithMany()
+                .HasForeignKey(l => l.CalvingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Lactation>()
+                .HasIndex(l => l.PropertyId)
+                .HasDatabaseName("IX_Lactations_PropertyId");
+
+            builder.Entity<Lactation>()
+                .HasIndex(l => new { l.PropertyId, l.AnimalId, l.EndDate })
+                .HasDatabaseName("IX_Lactations_PropertyId_AnimalId_EndDate");
+
+            builder.Entity<Lactation>()
+                .HasIndex(l => l.CalvingId)
+                .HasDatabaseName("IX_Lactations_CalvingId");
+
+            builder.Entity<VaccinationEvent>().HasQueryFilter(e => e.PropertyId == _propertyId);
+
+            builder.Entity<VaccinationEvent>()
+                .HasOne(e => e.Vaccine)
+                .WithMany()
+                .HasForeignKey(e => e.VaccineId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Self-reference (lineage) as one-to-many with no inverse collection, so no
+            // automatic unique index is created on ParentEventId (which would reject the
+            // many NULLs of root events on SQL Server).
+            builder.Entity<VaccinationEvent>()
+                .HasOne(e => e.ParentEvent)
+                .WithMany()
+                .HasForeignKey(e => e.ParentEventId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<VaccinationEvent>()
+                .HasIndex(e => e.PropertyId)
+                .HasDatabaseName("IX_VaccinationEvents_PropertyId");
+
+            builder.Entity<VaccinationEvent>()
+                .HasIndex(e => new { e.PropertyId, e.VaccineId })
+                .HasDatabaseName("IX_VaccinationEvents_PropertyId_VaccineId");
+
+            builder.Entity<VaccinationEvent>()
+                .HasIndex(e => new { e.PropertyId, e.ApplicationDate })
+                .HasDatabaseName("IX_VaccinationEvents_PropertyId_ApplicationDate");
+
+            // Enforces "one active booster child per parent" (D5) at the database level.
+            // Filtered so it excludes root events (ParentEventId NULL) and soft-deleted rows.
+            builder.Entity<VaccinationEvent>()
+                .HasIndex(e => e.ParentEventId)
+                .IsUnique()
+                .HasFilter("[ParentEventId] IS NOT NULL AND [IsActive] = 1")
+                .HasDatabaseName("UX_VaccinationEvents_ParentEventId_Active");
+
+            builder.Entity<VaccinationEventAnimal>()
+                .HasKey(x => new { x.VaccinationEventId, x.AnimalId });
+
+            builder.Entity<VaccinationEventAnimal>()
+                .HasQueryFilter(x => x.PropertyId == _propertyId);
+
+            builder.Entity<VaccinationEventAnimal>()
+                .HasOne(x => x.VaccinationEvent)
+                .WithMany(e => e.EventAnimals)
+                .HasForeignKey(x => x.VaccinationEventId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<VaccinationEventAnimal>()
+                .HasOne(x => x.Animal)
+                .WithMany()
+                .HasForeignKey(x => x.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<VaccinationEventAnimal>()
+                .HasIndex(x => x.AnimalId)
+                .HasDatabaseName("IX_VaccinationEventAnimals_AnimalId");
+
+            // ----- Health cases (curative axis) -----
+            builder.Entity<HealthCase>().HasQueryFilter(c => c.PropertyId == _propertyId);
+            builder.Entity<MastitisTest>().HasQueryFilter(t => t.PropertyId == _propertyId);
+
+            builder.Entity<HealthCase>()
+                .HasOne(c => c.Animal)
+                .WithMany()
+                .HasForeignKey(c => c.AnimalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<HealthCase>()
+                .HasMany(c => c.Tests)
+                .WithOne(t => t.HealthCase!)
+                .HasForeignKey(t => t.HealthCaseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<HealthCase>()
+                .HasMany(c => c.Medications)
+                .WithOne(m => m.HealthCase!)
+                .HasForeignKey(m => m.HealthCaseId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<HealthCase>()
+                .HasIndex(c => c.PropertyId)
+                .HasDatabaseName("IX_HealthCases_PropertyId");
+
+            builder.Entity<HealthCase>()
+                .HasIndex(c => new { c.PropertyId, c.AnimalId })
+                .HasDatabaseName("IX_HealthCases_PropertyId_AnimalId");
+
+            builder.Entity<HealthCase>()
+                .HasIndex(c => new { c.PropertyId, c.DiagnosisDate })
+                .HasDatabaseName("IX_HealthCases_PropertyId_DiagnosisDate");
+
+            builder.Entity<HealthCase>()
+                .HasIndex(c => new { c.PropertyId, c.DiseaseType })
+                .HasDatabaseName("IX_HealthCases_PropertyId_DiseaseType");
+
+            builder.Entity<MastitisTest>()
+                .HasIndex(t => t.HealthCaseId)
+                .HasDatabaseName("IX_MastitisTests_HealthCaseId");
+
+            builder.Entity<MastitisTest>()
+                .HasIndex(t => t.PropertyId)
+                .HasDatabaseName("IX_MastitisTests_PropertyId");
+
+            builder.Entity<AnimalMedication>()
+                .HasIndex(m => m.HealthCaseId)
+                .HasDatabaseName("IX_AnimalMedications_HealthCaseId");
+
+            builder.Entity<StockItem>().HasQueryFilter(i => i.PropertyId == _propertyId);
+            builder.Entity<StockMovement>().HasQueryFilter(m => m.PropertyId == _propertyId);
+
+            builder.Entity<StockItem>()
+                .HasOne(i => i.StockCategory)
+                .WithMany(c => c.Items)
+                .HasForeignKey(i => i.StockCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<StockItem>()
+                .HasOne(i => i.UnitOfMeasure)
+                .WithMany(u => u.Items)
+                .HasForeignKey(i => i.UnitOfMeasureId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<StockItem>()
+                .Property(i => i.ReorderPoint)
+                .HasPrecision(12, 3);
+
+            builder.Entity<StockItem>()
+                .HasIndex(i => new { i.PropertyId, i.IsActive })
+                .HasDatabaseName("IX_StockItems_PropertyId_IsActive");
+
+            builder.Entity<StockItem>()
+                .HasIndex(i => new { i.PropertyId, i.StockCategoryId })
+                .HasDatabaseName("IX_StockItems_PropertyId_StockCategoryId");
+
+            builder.Entity<StockMovement>()
+                .HasOne(m => m.StockItem)
+                .WithMany(i => i.Movements)
+                .HasForeignKey(m => m.StockItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<StockMovement>()
+                .Property(m => m.Quantity)
+                .HasPrecision(12, 3);
+
+            builder.Entity<StockMovement>()
+                .Property(m => m.TotalValue)
+                .HasPrecision(12, 2);
+
+            builder.Entity<StockMovement>()
+                .Property(m => m.UnitCostSnapshot)
+                .HasPrecision(12, 4);
+
+            builder.Entity<StockMovement>()
+                .HasIndex(m => new { m.StockItemId, m.MovementType, m.IsActive })
+                .HasDatabaseName("IX_StockMovements_StockItemId_MovementType_IsActive");
+
+            builder.Entity<StockMovement>()
+                .HasIndex(m => new { m.PropertyId, m.IsActive })
+                .HasDatabaseName("IX_StockMovements_PropertyId_IsActive");
+
+            builder.Entity<StockMovement>()
+                .HasIndex(m => new { m.StockItemId, m.MovementDate })
+                .HasDatabaseName("IX_StockMovements_StockItemId_MovementDate");
+
+            builder.Entity<StockMovement>()
+                .HasIndex(m => new { m.PropertyId, m.MovementReason, m.MovementDate })
+                .HasDatabaseName("IX_StockMovements_PropertyId_MovementReason_MovementDate");
+
+            var stockSeedDate = new DateTime(2026, 9, 11, 0, 0, 0, DateTimeKind.Utc);
+
+            builder.Entity<StockCategory>().HasData(
+                new StockCategory { Id = 1, Name = "Concentrado", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 2, Name = "Volumoso", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 3, Name = "Minerais e Suplementos", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 4, Name = "Higiene e Limpeza", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 5, Name = "Combustível e Lubrificantes", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 6, Name = "Manutenção e Ferramentas", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 7, Name = "Insumos Agrícolas", IsActive = true, CreatedAt = stockSeedDate },
+                new StockCategory { Id = 8, Name = "Outro", IsActive = true, CreatedAt = stockSeedDate });
+
+            builder.Entity<UnitOfMeasure>().HasData(
+                new UnitOfMeasure { Id = 1, Name = "Quilograma", Abbreviation = "kg", IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 2, Name = "Litro", Abbreviation = "L", IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 3, Name = "Bola", Abbreviation = null, IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 4, Name = "Fardo", Abbreviation = null, IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 5, Name = "Saco", Abbreviation = null, IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 6, Name = "Tonelada", Abbreviation = "t", IsActive = true, CreatedAt = stockSeedDate },
+                new UnitOfMeasure { Id = 7, Name = "Unidade", Abbreviation = "un", IsActive = true, CreatedAt = stockSeedDate });
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

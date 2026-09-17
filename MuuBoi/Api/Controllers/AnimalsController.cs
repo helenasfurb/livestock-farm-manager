@@ -13,11 +13,35 @@ namespace MuuBoi.Api.Controllers
     public class AnimalsController : ControllerBase
     {
         private readonly IAnimalService _animalService;
+        private readonly IVaccinationEventService _vaccinationEventService;
+        private readonly IHealthCaseService _healthCaseService;
 
-        public AnimalsController(IAnimalService animalService)
+        public AnimalsController(
+            IAnimalService animalService,
+            IVaccinationEventService vaccinationEventService,
+            IHealthCaseService healthCaseService)
         {
             _animalService = animalService;
+            _vaccinationEventService = vaccinationEventService;
+            _healthCaseService = healthCaseService;
         }
+
+        [HttpGet("{id:int}/vaccination-history")]
+        public async Task<ActionResult<IEnumerable<VaccinationHistoryItemDto>>> GetVaccinationHistory(int id)
+        {
+            var history = await _vaccinationEventService.GetAnimalHistoryAsync(id);
+            return Ok(history);
+        }
+
+        [HttpGet("{id:int}/health-history")]
+        public async Task<ActionResult<IEnumerable<HealthCaseListItemDto>>> GetHealthHistory(int id)
+        {
+            var history = await _healthCaseService.GetAnimalHistoryAsync(id);
+            return Ok(history);
+        }
+
+        [HttpGet("sanitary-statuses")]
+        public ActionResult<IEnumerable<LookupDto>> GetSanitaryStatuses() => Ok(EnumHelper.ToLookup<SanitaryStatus>());
 
         [HttpGet("genders")]
         public ActionResult<IEnumerable<LookupDto>> GetGenders() => Ok(EnumHelper.ToLookup<AnimalGender>());

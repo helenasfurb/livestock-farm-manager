@@ -1,13 +1,10 @@
-﻿using MuuBoi.Application.DTOs;
+using MuuBoi.Application.DTOs;
 
 namespace MuuBoi.Application.Interfaces
 {
     public interface IDashboardRepository
     {
-        Task<DashboardCardsDto> GetCardsAsync();
-        Task<IEnumerable<GenderDistributionDto>> GetGenderDistributionAsync();
-        Task<IEnumerable<BreedDistributionDto>> GetBreedDistributionAsync();
-        Task<IEnumerable<VaccinePerMonthDto>> GetVaccinesPerMonthAsync(int months = 12);
-        Task<IEnumerable<BirthForecastDto>> GetBirthForecastAsync();
+        Task<IEnumerable<AnimalCompositionFact>> GetActiveAnimalCompositionFactsAsync();
+        Task<IEnumerable<VaccinationEventFact>> GetVaccinationEventFactsAsync(DateTime cutoffUtc);
     }
 }

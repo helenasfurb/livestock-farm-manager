@@ -203,7 +203,6 @@ namespace MuuBoi.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("TagNumber")
-                        .IsRequired()
                         .HasMaxLength(6)
                         .HasColumnType("nvarchar(6)");
 
@@ -216,6 +215,102 @@ namespace MuuBoi.Infrastructure.Migrations
                         .HasDatabaseName("IX_Animals_PropertyId");
 
                     b.ToTable("Animals");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalCalving", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AnimalId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AnimalPregnancyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CalvingDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimalPregnancyId")
+                        .HasDatabaseName("IX_AnimalCalvings_AnimalPregnancyId");
+
+                    b.HasIndex("AnimalId", "CalvingDate")
+                        .HasDatabaseName("IX_AnimalCalvings_AnimalId_CalvingDate");
+
+                    b.ToTable("AnimalCalvings");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalCalvingCalf", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AnimalId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CalvingId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Sex")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("VitalStatus")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("WeightKg")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("decimal(6,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimalId")
+                        .IsUnique()
+                        .HasFilter("[AnimalId] IS NOT NULL");
+
+                    b.HasIndex("CalvingId")
+                        .HasDatabaseName("IX_AnimalCalvingCalves_CalvingId");
+
+                    b.ToTable("AnimalCalvingCalves");
                 });
 
             modelBuilder.Entity("MuuBoi.Domain.Models.AnimalExitRecord", b =>
@@ -270,6 +365,9 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<int>("AnimalId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("ApplicationDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -284,11 +382,18 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("HealthCaseId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<int>("MedicationId")
+                    b.Property<int?>("MedicationId")
                         .HasColumnType("int");
+
+                    b.Property<string>("MedicationName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Observations")
                         .HasMaxLength(500)
@@ -300,9 +405,6 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<string>("Responsible")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -314,6 +416,9 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.HasIndex("AnimalId");
 
+                    b.HasIndex("HealthCaseId")
+                        .HasDatabaseName("IX_AnimalMedications_HealthCaseId");
+
                     b.HasIndex("MedicationId");
 
                     b.HasIndex("PropertyId")
@@ -322,7 +427,7 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.ToTable("AnimalMedications");
                 });
 
-            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalVaccination", b =>
+            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalPregnancy", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -333,52 +438,72 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<int>("AnimalId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("ApplicationDate")
-                        .HasColumnType("datetime2");
+                    b.Property<int?>("BreedingEventId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("BatchNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<Guid?>("ClientRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ConfirmationDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<decimal?>("DosageMl")
-                        .HasColumnType("decimal(8,2)");
+                    b.Property<DateTime>("ExpectedCalvingDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("GestationalAge")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<DateTime?>("NextApplicationDate")
+                    b.Property<DateTime?>("LossDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Observations")
+                    b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Responsible")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<int?>("SemenSampleId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SireAnimalId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("VaccineId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("AnimalId");
+                    b.HasIndex("BreedingEventId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AnimalPregnancies_BreedingEventId")
+                        .HasFilter("[BreedingEventId] IS NOT NULL");
 
-                    b.HasIndex("PropertyId")
-                        .HasDatabaseName("IX_AnimalVaccinations_PropertyId");
+                    b.HasIndex("ClientRequestId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AnimalPregnancies_ClientRequestId")
+                        .HasFilter("[ClientRequestId] IS NOT NULL");
 
-                    b.HasIndex("VaccineId");
+                    b.HasIndex("SemenSampleId");
 
-                    b.ToTable("AnimalVaccinations");
+                    b.HasIndex("SireAnimalId");
+
+                    b.HasIndex("PropertyId", "IsActive")
+                        .HasDatabaseName("IX_AnimalPregnancies_PropertyId_IsActive");
+
+                    b.HasIndex("AnimalId", "Status", "IsActive")
+                        .HasDatabaseName("IX_AnimalPregnancies_AnimalId_Status_IsActive");
+
+                    b.ToTable("AnimalPregnancies");
                 });
 
             modelBuilder.Entity("MuuBoi.Domain.Models.ApplicationUser", b =>
@@ -517,6 +642,9 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<DateTime?>("DiagnosisDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("DiagnosisMethod")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -559,6 +687,168 @@ namespace MuuBoi.Infrastructure.Migrations
                         .HasDatabaseName("IX_BreedingEvents_AnimalId_Status_IsActive");
 
                     b.ToTable("BreedingEvents");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.HealthCase", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AffectedQuarters")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AnimalId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DiagnosisDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DiseaseName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("DiseaseType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimalId");
+
+                    b.HasIndex("PropertyId")
+                        .HasDatabaseName("IX_HealthCases_PropertyId");
+
+                    b.HasIndex("PropertyId", "AnimalId")
+                        .HasDatabaseName("IX_HealthCases_PropertyId_AnimalId");
+
+                    b.HasIndex("PropertyId", "DiagnosisDate")
+                        .HasDatabaseName("IX_HealthCases_PropertyId_DiagnosisDate");
+
+                    b.HasIndex("PropertyId", "DiseaseType")
+                        .HasDatabaseName("IX_HealthCases_PropertyId_DiseaseType");
+
+                    b.ToTable("HealthCases");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.Lactation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AnimalId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CalvingId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DryOffNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Origin")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimalId");
+
+                    b.HasIndex("CalvingId")
+                        .HasDatabaseName("IX_Lactations_CalvingId");
+
+                    b.HasIndex("PropertyId")
+                        .HasDatabaseName("IX_Lactations_PropertyId");
+
+                    b.HasIndex("PropertyId", "AnimalId", "EndDate")
+                        .HasDatabaseName("IX_Lactations_PropertyId_AnimalId_EndDate");
+
+                    b.ToTable("Lactations");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.MastitisTest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("HealthCaseId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("TestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TestType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HealthCaseId")
+                        .HasDatabaseName("IX_MastitisTests_HealthCaseId");
+
+                    b.HasIndex("PropertyId")
+                        .HasDatabaseName("IX_MastitisTests_PropertyId");
+
+                    b.ToTable("MastitisTests");
                 });
 
             modelBuilder.Entity("MuuBoi.Domain.Models.Medication", b =>
@@ -607,6 +897,51 @@ namespace MuuBoi.Infrastructure.Migrations
                         .HasDatabaseName("IX_Medications_PropertyId");
 
                     b.ToTable("Medications");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.MilkProduction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("Milking")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Volume")
+                        .HasPrecision(11, 2)
+                        .HasColumnType("decimal(11,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PropertyId")
+                        .HasDatabaseName("IX_MilkProductions_PropertyId");
+
+                    b.HasIndex("PropertyId", "Date")
+                        .HasDatabaseName("IX_MilkProductions_PropertyId_Date");
+
+                    b.ToTable("MilkProductions");
                 });
 
             modelBuilder.Entity("MuuBoi.Domain.Models.Property", b =>
@@ -736,6 +1071,381 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.ToTable("SemenSampleMovements");
                 });
 
+            modelBuilder.Entity("MuuBoi.Domain.Models.StockCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("StockCategories");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Concentrado"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Volumoso"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Minerais e Suplementos"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Higiene e Limpeza"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Combustível e Lubrificantes"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Manutenção e Ferramentas"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Insumos Agrícolas"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Outro"
+                        });
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.StockItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("ReorderPoint")
+                        .HasPrecision(12, 3)
+                        .HasColumnType("decimal(12,3)");
+
+                    b.Property<int?>("ReplenishmentLeadDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StockCategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UnitOfMeasureId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StockCategoryId");
+
+                    b.HasIndex("UnitOfMeasureId");
+
+                    b.HasIndex("PropertyId", "IsActive")
+                        .HasDatabaseName("IX_StockItems_PropertyId_IsActive");
+
+                    b.HasIndex("PropertyId", "StockCategoryId")
+                        .HasDatabaseName("IX_StockItems_PropertyId_StockCategoryId");
+
+                    b.ToTable("StockItems");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.StockMovement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("MovementDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MovementReason")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MovementType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(12, 3)
+                        .HasColumnType("decimal(12,3)");
+
+                    b.Property<int>("StockItemId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("TotalValue")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<decimal?>("UnitCostSnapshot")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ValueEntryMode")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PropertyId", "IsActive")
+                        .HasDatabaseName("IX_StockMovements_PropertyId_IsActive");
+
+                    b.HasIndex("StockItemId", "MovementDate")
+                        .HasDatabaseName("IX_StockMovements_StockItemId_MovementDate");
+
+                    b.HasIndex("PropertyId", "MovementReason", "MovementDate")
+                        .HasDatabaseName("IX_StockMovements_PropertyId_MovementReason_MovementDate");
+
+                    b.HasIndex("StockItemId", "MovementType", "IsActive")
+                        .HasDatabaseName("IX_StockMovements_StockItemId_MovementType_IsActive");
+
+                    b.ToTable("StockMovements");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.UnitOfMeasure", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Abbreviation")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("UnitsOfMeasure");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Abbreviation = "kg",
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Quilograma"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Abbreviation = "L",
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Litro"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Bola"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Fardo"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Saco"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Abbreviation = "t",
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Tonelada"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Abbreviation = "un",
+                            CreatedAt = new DateTime(2026, 9, 11, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Unidade"
+                        });
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.VaccinationEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ApplicationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DoseType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ParentEventId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("PredictedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("VaccineId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentEventId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_VaccinationEvents_ParentEventId_Active")
+                        .HasFilter("[ParentEventId] IS NOT NULL AND [IsActive] = 1");
+
+                    b.HasIndex("PropertyId")
+                        .HasDatabaseName("IX_VaccinationEvents_PropertyId");
+
+                    b.HasIndex("VaccineId");
+
+                    b.HasIndex("PropertyId", "ApplicationDate")
+                        .HasDatabaseName("IX_VaccinationEvents_PropertyId_ApplicationDate");
+
+                    b.HasIndex("PropertyId", "VaccineId")
+                        .HasDatabaseName("IX_VaccinationEvents_PropertyId_VaccineId");
+
+                    b.ToTable("VaccinationEvents");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.VaccinationEventAnimal", b =>
+                {
+                    b.Property<int>("VaccinationEventId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AnimalId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("VaccinationEventId", "AnimalId");
+
+                    b.HasIndex("AnimalId")
+                        .HasDatabaseName("IX_VaccinationEventAnimals_AnimalId");
+
+                    b.ToTable("VaccinationEventAnimals");
+                });
+
             modelBuilder.Entity("MuuBoi.Domain.Models.Vaccine", b =>
                 {
                     b.Property<int>("Id")
@@ -768,6 +1478,9 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.Property<int?>("RecommendedIntervalDays")
                         .HasColumnType("int");
+
+                    b.Property<bool>("RequiresBooster")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -874,6 +1587,43 @@ namespace MuuBoi.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalCalving", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.Animal", "Animal")
+                        .WithMany("Calvings")
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MuuBoi.Domain.Models.AnimalPregnancy", "AnimalPregnancy")
+                        .WithMany("Calvings")
+                        .HasForeignKey("AnimalPregnancyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Animal");
+
+                    b.Navigation("AnimalPregnancy");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalCalvingCalf", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.Animal", "Animal")
+                        .WithOne()
+                        .HasForeignKey("MuuBoi.Domain.Models.AnimalCalvingCalf", "AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MuuBoi.Domain.Models.AnimalCalving", "Calving")
+                        .WithMany("Calves")
+                        .HasForeignKey("CalvingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Animal");
+
+                    b.Navigation("Calving");
+                });
+
             modelBuilder.Entity("MuuBoi.Domain.Models.AnimalExitRecord", b =>
                 {
                     b.HasOne("MuuBoi.Domain.Models.Animal", "Animal")
@@ -893,34 +1643,52 @@ namespace MuuBoi.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MuuBoi.Domain.Models.HealthCase", "HealthCase")
+                        .WithMany("Medications")
+                        .HasForeignKey("HealthCaseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("MuuBoi.Domain.Models.Medication", "Medication")
                         .WithMany("AnimalMedications")
-                        .HasForeignKey("MedicationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("MedicationId");
 
                     b.Navigation("Animal");
+
+                    b.Navigation("HealthCase");
 
                     b.Navigation("Medication");
                 });
 
-            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalVaccination", b =>
+            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalPregnancy", b =>
                 {
                     b.HasOne("MuuBoi.Domain.Models.Animal", "Animal")
-                        .WithMany("AnimalVaccinations")
+                        .WithMany("Pregnancies")
                         .HasForeignKey("AnimalId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MuuBoi.Domain.Models.Vaccine", "Vaccine")
-                        .WithMany("AnimalVaccinations")
-                        .HasForeignKey("VaccineId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.HasOne("MuuBoi.Domain.Models.BreedingEvent", "BreedingEvent")
+                        .WithOne("Pregnancy")
+                        .HasForeignKey("MuuBoi.Domain.Models.AnimalPregnancy", "BreedingEventId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MuuBoi.Domain.Models.SemenSample", "SemenSample")
+                        .WithMany()
+                        .HasForeignKey("SemenSampleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MuuBoi.Domain.Models.Animal", "SireAnimal")
+                        .WithMany()
+                        .HasForeignKey("SireAnimalId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Animal");
 
-                    b.Navigation("Vaccine");
+                    b.Navigation("BreedingEvent");
+
+                    b.Navigation("SemenSample");
+
+                    b.Navigation("SireAnimal");
                 });
 
             modelBuilder.Entity("MuuBoi.Domain.Models.ApplicationUser", b =>
@@ -969,6 +1737,46 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Navigation("SireAnimal");
                 });
 
+            modelBuilder.Entity("MuuBoi.Domain.Models.HealthCase", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.Animal", "Animal")
+                        .WithMany()
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Animal");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.Lactation", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.Animal", "Animal")
+                        .WithMany()
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MuuBoi.Domain.Models.AnimalCalving", "Calving")
+                        .WithMany()
+                        .HasForeignKey("CalvingId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Animal");
+
+                    b.Navigation("Calving");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.MastitisTest", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.HealthCase", "HealthCase")
+                        .WithMany("Tests")
+                        .HasForeignKey("HealthCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("HealthCase");
+                });
+
             modelBuilder.Entity("MuuBoi.Domain.Models.SemenSampleMovement", b =>
                 {
                     b.HasOne("MuuBoi.Domain.Models.BreedingEvent", "BreedingEvent")
@@ -987,6 +1795,73 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Navigation("SemenSample");
                 });
 
+            modelBuilder.Entity("MuuBoi.Domain.Models.StockItem", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.StockCategory", "StockCategory")
+                        .WithMany("Items")
+                        .HasForeignKey("StockCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MuuBoi.Domain.Models.UnitOfMeasure", "UnitOfMeasure")
+                        .WithMany("Items")
+                        .HasForeignKey("UnitOfMeasureId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("StockCategory");
+
+                    b.Navigation("UnitOfMeasure");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.StockMovement", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.StockItem", "StockItem")
+                        .WithMany("Movements")
+                        .HasForeignKey("StockItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("StockItem");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.VaccinationEvent", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.VaccinationEvent", "ParentEvent")
+                        .WithMany()
+                        .HasForeignKey("ParentEventId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MuuBoi.Domain.Models.Vaccine", "Vaccine")
+                        .WithMany()
+                        .HasForeignKey("VaccineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ParentEvent");
+
+                    b.Navigation("Vaccine");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.VaccinationEventAnimal", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.Animal", "Animal")
+                        .WithMany()
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MuuBoi.Domain.Models.VaccinationEvent", "VaccinationEvent")
+                        .WithMany("EventAnimals")
+                        .HasForeignKey("VaccinationEventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Animal");
+
+                    b.Navigation("VaccinationEvent");
+                });
+
             modelBuilder.Entity("MuuBoi.Domain.Models.WeightRecord", b =>
                 {
                     b.HasOne("MuuBoi.Domain.Models.Animal", "Animal")
@@ -1002,15 +1877,39 @@ namespace MuuBoi.Infrastructure.Migrations
                 {
                     b.Navigation("AnimalMedications");
 
-                    b.Navigation("AnimalVaccinations");
-
                     b.Navigation("BodyConditionRecords");
 
                     b.Navigation("BreedingEvents");
 
+                    b.Navigation("Calvings");
+
                     b.Navigation("ExitRecords");
 
+                    b.Navigation("Pregnancies");
+
                     b.Navigation("WeightRecords");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalCalving", b =>
+                {
+                    b.Navigation("Calves");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.AnimalPregnancy", b =>
+                {
+                    b.Navigation("Calvings");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.BreedingEvent", b =>
+                {
+                    b.Navigation("Pregnancy");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.HealthCase", b =>
+                {
+                    b.Navigation("Medications");
+
+                    b.Navigation("Tests");
                 });
 
             modelBuilder.Entity("MuuBoi.Domain.Models.Medication", b =>
@@ -1028,9 +1927,24 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Navigation("Movements");
                 });
 
-            modelBuilder.Entity("MuuBoi.Domain.Models.Vaccine", b =>
+            modelBuilder.Entity("MuuBoi.Domain.Models.StockCategory", b =>
                 {
-                    b.Navigation("AnimalVaccinations");
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.StockItem", b =>
+                {
+                    b.Navigation("Movements");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.UnitOfMeasure", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.VaccinationEvent", b =>
+                {
+                    b.Navigation("EventAnimals");
                 });
 #pragma warning restore 612, 618
         }

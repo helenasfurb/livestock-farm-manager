@@ -42,7 +42,13 @@ namespace MuuBoi.Application.Mappings
                     opt => opt.MapFrom(src => src.WeightRecords))
                 .ForMember(dest => dest.LastBodyConditionRecord,
                     opt => opt.MapFrom(src => src.BodyConditionRecords != null ? src.BodyConditionRecords.FirstOrDefault() : null))
-                .ForMember(dest => dest.ReproductiveStatus, opt => opt.Ignore());
+                .ForMember(dest => dest.ReproductiveStatus, opt => opt.Ignore())
+                .ForMember(dest => dest.ProductiveStatus, opt => opt.Ignore())
+                .ForMember(dest => dest.DaysInMilk, opt => opt.Ignore())
+                .ForMember(dest => dest.LastCalvingDate, opt => opt.Ignore())
+                .ForMember(dest => dest.CalvingIntervalDays, opt => opt.Ignore())
+                .ForMember(dest => dest.NextCalving, opt => opt.Ignore())
+                .ForMember(dest => dest.Parentage, opt => opt.Ignore());
 
             CreateMap<Animal, AnimalListItemDto>()
                 .ForMember(dest => dest.Classification,
@@ -56,7 +62,10 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.LastExitRecord,
                     opt => opt.MapFrom(src => src.ExitRecords != null ? src.ExitRecords.FirstOrDefault() : null))
                 .ForMember(dest => dest.LastWeightRecord,
-                    opt => opt.MapFrom(src => src.WeightRecords != null ? src.WeightRecords.FirstOrDefault() : null));
+                    opt => opt.MapFrom(src => src.WeightRecords != null ? src.WeightRecords.FirstOrDefault() : null))
+                .ForMember(dest => dest.ReproductiveStatus, opt => opt.Ignore())
+                .ForMember(dest => dest.ProductiveStatus, opt => opt.Ignore())
+                .ForMember(dest => dest.DaysInMilk, opt => opt.Ignore());
 
             CreateMap<AnimalCreateDto, Animal>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -65,13 +74,14 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
                 .ForMember(dest => dest.WeightRecords, opt => opt.Ignore())
-                .ForMember(dest => dest.AnimalVaccinations, opt => opt.Ignore())
                 .ForMember(dest => dest.AnimalMedications, opt => opt.Ignore())
                 .ForMember(dest => dest.BodyConditionRecords, opt => opt.Ignore())
                 .ForMember(dest => dest.ExitRecords, opt => opt.Ignore());
 
             CreateMap<AnimalUpdateDto, Animal>()
                 .ForAllMembers(opt => opt.Condition((_, _, srcMember) => srcMember != null));
+
+            CreateMap<Animal, AnimalAutocompleteItemDto>();
 
             CreateMap<WeightRecord, WeightRecordDto>();
         }

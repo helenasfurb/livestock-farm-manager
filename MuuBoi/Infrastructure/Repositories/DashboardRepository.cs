@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using MuuBoi.Application.DTOs;
-using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Infrastructure.Data;
 
@@ -15,83 +14,36 @@ namespace MuuBoi.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<DashboardCardsDto> GetCardsAsync()
+        public async Task<IEnumerable<AnimalCompositionFact>> GetActiveAnimalCompositionFactsAsync()
         {
-            var today = DateTime.UtcNow.Date;
-            var baseQuery = _context.Animals.Where(a => a.IsActive);
-
-            var total = await baseQuery.CountAsync();
-            var treatments = await _context.AnimalMedications
-                .Where(am => am.Animal!.IsActive)
-                .Where(am => am.EndDate == null || am.EndDate.Value.Date >= today)
-                .CountAsync();
-
-            return new DashboardCardsDto
-            {
-                TotalAnimals = total,
-                ActiveTreatments = treatments
-            };
-        }
-
-        public async Task<IEnumerable<GenderDistributionDto>> GetGenderDistributionAsync()
-        {
-            var raw = await _context.Animals
-                .Where(a => a.IsActive && a.Gender != null)
-                .GroupBy(a => a.Gender!)
-                .Select(g => new { Gender = g.Key, Count = g.Count() })
-                .OrderBy(x => x.Gender)
+            return await _context.Animals
+                .Where(a => a.IsActive)
+                .Select(a => new AnimalCompositionFact
+                {
+                    Classification = a.Classification,
+                    Gender = a.Gender,
+                    Breed = a.Breed
+                })
                 .ToListAsync();
-
-            return raw.Select(x => new GenderDistributionDto
-            {
-                Gender = x.Gender!.Value.ToString(),
-                Label = x.Gender!.Value.GetDescription(),
-                Count = x.Count
-            });
         }
 
-        public async Task<IEnumerable<BreedDistributionDto>> GetBreedDistributionAsync()
+        public async Task<IEnumerable<VaccinationEventFact>> GetVaccinationEventFactsAsync(DateTime cutoffUtc)
         {
-            var raw = await _context.Animals
-                .Where(a => a.IsActive && a.Breed != null)
-                .GroupBy(a => a.Breed!)
-                .Select(g => new { Breed = g.Key, Count = g.Count() })
-                .OrderByDescending(x => x.Count)
+            // Raw facts, not aggregated: applied events within the window (per-month series) plus every
+            // not-yet-applied event (overdue is derived on read). AnimalCount counts active animals only,
+            // preserving the previous "one dose per animal" metric.
+            return await _context.VaccinationEvents
+                .Where(e => e.IsActive)
+                .Where(e => e.ApplicationDate >= cutoffUtc || e.ApplicationDate == null)
+                .Select(e => new VaccinationEventFact
+                {
+                    VaccinationEventId = e.Id,
+                    VaccineName = e.Vaccine!.Name,
+                    ApplicationDate = e.ApplicationDate,
+                    PredictedDate = e.PredictedDate,
+                    AnimalCount = e.EventAnimals!.Count(ea => ea.Animal!.IsActive)
+                })
                 .ToListAsync();
-
-            return raw.Select(x => new BreedDistributionDto
-            {
-                Breed = x.Breed!.Value,
-                BreedName = x.Breed!.Value.GetDescription(),
-                Count = x.Count
-            });
-        }
-
-        public async Task<IEnumerable<VaccinePerMonthDto>> GetVaccinesPerMonthAsync(int months = 12)
-        {
-            var cutoff = DateTime.UtcNow.AddMonths(-months);
-
-            var raw = await _context.AnimalVaccinations
-                .Where(av => av.Animal!.IsActive)
-                .Where(av => av.ApplicationDate >= cutoff)
-                .GroupBy(av => new { av.ApplicationDate.Year, av.ApplicationDate.Month })
-                .Select(g => new { g.Key.Year, g.Key.Month, Count = g.Count() })
-                .OrderBy(x => x.Year).ThenBy(x => x.Month)
-                .ToListAsync();
-
-            return raw.Select(x => new VaccinePerMonthDto
-            {
-                Year = x.Year,
-                Month = x.Month,
-                MonthLabel = $"{new DateTime(x.Year, x.Month, 1):MMM/yyyy}",
-                Count = x.Count
-            });
-        }
-
-        public Task<IEnumerable<BirthForecastDto>> GetBirthForecastAsync()
-        {
-            // Será implementado com os eventos reprodutivos (Spec #5)
-            return Task.FromResult(Enumerable.Empty<BirthForecastDto>());
         }
     }
 }

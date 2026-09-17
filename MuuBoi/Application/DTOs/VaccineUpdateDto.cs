@@ -14,5 +14,8 @@ namespace MuuBoi.Application.DTOs
         public string? Manufacturer { get; set; }
 
         public int? RecommendedIntervalDays { get; set; }
+
+        // Informational only: whether this vaccine requires a booster dose.
+        public bool? RequiresBooster { get; set; }
     }
 }

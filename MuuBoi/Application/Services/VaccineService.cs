@@ -16,9 +16,9 @@ namespace MuuBoi.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<VaccineDto>> GetAllVaccinesAsync()
+        public async Task<IEnumerable<VaccineDto>> GetAllVaccinesAsync(VaccineFilterDto filter)
         {
-            var vaccines = await _vaccineRepository.GetAllVaccinesAsync();
+            var vaccines = await _vaccineRepository.GetAllVaccinesAsync(filter);
             return _mapper.Map<IEnumerable<VaccineDto>>(vaccines);
         }
 

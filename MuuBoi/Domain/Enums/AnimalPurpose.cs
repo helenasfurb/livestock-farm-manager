@@ -7,13 +7,13 @@ namespace MuuBoi.Domain.Enums
         [Description("Matriz")]
         Breeder = 1,
 
-        [Description("Novilha de Reposição")]
+        [Description("Novilha de reposição")]
         ReplacementHeifer = 2,
 
-        [Description("Vaca de Descarte")]
+        [Description("Vaca de descarte")]
         CullCow = 3,
 
-        [Description("Novilha para Venda")]
+        [Description("Novilha para venda")]
         HeiferForSale = 4
     }
 }

@@ -8,9 +8,8 @@ namespace MuuBoi.Domain.Models
         [MaxLength(100)]
         public string? Name { get; set; }
 
-        [Required]
         [MaxLength(6)]
-        public string TagNumber { get; set; } = string.Empty;
+        public string? TagNumber { get; set; }
 
         [MaxLength(100)]
         public string? PropertyTagNumber { get; set; }
@@ -33,10 +32,11 @@ namespace MuuBoi.Domain.Models
         public Guid PropertyId { get; set; }
 
         public ICollection<WeightRecord>? WeightRecords { get; set; }
-        public ICollection<AnimalVaccination>? AnimalVaccinations { get; set; }
         public ICollection<AnimalMedication>? AnimalMedications { get; set; }
         public ICollection<BodyConditionRecord>? BodyConditionRecords { get; set; }
         public ICollection<AnimalExitRecord>? ExitRecords { get; set; }
         public ICollection<BreedingEvent>? BreedingEvents { get; set; }
+        public ICollection<AnimalPregnancy>? Pregnancies { get; set; }
+        public ICollection<AnimalCalving>? Calvings { get; set; }
     }
 }

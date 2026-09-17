@@ -19,7 +19,7 @@ namespace MuuBoi.Infrastructure.Repositories
             return await _context.AnimalMedications
                 .Include(am => am.Medication)
                 .Where(am => am.AnimalId == animalId)
-                .OrderByDescending(am => am.StartDate)
+                .OrderByDescending(am => am.ApplicationDate)
                 .ToListAsync();
         }
 

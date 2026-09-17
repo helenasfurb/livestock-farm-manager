@@ -14,6 +14,7 @@ namespace MuuBoi.Application.DTOs
         public string? SireAnimalName { get; set; }
         public EnumValueDto? Status { get; set; }
         public DateTime? DiagnosisDate { get; set; }
+        public EnumValueDto? DiagnosisMethod { get; set; }
         public int ServiceNumber { get; set; }
         public string? Notes { get; set; }
         public bool IsActive { get; set; }

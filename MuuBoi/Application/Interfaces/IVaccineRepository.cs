@@ -1,10 +1,11 @@
-﻿using MuuBoi.Domain.Models;
+﻿using MuuBoi.Application.DTOs;
+using MuuBoi.Domain.Models;
 
 namespace MuuBoi.Application.Interfaces
 {
     public interface IVaccineRepository
     {
-        Task<IEnumerable<Vaccine>> GetAllVaccinesAsync();
+        Task<IEnumerable<Vaccine>> GetAllVaccinesAsync(VaccineFilterDto filter);
         Task<Vaccine?> GetVaccineByIdAsync(int id);
         Task<Vaccine> CreateVaccineAsync(Vaccine vaccine);
         Task<Vaccine?> UpdateVaccineAsync(Vaccine vaccine);
