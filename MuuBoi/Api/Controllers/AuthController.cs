@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MuuBoi.Infrastructure.Data;
 using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Helpers;
+using MuuBoi.Domain.Enums;
 using MuuBoi.Domain.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -52,7 +54,8 @@ namespace MuuBoi.Api.Controllers
                 Email = model.Email,
                 Name = model.Name,
                 PropertyId = property.Id,
-                IsActive = true
+                IsActive = true,
+                Role = UserRole.Admin
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
@@ -73,7 +76,7 @@ namespace MuuBoi.Api.Controllers
             {
                 AccessToken = token.Token,
                 ExpiresAt = token.ExpiresAt,
-                User = new UserSummaryDto { Id = user.Id, Name = user.Name },
+                User = new UserSummaryDto { Id = user.Id, Name = user.Name, Role = user.Role.ToEnumValue() },
                 Property = new PropertySummaryDto { Id = property.Id, Name = property.Name }
             });
         }
@@ -101,7 +104,7 @@ namespace MuuBoi.Api.Controllers
             {
                 AccessToken = token.Token,
                 ExpiresAt = token.ExpiresAt,
-                User = new UserSummaryDto { Id = user.Id, Name = user.Name },
+                User = new UserSummaryDto { Id = user.Id, Name = user.Name, Role = user.Role.ToEnumValue() },
                 Property = new PropertySummaryDto { Id = property.Id, Name = property.Name }
             });
         }
@@ -124,6 +127,7 @@ namespace MuuBoi.Api.Controllers
                 Id = user.Id,
                 Name = user.Name,
                 Email = user.Email!,
+                Role = user.Role.ToEnumValue(),
                 Property = new PropertySummaryDto
                 {
                     Id = user.Property!.Id,
@@ -139,6 +143,7 @@ namespace MuuBoi.Api.Controllers
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.Email, user.Email!),
                 new Claim("property_id", property.Id.ToString()),
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
