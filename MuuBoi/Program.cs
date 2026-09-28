@@ -9,6 +9,7 @@ using MuuBoi.Infrastructure.Data;
 using MuuBoi.Infrastructure.Repositories;
 using MuuBoi.Infrastructure.Services;
 using MuuBoi.Domain.Models;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,6 +40,25 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
         ClockSkew = TimeSpan.Zero
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+            var securityStamp = context.Principal?.FindFirstValue("security_stamp");
+
+            if (userId == null || securityStamp == null)
+            {
+                context.Fail("Sessão inválida.");
+                return;
+            }
+
+            var sessionValidator = context.HttpContext.RequestServices.GetRequiredService<ISessionValidator>();
+            if (!await sessionValidator.IsValidAsync(userId, securityStamp))
+                context.Fail("Sessão inválida.");
+        }
     };
 });
 
@@ -99,6 +119,12 @@ builder.Services.AddScoped<IStockItemService, StockItemService>();
 
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+
+builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ISessionValidator, SessionValidator>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantProvider, TenantProvider>();

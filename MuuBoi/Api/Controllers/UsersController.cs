@@ -21,17 +21,20 @@ namespace MuuBoi.Api.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ITenantProvider _tenantProvider;
         private readonly IMapper _mapper;
+        private readonly ISessionValidator _sessionValidator;
 
         public UsersController(
             UserManager<ApplicationUser> userManager,
             ApplicationDbContext context,
             ITenantProvider tenantProvider,
-            IMapper mapper)
+            IMapper mapper,
+            ISessionValidator sessionValidator)
         {
             _userManager = userManager;
             _context = context;
             _tenantProvider = tenantProvider;
             _mapper = mapper;
+            _sessionValidator = sessionValidator;
         }
 
         [HttpGet]
@@ -88,13 +91,23 @@ namespace MuuBoi.Api.Controllers
             if (dto.Role.HasValue && dto.Role.Value != UserRole.Admin && user.Role == UserRole.Admin && user.IsActive)
                 await EnsureNotLastActiveAdminAsync(user, "Não é possível rebaixar o último administrador ativo da propriedade.");
 
+            var roleChanged = dto.Role.HasValue && dto.Role.Value != user.Role;
+
             if (dto.Name != null)
                 user.Name = dto.Name;
 
             if (dto.Role.HasValue)
                 user.Role = dto.Role.Value;
 
-            await _context.SaveChangesAsync();
+            if (roleChanged)
+            {
+                await _userManager.UpdateSecurityStampAsync(user);
+                _sessionValidator.Invalidate(user.Id);
+            }
+            else
+            {
+                await _context.SaveChangesAsync();
+            }
 
             return Ok(_mapper.Map<UserResponseDto>(user));
         }
@@ -112,6 +125,7 @@ namespace MuuBoi.Api.Controllers
 
             user.IsActive = false;
             await _context.SaveChangesAsync();
+            _sessionValidator.Invalidate(user.Id);
 
             return Ok(_mapper.Map<UserResponseDto>(user));
         }
@@ -126,6 +140,7 @@ namespace MuuBoi.Api.Controllers
 
             user.IsActive = true;
             await _context.SaveChangesAsync();
+            _sessionValidator.Invalidate(user.Id);
 
             return Ok(_mapper.Map<UserResponseDto>(user));
         }
