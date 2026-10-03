@@ -4,10 +4,10 @@ namespace MuuBoi.Application.Interfaces
 {
     public interface IWeightRecordService
     {
-        Task<IEnumerable<WeightRecordDto>> GetAllWeightRecordsAsync(string animalId);
-        Task<WeightRecordDto?> GetWeightRecordByIdAsync(int id, string animalId);
-        Task<WeightRecordDto> CreateWeightRecordAsync(WeightRecordCreateDto weightRecordCreateDto, string animalId);
-        Task<WeightRecordDto?> DeleteWeightRecordAsync(int id, string animalId);
-        Task<WeightRecordDto?> UpdateWeightRecordAsync(int id, string animalId, WeightRecordUpdateDto weightRecordUpdateDto);
+        Task<IEnumerable<WeightRecordDto>> GetAllWeightRecordsAsync(int animalId);
+        Task<WeightRecordDto> GetWeightRecordByIdAsync(int id, int animalId);
+        Task<WeightRecordDto> CreateWeightRecordAsync(WeightRecordCreateDto weightRecordCreateDto, int animalId);
+        Task<bool> DeleteWeightRecordAsync(int id, int animalId);
+        Task<WeightRecordDto> UpdateWeightRecordAsync(int id, int animalId, WeightRecordUpdateDto weightRecordUpdateDto);
     }
 }

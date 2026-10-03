@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Interfaces;
+using MuuBoi.Domain.Exceptions;
 using MuuBoi.Domain.Models;
 
 namespace MuuBoi.Application.Services
@@ -22,10 +23,10 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<IEnumerable<MedicationDto>>(medications);
         }
 
-        public async Task<MedicationDto?> GetMedicationByIdAsync(int id)
+        public async Task<MedicationDto> GetMedicationByIdAsync(int id)
         {
-            var medication = await _medicationRepository.GetMedicationByIdAsync(id);
-            return medication == null ? null : _mapper.Map<MedicationDto>(medication);
+            var medication = await FindMedicationAsync(id);
+            return _mapper.Map<MedicationDto>(medication);
         }
 
         public async Task<MedicationDto> CreateMedicationAsync(MedicationCreateDto dto)
@@ -35,10 +36,9 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<MedicationDto>(created);
         }
 
-        public async Task<MedicationDto?> UpdateMedicationAsync(int id, MedicationUpdateDto dto)
+        public async Task<MedicationDto> UpdateMedicationAsync(int id, MedicationUpdateDto dto)
         {
-            var existing = await _medicationRepository.GetMedicationByIdAsync(id);
-            if (existing == null) return null;
+            var existing = await FindMedicationAsync(id);
 
             _mapper.Map(dto, existing);
             existing.UpdatedAt = DateTime.UtcNow;
@@ -46,13 +46,18 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<MedicationDto>(updated);
         }
 
-        public async Task<MedicationDto?> DeleteMedicationAsync(int id)
+        public async Task<bool> DeleteMedicationAsync(int id)
         {
-            var existing = await _medicationRepository.GetMedicationByIdAsync(id);
-            if (existing == null) return null;
+            await FindMedicationAsync(id);
 
-            var deleted = await _medicationRepository.DeleteMedicationAsync(id);
-            return deleted == null ? null : _mapper.Map<MedicationDto>(deleted);
+            await _medicationRepository.DeleteMedicationAsync(id);
+            return true;
+        }
+
+        private async Task<Medication> FindMedicationAsync(int id)
+        {
+            return await _medicationRepository.GetMedicationByIdAsync(id)
+                ?? throw new NotFoundException($"Medicamento com id '{id}' não encontrado.");
         }
     }
 }

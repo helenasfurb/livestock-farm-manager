@@ -5,7 +5,7 @@ namespace MuuBoi.Application.DTOs
     public class StockItemCreateDto
     {
         [Required(ErrorMessage = "O nome é obrigatório.")]
-        [MaxLength(150)]
+        [MaxLength(150, ErrorMessage = "O nome deve ter no máximo 150 caracteres.")]
         public string Name { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "A categoria é obrigatória.")]
@@ -20,7 +20,7 @@ namespace MuuBoi.Application.DTOs
         [Range(1, 3650, ErrorMessage = "O tempo de reposição deve ser entre 1 e 3.650 dias.")]
         public int? ReplenishmentLeadDays { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
 
         [Range(0.001, 9999999.999, ErrorMessage = "A quantidade inicial deve ser maior que zero.")]
@@ -29,7 +29,7 @@ namespace MuuBoi.Application.DTOs
         [Range(0, 99999999.99, ErrorMessage = "O valor inicial não pode ser negativo.")]
         public decimal? InitialTotalValue { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações iniciais devem ter no máximo 500 caracteres.")]
         public string? InitialNotes { get; set; }
     }
 }

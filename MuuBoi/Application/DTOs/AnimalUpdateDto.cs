@@ -9,10 +9,10 @@ namespace MuuBoi.Application.DTOs
         [RegularExpression(@"^\d{6}$", ErrorMessage = "O brinco principal deve ter exatamente 6 dígitos numéricos.")]
         public string? TagNumber { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(100, ErrorMessage = "O brinco da fazenda deve ter no máximo 100 caracteres.")]
         public string? PropertyTagNumber { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(100, ErrorMessage = "O nome deve ter no máximo 100 caracteres.")]
         public string? Name { get; set; }
 
         [ValidEnum(typeof(AnimalGender))]
@@ -32,7 +32,7 @@ namespace MuuBoi.Application.DTOs
         [ValidEnum(typeof(AnimalOrigin))]
         public AnimalOrigin? Origin { get; set; }
 
-        [MaxLength(1000)]
+        [MaxLength(1000, ErrorMessage = "As observações devem ter no máximo 1000 caracteres.")]
         public string? Notes { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

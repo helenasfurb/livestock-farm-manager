@@ -239,28 +239,29 @@ HTTP/1.1 409 Conflict
 { "error": "Já existe um animal com o brinco '123456' nesta propriedade." }
 ```
 
-### 4.4 Pesagens — `/api/animals/{animalId}/weight-records`
+### 4.4 Pesagens — `/api/animals/{animalId:int}/weight-records`
 
 | Rota | Status | Formato | Mensagem |
 |---|---|---|---|
 | Todas | 404 | A | Animal com id '{animalId}' não encontrado. |
-| `GET /{weightRecordId}`, `PATCH /{weightRecordId}`, `DELETE /{weightRecordId}` | 404 | C | — (registro não encontrado) |
-| Todas, com `animalId` não numérico (ex.: `/api/animals/abc/weight-records`) | **500** | A | Internal server error *(ver §7, item 3)* |
+| `GET /{weightRecordId}`, `PATCH /{weightRecordId}`, `DELETE /{weightRecordId}` | 404 | A | Pesagem com id '{weightRecordId}' não encontrada. |
+| Todas, com `animalId` ou `weightRecordId` não numérico | 404 | E | — (a rota não corresponde) |
 
-### 4.5 Medicamentos do animal — `/api/animals/{animalId}/medications`
+### 4.5 Medicamentos do animal — `/api/animals/{animalId:int}/medications`
 
 | Rota | Status | Formato | Mensagem |
 |---|---|---|---|
-| Todas | 404 | A | Animal not found *(em inglês — ver §7)* |
-| `POST /` | 404 | A | Medication not found |
-| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` | 404 | C | — |
-| Todas, com `animalId` não numérico | **500** | A | Internal server error *(ver §7, item 3)* |
+| Todas | 404 | A | Animal com id '{animalId}' não encontrado. |
+| `POST /`, `PATCH /{id}` | 404 | A | Medicamento com id '{medicationId}' não encontrado. |
+| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` | 404 | A | Registro de medicação com id '{id}' não encontrado. |
+| Todas, com `animalId` não numérico | 404 | E | — (a rota não corresponde) |
 
 ### 4.6 Catálogos: medicamentos e vacinas — `/api/medications`, `/api/vaccines`
 
 | Rota | Status | Formato | Mensagem |
 |---|---|---|---|
-| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` | 404 | C | — |
+| `GET /api/medications/{id}`, `PATCH`, `DELETE` | 404 | A | Medicamento com id '{id}' não encontrado. |
+| `GET /api/vaccines/{id}`, `PATCH`, `DELETE` | 404 | A | Vacina com id '{id}' não encontrada. |
 
 ### 4.7 ECC (condição corporal) — `/api/animals/{animalId}/body-condition-records`
 
@@ -287,8 +288,8 @@ HTTP/1.1 409 Conflict
 | `POST`, `PATCH /{id}` | 404 | Touro com id '{id}' não encontrado. |
 | `POST`, `PATCH /{id}` | 409 | O touro selecionado está inativo. |
 | `POST`, `PATCH /{id}` | 422 | O animal informado como touro pai não possui classificação 'Touro'. |
-| `PATCH /{id}` | 404 | Cobertura com id '{id}' não encontrado. |
-| `PATCH /{id}` | 409 | Apenas coberturas com diagnóstico pendente podem ser editados. |
+| `PATCH /{id}` | 404 | Cobertura com id '{id}' não encontrada. |
+| `PATCH /{id}` | 409 | Apenas coberturas com diagnóstico pendente podem ser editadas. |
 | `PATCH /{id}/status` | 404 | Cobertura com id '{id}' não encontrada. |
 | `PATCH /{id}/status` | 409 | O diagnóstico desta cobertura já foi registrado. |
 | `PATCH /{id}/status` | 422 | A data do diagnóstico não pode ser anterior à data da cobertura. |
@@ -482,24 +483,26 @@ Disparados automaticamente antes do controller. A chave de `errors` é o nome do
 | `MastitisTestCreateDto` | O resultado é obrigatório. · A data do teste é obrigatória. · Informe o tipo de teste. · A data do teste não pode ser futura. |
 | `UpdateProfileDto` | O nome não pode ficar em branco. · Telefone inválido. |
 
-### 5.2 Mensagens em inglês
+### 5.2 Mensagens que eram em inglês *(corrigidas em 02/Out/2026)*
 
-| DTO | Mensagem |
+| DTO | Antes | Agora |
+|---|---|---|
+| `MedicationCreateDto` | Name is required | O nome é obrigatório. |
+| `VaccineCreateDto` | Name is required | O nome é obrigatório. |
+| `AnimalMedicationCreateDto` | MedicationId is required | O medicamento é obrigatório. |
+
+### 5.3 Limites de tamanho, obrigatoriedade e formato *(corrigidos em 02/Out/2026)*
+
+Os 98 atributos `[MaxLength]`, `[MinLength]`, `[Required]` e `[EmailAddress]` que usavam a mensagem padrão do .NET (em inglês) agora têm mensagem em português, com o nome do campo em português. Padrões:
+
+| Atributo | Mensagem (exemplos) |
 |---|---|
-| `MedicationCreateDto` | Name is required |
-| `VaccineCreateDto` | Name is required |
-| `AnimalMedicationCreateDto` | MedicationId is required |
+| `[MaxLength(n)]` | O nome deve ter no máximo 100 caracteres. · As observações devem ter no máximo 500 caracteres. · O brinco da fazenda deve ter no máximo 100 caracteres. |
+| `[MinLength(6)]` | A senha deve ter no mínimo 6 caracteres. · A nova senha deve ter no mínimo 6 caracteres. |
+| `[Required]` | O nome é obrigatório. · A senha atual é obrigatória. · O e-mail é obrigatório. |
+| `[EmailAddress]` | O e-mail informado é inválido. |
 
-### 5.3 Mensagens padrão do .NET (atributos sem `ErrorMessage`)
-
-Todos os `[MaxLength(n)]` sem mensagem própria (campos `Notes`, `Name`, `Description`, `Manufacturer`, `PropertyTagNumber`, `Diagnosis`, `Responsible` etc.) e os atributos de `RegisterDto`, `CreateUserDto`, `ChangePasswordDto`, `DeleteAccountDto` e `UpdateUserDto` usam a mensagem padrão do framework, **em inglês**:
-
-| Atributo | Mensagem padrão (exemplo) |
-|---|---|
-| `[Required]` | The Email field is required. |
-| `[EmailAddress]` | The Email field is not a valid e-mail address. |
-| `[MinLength(6)]` | The field Password must be a string or array type with a minimum length of '6'. |
-| `[MaxLength(500)]` | The field Notes must be a string or array type with a maximum length of '500'. |
+> **Ainda em inglês:** o `title` do ProblemDetails ("One or more validation errors occurred.") e os erros de leitura do JSON ("A non-empty request body is required.", "The dto field is required.", "The JSON value could not be converted..."). Vêm do ASP.NET Core e só podem ser alterados no `Program.cs` (pendente de aprovação).
 
 ---
 
@@ -521,18 +524,17 @@ A senha atual errada em `PATCH /me/password` **não** vem nesse formato: é conv
 
 ## 7. Inconsistências observadas
 
-Registradas para correção futura. **Nenhuma foi alterada.**
-
-| # | Inconsistência | Onde | Impacto |
+| # | Inconsistência | Onde | Situação |
 |---|---|---|---|
-| 1 | **Cinco formatos de corpo** de erro (§2) | Toda a API | O cliente precisa ler `error`, `message`, `errors` (objeto ou lista) e corpo vazio |
-| 2 | **Mensagens em inglês** misturadas com português | `AnimalMedicationService` ("Animal not found", "Medication not found"); `MedicationCreateDto`/`VaccineCreateDto` ("Name is required"); `AnimalMedicationCreateDto`; atributos sem `ErrorMessage` (§5.3); Identity (§6) | Usuário vê textos em inglês |
-| 3 | **`int.Parse` em id da rota** → `FormatException` → **`500`** | `WeightRecordService.FindAnimalAsync`, `AnimalMedicationService` (rotas com `{animalId}` sem `:int`) | Id inválido deveria ser `404`/`400`; o app trataria como erro temporário e tentaria de novo |
-| 4 | **`404` sem mensagem** (`return NotFound()` com formato C) | `MedicationsController`, `VaccinesController`, `WeightRecordsController`, `AnimalMedicationsController` | Diferente dos demais `404` (formato A com mensagem) |
-| 5 | **"Email já cadastrado." em dois formatos** | `AuthController.Register` (D, `message`) × `UsersController.Create` (A, `error`) | Mesmo erro, corpos diferentes |
-| 6 | **`409` para "já está no estado pedido"** ("já está inativo", "já está seca", "já está ativo"...) | Vários services | Conflita com reenvio no offline; tratado por entidade no plano offline (A6). **Já corrigido em `MilkProduction`** (02/Out/2026) |
-| 7 | **`500` com mensagem de negócio** ("Propriedade não encontrada.") | `AuthController.Login` | Situação de dado inconsistente reportada como erro de servidor |
-| 8 | **Concordância** em "Cobertura com id '{id}' não encontrado." e "Apenas coberturas com diagnóstico pendente podem ser editados." | `BreedingEventService.UpdateAsync` | Texto |
+| 1 | **Cinco formatos de corpo** de erro (§2) | Toda a API | ⏳ Pendente — unificar quebra o front-end web |
+| 2 | **Mensagens em inglês** misturadas com português | Services, DTOs (§5.2, §5.3), Identity (§6), ASP.NET Core | ✅ **Corrigido** nos services e nos 98 atributos de DTO (02/Out/2026). ⏳ Pendentes (exigem `Program.cs`): Identity (§6) e mensagens do próprio ASP.NET Core |
+| 3 | **`int.Parse` em id da rota** → `FormatException` → **`500`** | Pesagens e medicamentos do animal | ✅ **Corrigido** (02/Out/2026): ids tipados como `int` de ponta a ponta, rotas com `{animalId:int}`/`{weightRecordId:int}`; id inválido → `404` |
+| 4 | **`404` sem mensagem** e `null` como sinal de erro (viola o `CLAUDE.md`) | Medicamentos, vacinas, pesagens, medicamentos do animal | ✅ **Corrigido** (02/Out/2026): services lançam `NotFoundException` com mensagem; `Delete` retorna `Task<bool>` |
+| 5 | **"Email já cadastrado." em dois formatos** | `AuthController.Register` (D, `message`) × `UsersController.Create` (A, `error`) | ⏳ Pendente — corrigir muda o corpo lido pelo front-end web no cadastro |
+| 6 | **`409` para "já está no estado pedido"** ("já está inativo", "já está seca", "já está ativo"...) | Vários services | Tratado por entidade no plano offline (A6). ✅ Corrigido em `MilkProduction`; ⏳ demais entidades quando ficarem sincronizáveis |
+| 7 | **`500` com mensagem de negócio** ("Propriedade não encontrada.") | `AuthController.Login` | Mantido: é de fato uma inconsistência de dados no servidor |
+| 8 | **Concordância** em "Cobertura com id '{id}' não encontrado." e "... podem ser editados." | `BreedingEventService.UpdateAsync` | ✅ **Corrigido** (02/Out/2026) |
+| 9 | **`ExceptionMiddleware` registrado depois da autenticação** — exceções na validação da sessão escapam dele | `Program.cs:177–180` | ⏳ Pendente — exige mudança no `Program.cs` |
 
 ---
 

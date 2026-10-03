@@ -11,7 +11,7 @@ namespace MuuBoi.Application.DTOs
         [Required(ErrorMessage = "A data da perda é obrigatória.")]
         public DateTime LossDate { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

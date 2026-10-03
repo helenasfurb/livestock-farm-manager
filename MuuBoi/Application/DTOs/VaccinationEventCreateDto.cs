@@ -19,7 +19,7 @@ namespace MuuBoi.Application.DTOs
         // Optional; defaults to FirstDose (event without a parent) when omitted.
         public DoseType? DoseType { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

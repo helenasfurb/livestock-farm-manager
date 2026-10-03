@@ -4,7 +4,7 @@ namespace MuuBoi.Application.DTOs
 {
     public class StockItemUpdateDto
     {
-        [MaxLength(150)]
+        [MaxLength(150, ErrorMessage = "O nome deve ter no máximo 150 caracteres.")]
         public string? Name { get; set; }
 
         public int? StockCategoryId { get; set; }
@@ -17,7 +17,7 @@ namespace MuuBoi.Application.DTOs
         [Range(1, 3650, ErrorMessage = "O tempo de reposição deve ser entre 1 e 3.650 dias.")]
         public int? ReplenishmentLeadDays { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
     }
 }
