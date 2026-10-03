@@ -4,7 +4,7 @@ namespace MuuBoi.Application.DTOs
 {
     public class DeleteAccountDto
     {
-        [Required]
+        [Required(ErrorMessage = "A senha é obrigatória.")]
         public string Password { get; set; } = string.Empty;
     }
 }

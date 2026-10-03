@@ -9,7 +9,7 @@ namespace MuuBoi.Application.DTOs
         [Range(1, 9999, ErrorMessage = "A quantidade deve ser entre 1 e 9.999.")]
         public int? Quantity { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
     }
 }

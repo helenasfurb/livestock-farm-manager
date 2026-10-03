@@ -6,16 +6,16 @@ namespace MuuBoi.Application.DTOs
 {
     public class CreateUserDto
     {
-        [Required]
-        [MaxLength(150)]
+        [Required(ErrorMessage = "O nome é obrigatório.")]
+        [MaxLength(150, ErrorMessage = "O nome deve ter no máximo 150 caracteres.")]
         public string Name { get; set; } = string.Empty;
 
-        [Required]
-        [EmailAddress]
+        [Required(ErrorMessage = "O e-mail é obrigatório.")]
+        [EmailAddress(ErrorMessage = "O e-mail informado é inválido.")]
         public string Email { get; set; } = string.Empty;
 
-        [Required]
-        [MinLength(6)]
+        [Required(ErrorMessage = "A senha temporária é obrigatória.")]
+        [MinLength(6, ErrorMessage = "A senha temporária deve ter no mínimo 6 caracteres.")]
         public string TemporaryPassword { get; set; } = string.Empty;
 
         [ValidEnum(typeof(UserRole))]

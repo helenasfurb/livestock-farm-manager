@@ -6,7 +6,7 @@ using MuuBoi.Application.Interfaces;
 namespace MuuBoi.Api.Controllers
 {
     [ApiController]
-    [Route("api/animals/{animalId}/weight-records")]
+    [Route("api/animals/{animalId:int}/weight-records")]
     [Authorize]
     public class WeightRecordsController : ControllerBase
     {
@@ -20,41 +20,37 @@ namespace MuuBoi.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<WeightRecordDto>>> GetAll(string animalId)
+        public async Task<ActionResult<IEnumerable<WeightRecordDto>>> GetAll(int animalId)
         {
             var weightRecords = await _weightRecordService.GetAllWeightRecordsAsync(animalId);
             return Ok(weightRecords);
         }
 
-        [HttpGet("{weightRecordId}")]
-        public async Task<ActionResult<WeightRecordDto>> GetById(string animalId, string weightRecordId)
+        [HttpGet("{weightRecordId:int}")]
+        public async Task<ActionResult<WeightRecordDto>> GetById(int animalId, int weightRecordId)
         {
-            var weightRecord = await _weightRecordService.GetWeightRecordByIdAsync(int.Parse(weightRecordId), animalId);
-            if (weightRecord == null) return NotFound();
+            var weightRecord = await _weightRecordService.GetWeightRecordByIdAsync(weightRecordId, animalId);
             return Ok(weightRecord);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(string animalId, [FromBody] WeightRecordCreateDto dto)
+        public async Task<IActionResult> Create(int animalId, [FromBody] WeightRecordCreateDto dto)
         {
             var created = await _weightRecordService.CreateWeightRecordAsync(dto, animalId);
             return CreatedAtAction(nameof(GetById), new { animalId, weightRecordId = created.Id }, created);
         }
 
-        [HttpDelete("{weightRecordId}")]
-        public async Task<IActionResult> Delete(string animalId, string weightRecordId)
+        [HttpDelete("{weightRecordId:int}")]
+        public async Task<IActionResult> Delete(int animalId, int weightRecordId)
         {
-            var deleted = await _weightRecordService.DeleteWeightRecordAsync(int.Parse(weightRecordId), animalId);
-            if (deleted == null) return NotFound();
+            await _weightRecordService.DeleteWeightRecordAsync(weightRecordId, animalId);
             return NoContent();
         }
 
-        [HttpPatch("{weightRecordId}")]
-        public async Task<ActionResult<WeightRecordDto>> Update(string animalId, string weightRecordId, [FromBody] WeightRecordUpdateDto dto)
+        [HttpPatch("{weightRecordId:int}")]
+        public async Task<ActionResult<WeightRecordDto>> Update(int animalId, int weightRecordId, [FromBody] WeightRecordUpdateDto dto)
         {
-            var updatedRecord = await _weightRecordService.UpdateWeightRecordAsync(int.Parse(weightRecordId), animalId, dto);
-            if (updatedRecord == null) return NotFound();
-     
+            var updatedRecord = await _weightRecordService.UpdateWeightRecordAsync(weightRecordId, animalId, dto);
             return Ok(updatedRecord);
         }
     }

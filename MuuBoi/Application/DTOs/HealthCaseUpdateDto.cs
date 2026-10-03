@@ -6,7 +6,7 @@ namespace MuuBoi.Application.DTOs
     /// <summary>Partial update (PATCH). Null fields are left unchanged.</summary>
     public class HealthCaseUpdateDto : IValidatableObject
     {
-        [MaxLength(100)]
+        [MaxLength(100, ErrorMessage = "O nome da doença deve ter no máximo 100 caracteres.")]
         public string? DiseaseName { get; set; }
 
         public DateTime? DiagnosisDate { get; set; }
@@ -15,7 +15,7 @@ namespace MuuBoi.Application.DTOs
 
         public DateTime? ResolvedAt { get; set; }
 
-        [MaxLength(1000)]
+        [MaxLength(1000, ErrorMessage = "As observações devem ter no máximo 1000 caracteres.")]
         public string? Notes { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

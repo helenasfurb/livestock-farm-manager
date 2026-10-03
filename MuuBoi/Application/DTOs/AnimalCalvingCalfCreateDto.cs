@@ -6,7 +6,7 @@ namespace MuuBoi.Application.DTOs
 {
     public class AnimalCalvingCalfCreateDto : IValidatableObject
     {
-        [MaxLength(100)]
+        [MaxLength(100, ErrorMessage = "O nome deve ter no máximo 100 caracteres.")]
         public string? Name { get; set; }
 
         [Required(ErrorMessage = "O sexo da cria é obrigatório.")]
@@ -25,10 +25,10 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(6, ErrorMessage = "O brinco deve ter no máximo 6 caracteres.")]
         public string? TagNumber { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(100, ErrorMessage = "O brinco da fazenda deve ter no máximo 100 caracteres.")]
         public string? PropertyTagNumber { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

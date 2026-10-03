@@ -26,7 +26,9 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.PropertyId, opt => opt.Ignore());
+                .ForMember(dest => dest.PropertyId, opt => opt.Ignore())
+                .ForMember(dest => dest.SyncId, opt => opt.Ignore())
+                .ForMember(dest => dest.RowVersion, opt => opt.Ignore());
 
             // PATCH (MilkProductionUpdateDto -> MilkProduction) é aplicado campo a campo
             // no MilkProductionService.UpdateAsync: mapear um DateTime? nulo sobre o

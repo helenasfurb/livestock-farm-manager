@@ -10,7 +10,7 @@ namespace MuuBoi.Application.DTOs
 
         public DiseaseType DiseaseType { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(100, ErrorMessage = "O nome da doença deve ter no máximo 100 caracteres.")]
         public string? DiseaseName { get; set; }
 
         [Required(ErrorMessage = "A data de diagnóstico é obrigatória.")]
@@ -18,7 +18,7 @@ namespace MuuBoi.Application.DTOs
 
         public Quarter? AffectedQuarters { get; set; }
 
-        [MaxLength(1000)]
+        [MaxLength(1000, ErrorMessage = "As observações devem ter no máximo 1000 caracteres.")]
         public string? Notes { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

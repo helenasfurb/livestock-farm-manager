@@ -8,7 +8,7 @@ namespace MuuBoi.Application.DTOs
         [Required(ErrorMessage = "A data do parto é obrigatória.")]
         public DateTime CalvingDate { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
 
         public BodyConditionScore? BodyConditionScore { get; set; }
