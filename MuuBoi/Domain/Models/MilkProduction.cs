@@ -3,7 +3,7 @@ using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Domain.Models
 {
-    public class MilkProduction : BaseEntity, ITenantEntity
+    public class MilkProduction : BaseEntity, ITenantEntity, ISyncable
     {
         public DateTime Date { get; set; }
 
@@ -16,5 +16,9 @@ namespace MuuBoi.Domain.Models
         public string? Notes { get; set; }
 
         public Guid PropertyId { get; set; }
+
+        public Guid SyncId { get; set; }
+
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     }
 }

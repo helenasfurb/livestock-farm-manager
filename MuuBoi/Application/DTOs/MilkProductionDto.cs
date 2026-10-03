@@ -3,6 +3,7 @@ namespace MuuBoi.Application.DTOs
     public class MilkProductionDto
     {
         public int Id { get; set; }
+        public Guid SyncId { get; set; }
         public DateTime Date { get; set; }
         public EnumValueDto? Milking { get; set; }
         public decimal Volume { get; set; }

@@ -15,6 +15,8 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(500)]
         public string? Notes { get; set; }
 
+        public DateTime? UpdatedAt { get; set; }
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (Date.HasValue && Date.Value > DateTime.UtcNow)

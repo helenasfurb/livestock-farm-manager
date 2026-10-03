@@ -5,6 +5,8 @@ namespace MuuBoi.Application.DTOs
 {
     public class MilkProductionCreateDto : IValidatableObject
     {
+        public Guid? SyncId { get; set; }
+
         [Required(ErrorMessage = "A data é obrigatória.")]
         public DateTime Date { get; set; }
 
@@ -19,6 +21,11 @@ namespace MuuBoi.Application.DTOs
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+
             if (Date > DateTime.UtcNow)
                 yield return new ValidationResult(
                     "A data não pode ser futura.",
