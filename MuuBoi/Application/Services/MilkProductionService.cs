@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Domain.Exceptions;
 using MuuBoi.Domain.Models;
@@ -58,7 +60,15 @@ namespace MuuBoi.Application.Services
 
         public async Task<MilkProductionDto> CreateAsync(MilkProductionCreateDto dto)
         {
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return _mapper.Map<MilkProductionDto>(existing);
+            }
+
             var production = _mapper.Map<MilkProduction>(dto);
+            production.SyncId = dto.SyncId ?? Guid.NewGuid();
             var created = await _repository.CreateAsync(production);
             return _mapper.Map<MilkProductionDto>(created);
         }
@@ -67,6 +77,10 @@ namespace MuuBoi.Application.Services
         {
             var production = await _repository.GetByIdAsync(id)
                 ?? throw new NotFoundException($"Lançamento de produção de leite com id '{id}' não encontrado.");
+
+            var editedAt = SyncTimestampResolver.ResolveEditedAt(dto.UpdatedAt, DateTime.UtcNow);
+            if (SyncTimestampResolver.IsOutdated(editedAt, production))
+                return _mapper.Map<MilkProductionDto>(production);
 
             if (dto.Date.HasValue)
                 production.Date = dto.Date.Value;
@@ -80,7 +94,7 @@ namespace MuuBoi.Application.Services
             if (dto.Notes != null)
                 production.Notes = dto.Notes;
 
-            production.UpdatedAt = DateTime.UtcNow;
+            production.UpdatedAt = editedAt;
             var updated = await _repository.UpdateAsync(production);
             return _mapper.Map<MilkProductionDto>(updated);
         }
@@ -91,12 +105,23 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Lançamento de produção de leite com id '{id}' não encontrado.");
 
             if (!production.IsActive)
-                throw new ConflictException("O lançamento de produção de leite já está inativo.");
+                return true;
 
             production.IsActive = false;
             production.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(production);
             return true;
+        }
+
+        public async Task<SyncPageDto<MilkProductionDto>> GetChangesAsync(string? since, int? limit)
+        {
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
+
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _repository.GetChangesAsync(cursor, take + 1);
+
+            return SyncPaging.BuildPage(fetched, take, cursor, p => _mapper.Map<MilkProductionDto>(p));
         }
     }
 }

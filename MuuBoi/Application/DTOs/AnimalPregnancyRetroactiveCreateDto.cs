@@ -30,7 +30,7 @@ namespace MuuBoi.Application.DTOs
         /// <summary>Amostra de sêmen, se conhecida (CU-C). Mutuamente exclusiva com <see cref="SireAnimalId"/>.</summary>
         public int? SemenSampleId { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
 
         /// <summary>Chave de idempotência (RN-07): reenvio com o mesmo valor não cria gestação duplicada.</summary>

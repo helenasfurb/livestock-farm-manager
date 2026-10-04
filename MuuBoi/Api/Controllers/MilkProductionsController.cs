@@ -37,6 +37,13 @@ namespace MuuBoi.Api.Controllers
             return Ok(records);
         }
 
+        [HttpGet("changes")]
+        public async Task<ActionResult<SyncPageDto<MilkProductionDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _service.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<MilkProductionDto>> GetById(int id)
         {

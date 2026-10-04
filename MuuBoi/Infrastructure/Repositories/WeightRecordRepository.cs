@@ -14,18 +14,18 @@ namespace MuuBoi.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<WeightRecord>> GetAllWeightRecordsAsync(string animalId)
+        public async Task<IEnumerable<WeightRecord>> GetAllWeightRecordsAsync(int animalId)
         {
             return await _context.WeightRecords
-                .Where(w => w.AnimalId == int.Parse(animalId))
+                .Where(w => w.AnimalId == animalId)
                 .OrderBy(w => w.RecordedAt)
                 .ToListAsync();
         }
 
-        public async Task<WeightRecord?> GetWeightRecordByIdAsync(int id, string animalId)
+        public async Task<WeightRecord?> GetWeightRecordByIdAsync(int id, int animalId)
         {
             return await _context.WeightRecords
-                .FirstOrDefaultAsync(w => w.Id == id && w.AnimalId == int.Parse(animalId));
+                .FirstOrDefaultAsync(w => w.Id == id && w.AnimalId == animalId);
         }
 
         public async Task<WeightRecord> CreateWeightRecordAsync(WeightRecord weightRecord)
@@ -42,7 +42,7 @@ namespace MuuBoi.Infrastructure.Repositories
             return weightRecord;
         }
 
-        public async Task<WeightRecord?> DeleteWeightRecordAsync(int id, string animalId)
+        public async Task<WeightRecord?> DeleteWeightRecordAsync(int id, int animalId)
         {
             var weightRecord = await GetWeightRecordByIdAsync(id, animalId);
             if (weightRecord == null) return null;

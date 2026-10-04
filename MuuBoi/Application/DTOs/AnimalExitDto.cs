@@ -13,7 +13,7 @@ namespace MuuBoi.Application.DTOs
         [Required(ErrorMessage = "A data de saída é obrigatória.")]
         public DateTime ExitDate { get; set; }
 
-        [MaxLength(1000)]
+        [MaxLength(1000, ErrorMessage = "As observações da saída devem ter no máximo 1000 caracteres.")]
         public string? ExitNotes { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

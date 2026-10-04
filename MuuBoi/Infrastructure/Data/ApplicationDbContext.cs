@@ -230,6 +230,8 @@ namespace MuuBoi.Infrastructure.Data
                 .HasIndex(m => new { m.PropertyId, m.Date })
                 .HasDatabaseName("IX_MilkProductions_PropertyId_Date");
 
+            builder.Entity<MilkProduction>().ConfigureSyncable();
+
             builder.Entity<Lactation>().HasQueryFilter(l => l.PropertyId == _propertyId);
 
             builder.Entity<Lactation>()

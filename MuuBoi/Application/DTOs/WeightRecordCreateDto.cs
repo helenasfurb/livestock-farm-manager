@@ -8,7 +8,7 @@ namespace MuuBoi.Application.DTOs
 
         public DateTime? WeightDate { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações da pesagem devem ter no máximo 500 caracteres.")]
         public string? WeightObservations { get; set; }
     }
 }

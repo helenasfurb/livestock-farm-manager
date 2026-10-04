@@ -7,7 +7,7 @@ namespace MuuBoi.Application.DTOs
         [Required(ErrorMessage = "A data da secagem é obrigatória.")]
         public DateTime EndDate { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações da secagem devem ter no máximo 500 caracteres.")]
         public string? DryOffNotes { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

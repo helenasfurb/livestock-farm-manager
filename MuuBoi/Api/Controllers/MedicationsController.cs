@@ -28,7 +28,6 @@ namespace MuuBoi.Api.Controllers
         public async Task<ActionResult<MedicationDto>> GetById(int id)
         {
             var medication = await _medicationService.GetMedicationByIdAsync(id);
-            if (medication == null) return NotFound();
             return Ok(medication);
         }
 
@@ -43,15 +42,13 @@ namespace MuuBoi.Api.Controllers
         public async Task<ActionResult<MedicationDto>> Update(int id, [FromBody] MedicationUpdateDto dto)
         {
             var updated = await _medicationService.UpdateMedicationAsync(id, dto);
-            if (updated == null) return NotFound();
             return Ok(updated);
         }
 
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _medicationService.DeleteMedicationAsync(id);
-            if (deleted == null) return NotFound();
+            await _medicationService.DeleteMedicationAsync(id);
             return NoContent();
         }
     }

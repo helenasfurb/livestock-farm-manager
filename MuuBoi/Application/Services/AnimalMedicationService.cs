@@ -25,21 +25,21 @@ namespace MuuBoi.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<AnimalMedicationDto>> GetAllAnimalMedicationsAsync(string animalId)
+        public async Task<IEnumerable<AnimalMedicationDto>> GetAllAnimalMedicationsAsync(int animalId)
         {
             await FindAnimalAsync(animalId);
-            var records = await _animalMedicationRepository.GetAllAnimalMedicationsAsync(int.Parse(animalId));
+            var records = await _animalMedicationRepository.GetAllAnimalMedicationsAsync(animalId);
             return _mapper.Map<IEnumerable<AnimalMedicationDto>>(records);
         }
 
-        public async Task<AnimalMedicationDto?> GetAnimalMedicationByIdAsync(int id, string animalId)
+        public async Task<AnimalMedicationDto> GetAnimalMedicationByIdAsync(int id, int animalId)
         {
             await FindAnimalAsync(animalId);
-            var record = await _animalMedicationRepository.GetAnimalMedicationByIdAsync(id, int.Parse(animalId));
-            return record == null ? null : _mapper.Map<AnimalMedicationDto>(record);
+            var record = await FindAnimalMedicationAsync(id, animalId);
+            return _mapper.Map<AnimalMedicationDto>(record);
         }
 
-        public async Task<AnimalMedicationDto> CreateAnimalMedicationAsync(AnimalMedicationCreateDto dto, string animalId)
+        public async Task<AnimalMedicationDto> CreateAnimalMedicationAsync(AnimalMedicationCreateDto dto, int animalId)
         {
             var animal = await FindAnimalAsync(animalId);
             await FindMedicationAsync(dto.MedicationId!.Value);
@@ -62,42 +62,46 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<AnimalMedicationDto>(withMedication);
         }
 
-        public async Task<AnimalMedicationDto?> UpdateAnimalMedicationAsync(int id, string animalId, AnimalMedicationUpdateDto dto)
+        public async Task<AnimalMedicationDto> UpdateAnimalMedicationAsync(int id, int animalId, AnimalMedicationUpdateDto dto)
         {
             await FindAnimalAsync(animalId);
 
             if (dto.MedicationId.HasValue)
                 await FindMedicationAsync(dto.MedicationId.Value);
 
-            var existing = await _animalMedicationRepository.GetAnimalMedicationByIdAsync(id, int.Parse(animalId));
-            if (existing == null) return null;
+            var existing = await FindAnimalMedicationAsync(id, animalId);
 
             _mapper.Map(dto, existing);
             var updated = await _animalMedicationRepository.UpdateAnimalMedicationAsync(existing);
-            var withMedication = await _animalMedicationRepository.GetAnimalMedicationByIdAsync(updated!.Id, int.Parse(animalId));
+            var withMedication = await _animalMedicationRepository.GetAnimalMedicationByIdAsync(updated!.Id, animalId);
             return _mapper.Map<AnimalMedicationDto>(withMedication);
         }
 
-        public async Task<AnimalMedicationDto?> DeleteAnimalMedicationAsync(int id, string animalId)
+        public async Task<bool> DeleteAnimalMedicationAsync(int id, int animalId)
         {
             await FindAnimalAsync(animalId);
-            var deleted = await _animalMedicationRepository.DeleteAnimalMedicationAsync(id, int.Parse(animalId));
-            return deleted == null ? null : _mapper.Map<AnimalMedicationDto>(deleted);
+            await FindAnimalMedicationAsync(id, animalId);
+            await _animalMedicationRepository.DeleteAnimalMedicationAsync(id, animalId);
+            return true;
         }
 
-        private async Task<Animal> FindAnimalAsync(string animalId)
+        private async Task<Animal> FindAnimalAsync(int animalId)
         {
-            var animal = await _animalRepository.GetAnimalByIdAsync(int.Parse(animalId));
-            if (animal == null)
-                throw new NotFoundException("Animal not found");
-            return animal;
+            return await _animalRepository.GetAnimalByIdAsync(animalId)
+                ?? throw new NotFoundException($"Animal com id '{animalId}' não encontrado.");
+        }
+
+        private async Task<AnimalMedication> FindAnimalMedicationAsync(int id, int animalId)
+        {
+            return await _animalMedicationRepository.GetAnimalMedicationByIdAsync(id, animalId)
+                ?? throw new NotFoundException($"Registro de medicação com id '{id}' não encontrado.");
         }
 
         private async Task FindMedicationAsync(int medicationId)
         {
             var medication = await _medicationRepository.GetMedicationByIdAsync(medicationId);
             if (medication == null)
-                throw new NotFoundException("Medication not found");
+                throw new NotFoundException($"Medicamento com id '{medicationId}' não encontrado.");
         }
     }
 }

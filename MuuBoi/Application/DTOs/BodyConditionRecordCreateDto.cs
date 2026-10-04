@@ -11,7 +11,7 @@ namespace MuuBoi.Application.DTOs
         [Required(ErrorMessage = "A data da avaliação é obrigatória.")]
         public DateTime RecordedAt { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
     }
 }
