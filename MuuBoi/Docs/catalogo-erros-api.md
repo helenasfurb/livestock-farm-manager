@@ -363,7 +363,7 @@ HTTP/1.1 409 Conflict
 
 > `GET /changes` **não** retorna erro para `limit` fora da faixa: ausente, zero ou negativo vira 500; acima de 500 é limitado a 500.
 
-> **Rota com suporte offline** (ver `Docs/Plan/plano-offline-producao-leite.md`). Repetir uma operação já aplicada **não é erro**:
+> **Rota com suporte offline** (ver `Docs/Specs/spec-sincronizacao-offline.md`). Repetir uma operação já aplicada **não é erro**:
 > - `POST` com `syncId` já existente → `201` com o registro existente.
 > - `PATCH` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada).
 > - `DELETE` em registro já inativo → `204` *(até 02/Out/2026 era `409` "O lançamento de produção de leite já está inativo.")*.
