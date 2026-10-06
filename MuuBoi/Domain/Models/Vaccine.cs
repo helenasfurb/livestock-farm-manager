@@ -2,7 +2,7 @@
 
 namespace MuuBoi.Domain.Models
 {
-    public class Vaccine : BaseEntity, ITenantEntity
+    public class Vaccine : BaseEntity, ITenantEntity, ISyncable
     {
         [Required(ErrorMessage = "Name is required")]
         [MaxLength(100)]
@@ -20,5 +20,8 @@ namespace MuuBoi.Domain.Models
         public bool RequiresBooster { get; set; }
 
         public Guid PropertyId { get; set; }
+
+        public Guid SyncId { get; set; }
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     }
 }
