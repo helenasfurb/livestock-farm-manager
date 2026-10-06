@@ -1,9 +1,9 @@
 # Spec #14: Sincronização Offline — Especificação e Plano de Implementação
 
 **Módulo:** Infraestrutura / Sincronização — transversal a toda a aplicação
-**Versão:** 1.0
-**Data:** 03/Out/2026
-**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`); demais entidades seguem a receita da §7.4.
+**Versão:** 1.1
+**Data:** 05/Out/2026
+**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`); **Vacinas** (`Vaccine`) com plano aprovado (Spec #14.1); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
 **Abrangência:** contrato de sincronização do servidor/API (identidade, versionamento, tombstones, idempotência, tenant) **e** o contrato que o app offline precisa seguir para consumi-lo.
 **Relaciona-se com:** Spec 11.1 (Produção de Leite, §8) · Spec #13 (Cadastro Retroativo de Gestação, §6) · todos os specs de entidade · `Docs/catalogo-erros-api.md`
 
@@ -15,6 +15,7 @@
 |---|---|---|
 | 0.1 | 05/Set/2026 | Rascunho para discussão. Decisões D1–D6; push **em lote** (`POST /api/sync/changes`) e pull global (`GET /api/sync/changes`). |
 | 1.0 | 03/Out/2026 | Decisões revisadas (A1–A8): **sem rota em lote** — o app envia pelas **rotas REST normais**, em ordem; pull **por recurso** (`GET /api/<recurso>/changes`). Implementação completa da produção de leite (Fases 1–7), com helpers reutilizáveis e 19 testes. |
+| 1.1 | 05/Out/2026 | A implementação de cada nova entidade passa a ficar em uma **spec filha** (`spec-sincronizacao-offline-14.N-<entidade>.md`), para este documento não crescer a cada entidade. Primeira: **Spec #14.1 — catálogo de vacinas**. |
 
 ---
 
@@ -40,6 +41,9 @@
 13. Questões em aberto
 14. Fora do escopo
 15. Fontes
+
+**Specs filhas (implementação por entidade)** — ver §8
+- Spec #14.1 — Catálogo de Vacinas (`spec-sincronizacao-offline-14.1-vacinas.md`)
 
 ---
 
@@ -557,7 +561,8 @@ Derivados que o usuário não referencia diretamente (lactação aberta pelo par
 | Entidade | Status | Observação |
 |---|---|---|
 | `MilkProduction` | ✅ **Sincronizável** (03/Out/2026) | Parte II |
-| `Medication`, `Vaccine`, `StockItem`, `SemenSample` | ⏳ | Catálogos — próximos, sem dependências entre si |
+| `Vaccine` | 🚧 **Plano aprovado** (05/Out/2026) | **Spec #14.1** (`spec-sincronizacao-offline-14.1-vacinas.md`) |
+| `Medication`, `StockItem`, `SemenSample` | ⏳ | Catálogos — próximos, sem dependências entre si |
 | `Animal`, `AnimalExitRecord` | ⏳ | Pré-requisito dos eventos do animal |
 | `WeightRecord`, `BodyConditionRecord`, `AnimalMedication` | ⏳ | `WeightRecord` hoje faz **hard delete** (questão em aberto 4) |
 | `BreedingEvent`, `AnimalPregnancy`, `AnimalCalving`, `AnimalCalvingCalf` | ⏳ | Condições 1 e 2 (§7.5) |
@@ -819,10 +824,32 @@ public async Task<SyncPageDto<MilkProductionDto>> GetChangesAsync(string? since,
 | Índice único fora da convenção `UX_{Tabela}_SyncId` | `AddSyncableAsync` não reconhece a corrida → `500`. Usar sempre `ConfigureSyncable()` |
 | Duplicata se o app regenerar o `SyncId` | Contrato do cliente, item 1 (§6) |
 | Fila travada por `500` permanente (bug) | Limite de tentativas no app (§5.10) |
+| **Fila travada por um erro definitivo** (A3): um item `Failed` (`400`/`409`/`422`) segura todos os seguintes, mesmo sem relação (ex.: um evento de vacinação recusado impede o envio das ordenhas) | Aceito para propriedade pequena (1 usuário resolve o aviso). **Evolução, só no app:** o item que falhou bloqueia apenas os **dependentes** — cada item da fila já conhece os `SyncId`s que referencia (§5.8); o worker pula os que referenciam um `SyncId` com falha e segue com o resto. Sem mudança no servidor (§12.1) |
 | `409` em reenvio nas próximas entidades | Receita §7.4, passo 8 |
 | Registros derivados incompletos após falha | Condição 1 (§7.5) |
 | Banco restaurado de backup ou recriado | Cursores dos celulares perdem o sentido → exigiria pull completo (zerar cursores). Raro num TCC; limitação registrada |
 | JWT expirado durante dias offline | Refresh token — pendente (§13) |
+
+### 12.1 Avaliação da fila única sequencial para uma propriedade pequena
+
+Revisão de A1–A3 (05/Out/2026) diante do cenário do TCC: propriedade pequena, 1–2 celulares, servidor fraco e internet ruim.
+
+**Por que a escolha se sustenta:**
+
+| Aspecto | Avaliação |
+|---|---|
+| **Volume** | Poucas dezenas de operações por dia (ordenhas, pesagens, eventos). Mesmo após dias offline, a fila tem centenas de itens; a 0,5–2 s por requisição em link ruim, esvazia em minutos, em segundo plano. |
+| **Servidor fraco** | Uma requisição por vez é a carga mais leve possível; lote ou paralelismo concentrariam o trabalho em picos. |
+| **Dependências** | A ordem (animal → gestação → parto; vacina → evento) e a resolução do `Id` (§5.8) saem de graça do envio sequencial. |
+| **Regras de negócio** | Validações e regras existentes valem igual para web e app; não há `SyncService` duplicando lógica (§2.2). |
+| **Erros** | Status HTTP por operação; não existe "falha parcial de lote". |
+| **Custo por entidade** | Confirmado nas vacinas (Spec #14.1): poucas linhas por camada usando os helpers da §7.2. |
+
+O overhead de várias requisições (cabeçalhos, JWT, handshake) é reduzido no app com conexão reaproveitada (keep-alive do OkHttp, padrão) e compressão (§13, item 7) — não justifica rota em lote nesta escala.
+
+**Ponto fraco:** o bloqueio da fila por um único erro definitivo (tabela acima). A evolução "falha bloqueia só os dependentes" resolve no app, sem mudar o servidor.
+
+**Quando deixaria de ser adequada:** muitos dispositivos enviando ao mesmo tempo, milhares de operações por ciclo, ou link em que cada requisição leve dezenas de segundos. Nesses casos, criar uma rota em lote **só** para os registros mais frequentes (ordenha, pesagem), como previsto na §2.2. Nenhum desses é o cenário do TCC.
 
 ## 13. Questões em aberto
 
@@ -857,3 +884,4 @@ public async Task<SyncPageDto<MilkProductionDto>> GetChangesAsync(string? since,
 - [Guid.CreateVersion7() is NOT a sequential guid for SQL Server](https://daily.dev/posts/guid-createversion7-is-not-a-sequential-guid-for-sql-server-rlojn9pdl) · [UUID v7 for SQL Server Indexes: Still a Bad Idea](https://pejmannik.dev/blog/uuid_v7_for_sql_server_indexes_still_a_bad_idea/)
 - [rowversion (Transact-SQL)](https://learn.microsoft.com/sql/t-sql/data-types/rowversion-transact-sql) · [MIN_ACTIVE_ROWVERSION (Transact-SQL)](https://learn.microsoft.com/sql/t-sql/functions/min-active-rowversion-transact-sql) · [EF Core — conflitos de concorrência](https://learn.microsoft.com/ef/core/saving/concurrency)
 - [droidcon — The Complete Guide to Offline-First Architecture in Android](https://www.droidcon.com/2025/12/16/the-complete-guide-to-offline-first-architecture-in-android/)
+

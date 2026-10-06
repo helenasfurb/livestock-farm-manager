@@ -9,5 +9,6 @@ namespace MuuBoi.Application.Interfaces
         Task<VaccineDto> CreateVaccineAsync(VaccineCreateDto dto);
         Task<VaccineDto> UpdateVaccineAsync(int id, VaccineUpdateDto dto);
         Task<bool> DeleteVaccineAsync(int id);
+        Task<SyncPageDto<VaccineDto>> GetChangesAsync(string? since, int? limit);
     }
 }

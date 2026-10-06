@@ -7,8 +7,10 @@ namespace MuuBoi.Application.Interfaces
     {
         Task<IEnumerable<Vaccine>> GetAllVaccinesAsync(VaccineFilterDto filter);
         Task<Vaccine?> GetVaccineByIdAsync(int id);
+        Task<Vaccine?> GetVaccineBySyncIdAsync(Guid syncId);
         Task<Vaccine> CreateVaccineAsync(Vaccine vaccine);
         Task<Vaccine?> UpdateVaccineAsync(Vaccine vaccine);
         Task<Vaccine?> DeleteVaccineAsync(int id);
+        Task<IReadOnlyList<Vaccine>> GetChangesAsync(ulong since, int take);
     }
 }
