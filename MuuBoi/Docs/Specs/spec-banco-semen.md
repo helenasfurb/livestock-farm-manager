@@ -7,6 +7,7 @@
 **Status:** Aprovado para implementação  
 **Depende de:** Nenhum — entidade independente.  
 **Referenciado por:** Spec #5 — Eventos Reprodutivos (inseminação artificial)
+**Sincronização offline:** catálogo de amostras sincronizável desde 06/Out/2026 — ver Spec #14.2 (`spec-sincronizacao-offline-14.2-semen.md`). Movimentações ainda não.
 
 ---
 

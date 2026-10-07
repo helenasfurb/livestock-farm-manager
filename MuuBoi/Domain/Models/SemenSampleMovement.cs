@@ -3,7 +3,7 @@ using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Domain.Models
 {
-    public class SemenSampleMovement : BaseEntity, ITenantEntity
+    public class SemenSampleMovement : BaseEntity, ITenantEntity, ISyncable
     {
         public int SemenSampleId { get; set; }
 
@@ -20,6 +20,9 @@ namespace MuuBoi.Domain.Models
         public int? BreedingEventId { get; set; }
 
         public Guid PropertyId { get; set; }
+
+        public Guid SyncId { get; set; }
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         public SemenSample? SemenSample { get; set; }
         public BreedingEvent? BreedingEvent { get; set; }

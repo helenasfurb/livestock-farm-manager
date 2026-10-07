@@ -562,11 +562,14 @@ Derivados que o usuário não referencia diretamente (lactação aberta pelo par
 |---|---|---|
 | `MilkProduction` | ✅ **Sincronizável** (03/Out/2026) | Parte II |
 | `Vaccine` | 🚧 **Plano aprovado** (05/Out/2026) | **Spec #14.1** (`spec-sincronizacao-offline-14.1-vacinas.md`) |
-| `Medication`, `StockItem`, `SemenSample` | ⏳ | Catálogos — próximos, sem dependências entre si |
+| `SemenSample` | ✅ **Sincronizável** (06/Out/2026) | **Spec #14.2**, Parte A (`spec-sincronizacao-offline-14.2-semen.md`) |
+| `SemenSampleMovement` (manuais) | ✅ **Sincronizável** (06/Out/2026) | **Spec #14.2**, Parte B. Pull inclui as saídas geradas pela cobertura (somente leitura no app); criá-las/inativá-las offline segue com a cobertura |
+| `StockItem` | ⏳ | Catálogo — próximo |
+| `Medication` | ❌ Fora | CRUD será descontinuado (06/Out/2026) |
 | `Animal`, `AnimalExitRecord` | ⏳ | Pré-requisito dos eventos do animal |
 | `WeightRecord`, `BodyConditionRecord`, `AnimalMedication` | ⏳ | `WeightRecord` hoje faz **hard delete** (questão em aberto 4) |
 | `BreedingEvent`, `AnimalPregnancy`, `AnimalCalving`, `AnimalCalvingCalf` | ⏳ | Condições 1 e 2 (§7.5) |
-| `SemenSampleMovement`, `StockMovement` | ⏳ | Saldo calculado por movimentações (questão em aberto 1) |
+| `StockMovement` | ⏳ | Saldo calculado por movimentações (questão em aberto 1) |
 | `Lactation` | ⏳ | Depende de `Animal` |
 | `VaccinationEvent` (+ `VaccinationEventAnimal` embutido), `HealthCase` (+ medicações e testes) | ⏳ | |
 | `ApplicationUser`, `Property` | ❌ Fora | Autenticação e provisionamento exigem conexão |
@@ -855,7 +858,7 @@ O overhead de várias requisições (cabeçalhos, JWT, handshake) é reduzido no
 
 | # | Questão | Situação |
 |---|---|---|
-| 1 | **Estoque de sêmen e de insumos offline:** dois dispositivos consumindo a última dose → saldo negativo no sync. | Direção: movimentações append-only com `SyncId` e saldo calculado (já é o modelo atual); saldo negativo no sync vira `422` com motivo ou alerta. **A definir** ao sincronizar essas entidades. |
+| 1 | **Estoque de sêmen e de insumos offline:** dois dispositivos consumindo a última dose → saldo negativo no sync. | Direção: movimentações append-only com `SyncId` e saldo calculado (já é o modelo atual); saldo negativo no sync vira `422` com motivo ou alerta. **A definir** ao sincronizar essas entidades. **Sêmen, movimentações manuais (06/Out/2026, Spec #14.2 Parte B):** não há regra de saldo nas saídas manuais, então nada muda — as operações somam como online. Continua aberta para a cobertura (`422` "Não há doses disponíveis…") e para o estoque de insumos. |
 | 2 | **Lista definitiva de sincronizáveis** (§8), inclusive mídias/fotos (payload grande em link instável). | ⏳ Aberta |
 | 3 | ~~Origem do `UpdatedAt` para LWW~~ | ✅ **Resolvida:** momento da edição no cliente, UTC, limitado a "agora" (§5.3) |
 | 4 | **Hard delete:** `WeightRecordRepository.DeleteWeightRecordAsync` faz `Remove` (exclusão física). Sem tombstone, a exclusão não chega aos celulares pelo pull. | ⏳ Converter para soft delete antes de sincronizar pesagens (ou tabela de tombstones) |

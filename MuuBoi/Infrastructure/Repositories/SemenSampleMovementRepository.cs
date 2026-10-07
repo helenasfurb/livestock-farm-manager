@@ -39,11 +39,16 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(m => m.BreedingEventId == breedingEventId);
         }
 
+        public async Task<SemenSampleMovement?> GetBySyncIdAsync(Guid syncId)
+        {
+            return await _context.SemenSampleMovements
+                .Include(m => m.SemenSample)
+                .FirstOrDefaultAsync(m => m.SyncId == syncId);
+        }
+
         public async Task<SemenSampleMovement> CreateAsync(SemenSampleMovement movement)
         {
-            _context.SemenSampleMovements.Add(movement);
-            await _context.SaveChangesAsync();
-            return movement;
+            return await _context.AddSyncableAsync(movement);
         }
 
         public async Task<SemenSampleMovement> UpdateAsync(SemenSampleMovement movement)
@@ -51,6 +56,11 @@ namespace MuuBoi.Infrastructure.Repositories
             _context.SemenSampleMovements.Update(movement);
             await _context.SaveChangesAsync();
             return movement;
+        }
+
+        public async Task<IReadOnlyList<SemenSampleMovement>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<SemenSampleMovement>(since, take);
         }
     }
 }

@@ -27,12 +27,16 @@ namespace MuuBoi.Application.Mappings
                         Label = src.MovementType.GetDescription()
                     }));
 
+            CreateMap<SemenSampleMovement, SemenSampleMovementRefDto>();
+
             CreateMap<SemenSampleMovementCreateDto, SemenSampleMovement>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.PropertyId, opt => opt.Ignore())
+                .ForMember(dest => dest.SyncId, opt => opt.Ignore())
+                .ForMember(dest => dest.RowVersion, opt => opt.Ignore())
                 .ForMember(dest => dest.SemenSampleId, opt => opt.Ignore())
                 .ForMember(dest => dest.BreedingEventId, opt => opt.Ignore())
                 .ForMember(dest => dest.SemenSample, opt => opt.Ignore())

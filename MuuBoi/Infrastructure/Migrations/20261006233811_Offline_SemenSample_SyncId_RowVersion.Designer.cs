@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MuuBoi.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using MuuBoi.Infrastructure.Data;
 namespace MuuBoi.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261006233811_Offline_SemenSample_SyncId_RowVersion")]
+    partial class Offline_SemenSample_SyncId_RowVersion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1087,19 +1090,8 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.Property<int>("SemenSampleId")
                         .HasColumnType("int");
-
-                    b.Property<Guid>("SyncId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWID()");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1109,15 +1101,8 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.HasIndex("BreedingEventId")
                         .HasDatabaseName("IX_SemenSampleMovements_BreedingEventId");
 
-                    b.HasIndex("SyncId")
-                        .IsUnique()
-                        .HasDatabaseName("UX_SemenSampleMovements_SyncId");
-
                     b.HasIndex("PropertyId", "IsActive")
                         .HasDatabaseName("IX_SemenSampleMovements_PropertyId_IsActive");
-
-                    b.HasIndex("PropertyId", "RowVersion")
-                        .HasDatabaseName("IX_SemenSampleMovements_PropertyId_RowVersion");
 
                     b.HasIndex("SemenSampleId", "MovementType", "IsActive")
                         .HasDatabaseName("IX_SemenSampleMovements_SemenSampleId_MovementType_IsActive");

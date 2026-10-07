@@ -19,9 +19,9 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(100, ErrorMessage = "O número do lote deve ter no máximo 100 caracteres.")]
         public string? BatchNumber { get; set; }
 
-        public DateTime? BatchDate { get; set; }
-
         [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
+
+        public DateTime? UpdatedAt { get; set; }
     }
 }

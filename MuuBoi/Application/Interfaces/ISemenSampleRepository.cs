@@ -8,9 +8,12 @@ namespace MuuBoi.Application.Interfaces
         Task<IEnumerable<SemenSample>> GetAllAsync(SemenSampleFilterDto filter);
         Task<IEnumerable<SemenSample>> GetAutocompleteAsync(string? name);
         Task<SemenSample?> GetByIdAsync(int id);
+        Task<SemenSample?> GetBySyncIdAsync(Guid syncId);
         Task<SemenSample> CreateAsync(SemenSample semenSample);
         Task<SemenSample> UpdateAsync(SemenSample semenSample);
         Task<int> GetAvailableDosesAsync(int semenSampleId);
         Task<Dictionary<int, int>> GetAvailableDosesBatchAsync(IEnumerable<int> semenSampleIds);
+        Task<IReadOnlyList<SemenSample>> GetChangesAsync(ulong since, int take);
+        Task<Dictionary<int, string>> GetNamesByIdsAsync(IEnumerable<int> ids);
     }
 }

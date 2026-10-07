@@ -374,14 +374,24 @@ HTTP/1.1 409 Conflict
 | Rota | Status | Mensagem |
 |---|---|---|
 | `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`, `PATCH /{id}/reactivate` | 404 | Amostra de sêmen com id '{id}' não encontrada. |
-| `DELETE /{id}` | 409 | A amostra de sêmen já está inativa. |
-| `PATCH /{id}/reactivate` | 409 | A amostra de sêmen já está ativa. |
+| `GET /changes?since=`, `GET /movements/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
 | Rotas de `/{semenSampleId}/movements` | 404 | Amostra de sêmen com id '{semenSampleId}' não encontrada. |
 | `GET`, `PATCH`, `DELETE /{semenSampleId}/movements/{movementId}` | 404 | Movimentação com id '{movementId}' não encontrada. |
 | `POST /{semenSampleId}/movements` | 409 | Não é possível registrar movimentação para uma amostra de sêmen inativa. |
 | `PATCH /{semenSampleId}/movements/{movementId}` | 409 | Movimentações geradas pelo sistema não podem ser editadas diretamente. |
-| `DELETE /{semenSampleId}/movements/{movementId}` | 409 | Movimentações geradas pelo sistema não podem ser inativadas diretamente. |
-| `DELETE /{semenSampleId}/movements/{movementId}` | 409 | A movimentação já está inativa. |
+| `DELETE /{semenSampleId}/movements/{movementId}` | 409 | Movimentações geradas pelo sistema não podem ser inativadas diretamente. *(vale também se ela já estiver inativa)* |
+
+> **Rotas com suporte offline** — amostra e movimentações manuais (ver `Docs/Specs/spec-sincronizacao-offline-14.2-semen.md`, Partes A e B). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com a amostra existente (sem duplicar a entrada inicial), incluindo `initialMovement` quando o `initialMovementSyncId` é reenviado.
+> - `POST` com `initialMovementSyncId` vazio → `400` "O identificador de sincronização da entrada inicial não pode ser vazio." (formato B, campo `InitialMovementSyncId`).
+> - `POST /{semenSampleId}/movements` com `syncId` já existente → `201` com a movimentação existente — mesmo que a amostra tenha sido inativada depois do primeiro envio.
+> - `PATCH /{semenSampleId}/movements/{movementId}` com `updatedAt` mais antigo → `200` com a versão do servidor.
+> - `DELETE /{semenSampleId}/movements/{movementId}` em movimentação manual já inativa → `204` *(até 06/Out/2026 era `409` "A movimentação já está inativa.")*.
+> - `PATCH` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada).
+> - `DELETE` em amostra já inativa → `200 false` *(até 06/Out/2026 era `409` "A amostra de sêmen já está inativa.")*.
+> - `PATCH /{id}/reactivate` em amostra já ativa → `200 true` *(até 06/Out/2026 era `409` "A amostra de sêmen já está ativa.")*.
+> - `POST` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
 
 ### 4.14 Estoque de insumos — `/api/stock-items`
 
