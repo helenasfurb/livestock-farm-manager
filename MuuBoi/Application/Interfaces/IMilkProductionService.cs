@@ -10,5 +10,6 @@ namespace MuuBoi.Application.Interfaces
         Task<MilkProductionDto> CreateAsync(MilkProductionCreateDto dto);
         Task<MilkProductionDto> UpdateAsync(int id, MilkProductionUpdateDto dto);
         Task<bool> DeactivateAsync(int id);
+        Task<SyncPageDto<MilkProductionDto>> GetChangesAsync(string? since, int? limit);
     }
 }

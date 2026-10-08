@@ -559,6 +559,9 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Role")
+                        .HasColumnType("int");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
@@ -926,6 +929,17 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SyncId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -938,8 +952,15 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.HasIndex("PropertyId")
                         .HasDatabaseName("IX_MilkProductions_PropertyId");
 
+                    b.HasIndex("SyncId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_MilkProductions_SyncId");
+
                     b.HasIndex("PropertyId", "Date")
                         .HasDatabaseName("IX_MilkProductions_PropertyId_Date");
+
+                    b.HasIndex("PropertyId", "RowVersion")
+                        .HasDatabaseName("IX_MilkProductions_PropertyId_RowVersion");
 
                     b.ToTable("MilkProductions");
                 });
@@ -1482,6 +1503,17 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<bool>("RequiresBooster")
                         .HasColumnType("bit");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SyncId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -1489,6 +1521,13 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.HasIndex("PropertyId")
                         .HasDatabaseName("IX_Vaccines_PropertyId");
+
+                    b.HasIndex("SyncId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Vaccines_SyncId");
+
+                    b.HasIndex("PropertyId", "RowVersion")
+                        .HasDatabaseName("IX_Vaccines_PropertyId_RowVersion");
 
                     b.ToTable("Vaccines");
                 });

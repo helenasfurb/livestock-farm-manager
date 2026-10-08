@@ -2,21 +2,31 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MuuBoi.Application.DTOs
 {
-    public class VaccineCreateDto
+    public class VaccineCreateDto : IValidatableObject
     {
-        [Required(ErrorMessage = "Name is required")]
-        [MaxLength(100)]
+        public Guid? SyncId { get; set; }
+
+        [Required(ErrorMessage = "O nome é obrigatório.")]
+        [MaxLength(100, ErrorMessage = "O nome deve ter no máximo 100 caracteres.")]
         public string Name { get; set; } = string.Empty;
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "A descrição deve ter no máximo 500 caracteres.")]
         public string? Description { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(100, ErrorMessage = "O fabricante deve ter no máximo 100 caracteres.")]
         public string? Manufacturer { get; set; }
 
         public int? RecommendedIntervalDays { get; set; }
 
         // Informational only: whether this vaccine requires a booster dose.
         public bool RequiresBooster { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+        }
     }
 }

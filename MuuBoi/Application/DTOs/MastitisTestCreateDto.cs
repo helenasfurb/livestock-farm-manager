@@ -9,7 +9,7 @@ namespace MuuBoi.Application.DTOs
         public MastitisTestType TestType { get; set; }
 
         [Required(ErrorMessage = "O resultado é obrigatório.")]
-        [MaxLength(200)]
+        [MaxLength(200, ErrorMessage = "O resultado deve ter no máximo 200 caracteres.")]
         public string Result { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "A data do teste é obrigatória.")]

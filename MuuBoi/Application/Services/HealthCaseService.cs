@@ -47,7 +47,11 @@ namespace MuuBoi.Application.Services
 
         public async Task<HealthCaseDto> CreateAsync(HealthCaseCreateDto dto)
         {
-            await EnsureAnimalExistsAsync(dto.AnimalId);
+            var animal = await _animalRepository.GetAnimalByIdAsync(dto.AnimalId)
+                ?? throw new NotFoundException($"Animal com id '{dto.AnimalId}' não encontrado.");
+
+            if (dto.DiseaseType == DiseaseType.Mastitis)
+                EnsureMastitisEligible(animal);
 
             var healthCase = new HealthCase
             {
@@ -258,6 +262,14 @@ namespace MuuBoi.Application.Services
             => quarters.HasValue
                 ? EnumHelper.ToFlagValues(quarters.Value)
                 : new List<EnumValueDto>();
+
+        private static void EnsureMastitisEligible(Animal animal)
+        {
+            if (animal.Gender == AnimalGender.M ||
+                animal.Classification == AnimalClassification.Bull ||
+                animal.Classification == AnimalClassification.Steer)
+                throw new BusinessRuleException("Não é possível registrar mastite para machos (touro/boi).");
+        }
 
         private async Task EnsureAnimalExistsAsync(int animalId)
         {

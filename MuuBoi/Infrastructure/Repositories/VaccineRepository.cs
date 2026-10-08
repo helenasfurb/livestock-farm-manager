@@ -33,11 +33,14 @@ namespace MuuBoi.Infrastructure.Repositories
             return await _context.Vaccines.FirstOrDefaultAsync(v => v.Id == id);
         }
 
+        public async Task<Vaccine?> GetVaccineBySyncIdAsync(Guid syncId)
+        {
+            return await _context.FindBySyncIdAsync<Vaccine>(syncId);
+        }
+
         public async Task<Vaccine> CreateVaccineAsync(Vaccine vaccine)
         {
-            _context.Vaccines.Add(vaccine);
-            await _context.SaveChangesAsync();
-            return vaccine;
+            return await _context.AddSyncableAsync(vaccine);
         }
 
         public async Task<Vaccine?> UpdateVaccineAsync(Vaccine vaccine)
@@ -58,6 +61,11 @@ namespace MuuBoi.Infrastructure.Repositories
             _context.Vaccines.Update(vaccine);
             await _context.SaveChangesAsync();
             return vaccine;
+        }
+
+        public async Task<IReadOnlyList<Vaccine>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<Vaccine>(since, take);
         }
     }
 }

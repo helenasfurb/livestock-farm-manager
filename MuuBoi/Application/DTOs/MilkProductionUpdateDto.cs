@@ -12,8 +12,10 @@ namespace MuuBoi.Application.DTOs
         [Range(0.01, 9999999.99, ErrorMessage = "O volume deve ser maior que zero.")]
         public decimal? Volume { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
+
+        public DateTime? UpdatedAt { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {

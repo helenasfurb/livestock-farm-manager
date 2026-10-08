@@ -19,7 +19,7 @@ namespace MuuBoi.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<WeightRecordDto>> GetAllWeightRecordsAsync(string animalId)
+        public async Task<IEnumerable<WeightRecordDto>> GetAllWeightRecordsAsync(int animalId)
         {
             await FindAnimalAsync(animalId);
 
@@ -27,15 +27,15 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<IEnumerable<WeightRecordDto>>(records);
         }
 
-        public async Task<WeightRecordDto?> GetWeightRecordByIdAsync(int id, string animalId)
+        public async Task<WeightRecordDto> GetWeightRecordByIdAsync(int id, int animalId)
         {
             await FindAnimalAsync(animalId);
 
-            var record = await _weightRecordRepository.GetWeightRecordByIdAsync(id, animalId);
-            return record == null ? null : _mapper.Map<WeightRecordDto>(record);
+            var record = await FindWeightRecordAsync(id, animalId);
+            return _mapper.Map<WeightRecordDto>(record);
         }
 
-        public async Task<WeightRecordDto> CreateWeightRecordAsync(WeightRecordCreateDto weightRecordCreateDto, string animalId)
+        public async Task<WeightRecordDto> CreateWeightRecordAsync(WeightRecordCreateDto weightRecordCreateDto, int animalId)
         {
             var animal = await FindAnimalAsync(animalId);
 
@@ -51,17 +51,18 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<WeightRecordDto>(created);
         }
 
-        public async Task<WeightRecordDto?> DeleteWeightRecordAsync(int id, string animalId)
+        public async Task<bool> DeleteWeightRecordAsync(int id, int animalId)
         {
             await FindAnimalAsync(animalId);
+            await FindWeightRecordAsync(id, animalId);
 
-            var deleted = await _weightRecordRepository.DeleteWeightRecordAsync(id, animalId);
-            return deleted == null ? null : _mapper.Map<WeightRecordDto>(deleted);
+            await _weightRecordRepository.DeleteWeightRecordAsync(id, animalId);
+            return true;
         }
 
-        private async Task<Animal> FindAnimalAsync(string animalId)
+        private async Task<Animal> FindAnimalAsync(int animalId)
         {
-            var animal = await _animalRepository.GetAnimalByIdAsync(int.Parse(animalId));
+            var animal = await _animalRepository.GetAnimalByIdAsync(animalId);
 
             if (animal == null)
                 throw new NotFoundException($"Animal com id '{animalId}' não encontrado.");
@@ -69,12 +70,17 @@ namespace MuuBoi.Application.Services
             return animal;
         }
 
-        public async Task<WeightRecordDto?> UpdateWeightRecordAsync(int id, string animalId, WeightRecordUpdateDto weightRecordUpdateDto)
+        private async Task<WeightRecord> FindWeightRecordAsync(int id, int animalId)
+        {
+            return await _weightRecordRepository.GetWeightRecordByIdAsync(id, animalId)
+                ?? throw new NotFoundException($"Pesagem com id '{id}' não encontrada.");
+        }
+
+        public async Task<WeightRecordDto> UpdateWeightRecordAsync(int id, int animalId, WeightRecordUpdateDto weightRecordUpdateDto)
         {
             await FindAnimalAsync(animalId);
 
-            var existing = await _weightRecordRepository.GetWeightRecordByIdAsync(id, animalId);
-            if (existing == null) return null;
+            var existing = await FindWeightRecordAsync(id, animalId);
 
             _mapper.Map(weightRecordUpdateDto, existing);
             var updated = await _weightRecordRepository.UpdateWeightRecordAsync(existing);

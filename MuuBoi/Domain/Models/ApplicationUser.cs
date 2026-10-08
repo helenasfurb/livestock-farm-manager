@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using MuuBoi.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace MuuBoi.Domain.Models
@@ -11,6 +12,8 @@ namespace MuuBoi.Domain.Models
         public Guid PropertyId { get; set; }
 
         public bool IsActive { get; set; } = true;
+
+        public UserRole Role { get; set; } = UserRole.Member;
 
         public Property? Property { get; set; }
     }

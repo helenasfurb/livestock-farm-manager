@@ -28,8 +28,14 @@ namespace MuuBoi.Api.Controllers
         public async Task<ActionResult<VaccineDto>> GetById(int id)
         {
             var vaccine = await _vaccineService.GetVaccineByIdAsync(id);
-            if (vaccine == null) return NotFound();
             return Ok(vaccine);
+        }
+
+        [HttpGet("changes")]
+        public async Task<ActionResult<SyncPageDto<VaccineDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _vaccineService.GetChangesAsync(since, limit);
+            return Ok(page);
         }
 
         [HttpPost]
@@ -43,15 +49,13 @@ namespace MuuBoi.Api.Controllers
         public async Task<ActionResult<VaccineDto>> Update(int id, [FromBody] VaccineUpdateDto dto)
         {
             var updated = await _vaccineService.UpdateVaccineAsync(id, dto);
-            if (updated == null) return NotFound();
             return Ok(updated);
         }
 
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _vaccineService.DeleteVaccineAsync(id);
-            if (deleted == null) return NotFound();
+            await _vaccineService.DeleteVaccineAsync(id);
             return NoContent();
         }
     }

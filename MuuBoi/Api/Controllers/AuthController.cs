@@ -5,6 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MuuBoi.Infrastructure.Data;
 using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Helpers;
+using MuuBoi.Application.Interfaces;
+using MuuBoi.Domain.Enums;
+using MuuBoi.Domain.Exceptions;
 using MuuBoi.Domain.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,15 +23,21 @@ namespace MuuBoi.Api.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _context;
+        private readonly IAccountService _accountService;
+        private readonly ISessionValidator _sessionValidator;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
             IConfiguration configuration,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IAccountService accountService,
+            ISessionValidator sessionValidator)
         {
             _userManager = userManager;
             _configuration = configuration;
             _context = context;
+            _accountService = accountService;
+            _sessionValidator = sessionValidator;
         }
 
         [HttpPost("register")]
@@ -52,7 +62,8 @@ namespace MuuBoi.Api.Controllers
                 Email = model.Email,
                 Name = model.Name,
                 PropertyId = property.Id,
-                IsActive = true
+                IsActive = true,
+                Role = UserRole.Admin
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
@@ -68,14 +79,7 @@ namespace MuuBoi.Api.Controllers
 
             await transaction.CommitAsync();
 
-            var token = GenerateJwtToken(user, property);
-            return StatusCode(201, new AuthResponseDto
-            {
-                AccessToken = token.Token,
-                ExpiresAt = token.ExpiresAt,
-                User = new UserSummaryDto { Id = user.Id, Name = user.Name },
-                Property = new PropertySummaryDto { Id = property.Id, Name = property.Name }
-            });
+            return StatusCode(201, BuildAuthResponse(user, property));
         }
 
         [HttpPost("login")]
@@ -96,40 +100,115 @@ namespace MuuBoi.Api.Controllers
             if (property == null)
                 return StatusCode(500, new { message = "Propriedade não encontrada." });
 
-            var token = GenerateJwtToken(user, property);
-            return Ok(new AuthResponseDto
-            {
-                AccessToken = token.Token,
-                ExpiresAt = token.ExpiresAt,
-                User = new UserSummaryDto { Id = user.Id, Name = user.Name },
-                Property = new PropertySummaryDto { Id = property.Id, Name = property.Name }
-            });
+            if (string.IsNullOrEmpty(user.SecurityStamp))
+                await _userManager.UpdateSecurityStampAsync(user);
+
+            return Ok(BuildAuthResponse(user, property));
         }
 
         [HttpGet("me")]
         [Authorize]
         public async Task<ActionResult<CurrentUserResponseDto>> Me()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            var user = await _context.Users
-                .Include(u => u.Property)
-                .FirstOrDefaultAsync(u => u.Id == userId);
-
+            var user = await GetCurrentUserAsync();
             if (user == null)
                 return Unauthorized();
 
-            return Ok(new CurrentUserResponseDto
+            return Ok(BuildCurrentUserResponse(user));
+        }
+
+        [HttpPatch("me")]
+        [Authorize]
+        public async Task<ActionResult<CurrentUserResponseDto>> UpdateProfile([FromBody] UpdateProfileDto dto)
+        {
+            var user = await GetCurrentUserAsync();
+            if (user == null)
+                return Unauthorized();
+
+            if (dto.Name != null)
+                user.Name = dto.Name.Trim();
+
+            if (dto.PhoneNumber != null)
+                user.PhoneNumber = dto.PhoneNumber == string.Empty ? null : dto.PhoneNumber;
+
+            await _userManager.UpdateAsync(user);
+
+            return Ok(BuildCurrentUserResponse(user));
+        }
+
+        [HttpPatch("me/password")]
+        [Authorize]
+        public async Task<ActionResult<AuthResponseDto>> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var user = await GetCurrentUserAsync();
+            if (user == null)
+                return Unauthorized();
+
+            var result = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
+            if (!result.Succeeded)
             {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email!,
-                Property = new PropertySummaryDto
-                {
-                    Id = user.Property!.Id,
-                    Name = user.Property.Name
-                }
-            });
+                if (result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.PasswordMismatch)))
+                    throw new BusinessRuleException("Senha atual incorreta.");
+
+                var errors = result.Errors.Select(e => e.Description);
+                return BadRequest(new { message = "Erro ao alterar a senha.", errors });
+            }
+
+            _sessionValidator.Invalidate(user.Id);
+
+            return Ok(BuildAuthResponse(user, user.Property!));
+        }
+
+        [HttpDelete("me")]
+        [Authorize(Roles = nameof(UserRole.Admin))]
+        public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountDto dto)
+        {
+            var user = await GetCurrentUserAsync();
+            if (user == null)
+                return Unauthorized();
+
+            if (!await _userManager.CheckPasswordAsync(user, dto.Password))
+                throw new BusinessRuleException("Senha incorreta.");
+
+            await _accountService.DeletePropertyAsync(user.PropertyId);
+
+            return NoContent();
+        }
+
+        private async Task<ApplicationUser?> GetCurrentUserAsync()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            return await _context.Users
+                .Include(u => u.Property)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+        }
+
+        private static CurrentUserResponseDto BuildCurrentUserResponse(ApplicationUser user) => new()
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email!,
+            PhoneNumber = user.PhoneNumber,
+            Role = user.Role.ToEnumValue(),
+            Property = new PropertySummaryDto
+            {
+                Id = user.Property!.Id,
+                Name = user.Property.Name
+            }
+        };
+
+        private AuthResponseDto BuildAuthResponse(ApplicationUser user, Property property)
+        {
+            var token = GenerateJwtToken(user, property);
+
+            return new AuthResponseDto
+            {
+                AccessToken = token.Token,
+                ExpiresAt = token.ExpiresAt,
+                User = new UserSummaryDto { Id = user.Id, Name = user.Name, Role = user.Role.ToEnumValue() },
+                Property = new PropertySummaryDto { Id = property.Id, Name = property.Name }
+            };
         }
 
         private (string Token, DateTime ExpiresAt) GenerateJwtToken(ApplicationUser user, Property property)
@@ -139,6 +218,8 @@ namespace MuuBoi.Api.Controllers
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.Email, user.Email!),
                 new Claim("property_id", property.Id.ToString()),
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim("security_stamp", user.SecurityStamp!),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 

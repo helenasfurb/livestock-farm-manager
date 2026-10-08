@@ -128,10 +128,10 @@ namespace MuuBoi.Application.Services
         public async Task<BreedingEventDto> UpdateAsync(int id, BreedingEventUpdateDto dto)
         {
             var ev = await _repository.GetByIdAsync(id)
-                ?? throw new NotFoundException($"Cobertura com id '{id}' não encontrado.");
+                ?? throw new NotFoundException($"Cobertura com id '{id}' não encontrada.");
 
             if (ev.Status != ReproductiveEventStatus.AwaitingDiagnosis)
-                throw new ConflictException("Apenas coberturas com diagnóstico pendente podem ser editados.");
+                throw new ConflictException("Apenas coberturas com diagnóstico pendente podem ser editadas.");
 
             if (dto.BreedingDate.HasValue)
                 ev.BreedingDate = dto.BreedingDate.Value;

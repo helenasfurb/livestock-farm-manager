@@ -47,11 +47,14 @@ namespace MuuBoi.Infrastructure.Repositories
             return await _context.MilkProductions.FirstOrDefaultAsync(m => m.Id == id);
         }
 
+        public async Task<MilkProduction?> GetBySyncIdAsync(Guid syncId)
+        {
+            return await _context.FindBySyncIdAsync<MilkProduction>(syncId);
+        }
+
         public async Task<MilkProduction> CreateAsync(MilkProduction milkProduction)
         {
-            _context.MilkProductions.Add(milkProduction);
-            await _context.SaveChangesAsync();
-            return milkProduction;
+            return await _context.AddSyncableAsync(milkProduction);
         }
 
         public async Task<MilkProduction> UpdateAsync(MilkProduction milkProduction)
@@ -59,6 +62,11 @@ namespace MuuBoi.Infrastructure.Repositories
             _context.MilkProductions.Update(milkProduction);
             await _context.SaveChangesAsync();
             return milkProduction;
+        }
+
+        public async Task<IReadOnlyList<MilkProduction>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<MilkProduction>(since, take);
         }
     }
 }

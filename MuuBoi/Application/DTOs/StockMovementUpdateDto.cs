@@ -12,7 +12,7 @@ namespace MuuBoi.Application.DTOs
         [Range(0, 99999999.99, ErrorMessage = "O valor total não pode ser negativo.")]
         public decimal? TotalValue { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
     }
 }

@@ -8,7 +8,9 @@ namespace MuuBoi.Application.Interfaces
         Task<IEnumerable<MilkProduction>> GetAllAsync(MilkProductionFilterDto filter);
         Task<decimal> GetTotalVolumeAsync(DateTime from, DateTime to);
         Task<MilkProduction?> GetByIdAsync(int id);
+        Task<MilkProduction?> GetBySyncIdAsync(Guid syncId);
         Task<MilkProduction> CreateAsync(MilkProduction milkProduction);
         Task<MilkProduction> UpdateAsync(MilkProduction milkProduction);
+        Task<IReadOnlyList<MilkProduction>> GetChangesAsync(ulong since, int take);
     }
 }

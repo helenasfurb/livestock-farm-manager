@@ -6,7 +6,7 @@ namespace MuuBoi.Application.DTOs
     public class MedicationUseCreateDto : IValidatableObject
     {
         [Required(ErrorMessage = "O medicamento é obrigatório.")]
-        [MaxLength(200)]
+        [MaxLength(200, ErrorMessage = "O nome do medicamento deve ter no máximo 200 caracteres.")]
         public string MedicationName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "A data de aplicação é obrigatória.")]
@@ -15,10 +15,10 @@ namespace MuuBoi.Application.DTOs
         // Milk withdrawal in days; defaults to the catalog's DefaultWithdrawalPeriodDays when omitted.
         public int? WithdrawalPeriodDays { get; set; }
 
-        [MaxLength(200)]
+        [MaxLength(200, ErrorMessage = "A dose deve ter no máximo 200 caracteres.")]
         public string? Dose { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(100, ErrorMessage = "O responsável deve ter no máximo 100 caracteres.")]
         public string? Responsible { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

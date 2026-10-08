@@ -1,10 +1,18 @@
 # Spec 11.1: Registro de Produção de Leite (CRUD de `MilkProduction`)
 
 **Módulo:** Produção — Leite
-**Versão:** 1.1
-**Data:** 31/Ago/2026 (rev. 1.0 em 30/Ago/2026)
+**Versão:** 1.2
+**Data:** 03/Out/2026 (rev. 1.1 em 31/Ago/2026; rev. 1.0 em 30/Ago/2026)
 **Fonte:** Divisão do Spec #11 (Produção Leiteira e Status de Lactação) em 11.1 (produção) e 11.2 (lactação/secagem)
-**Status:** Implementada
+**Status:** Implementada — **com suporte offline** (desde 02/Out/2026)
+
+> **Alterações da 1.2 (suporte offline — ver §8):**
+> - `MilkProduction` passa a implementar `ISyncable`: colunas **`SyncId`** (`uniqueidentifier`, único, gerado no cliente) e **`RowVersion`** (`rowversion`). Migração `20261002224240_Offline_MilkProduction_SyncId_RowVersion`.
+> - `POST` aceita `syncId` e é **idempotente** (reenvio devolve o registro existente).
+> - `PATCH` aceita `updatedAt` (momento da edição, UTC) e aplica **last-write-wins**.
+> - `DELETE` em registro já inativo responde **`204`** (antes `409`).
+> - Nova rota **`GET /api/milk-productions/changes?since=&limit=`** (pull incremental).
+> - Especificação, plano e validações: Spec #14 (`Docs/Specs/spec-sincronizacao-offline.md`).
 
 > **Alterações da 1.1 (durante a implementação):**
 > - Campo `Liters` renomeado para **`Volume`** — nome desacoplado da unidade de medida (D7).
@@ -159,9 +167,10 @@ public enum MilkingShift
 ### 6.3 DTOs
 > `Application/DTOs/`
 
-- **`MilkProductionCreateDto`** — `Date` (`[Required]`; não futura via `IValidatableObject`), `Milking?`, `Volume` (`[Required]`, `[Range(0.01, 9999999.99)]`), `Notes?` (`[MaxLength(500)]`).
-- **`MilkProductionUpdateDto`** — `Date?` (não futura via `IValidatableObject`), `Milking?`, `Volume?` (`[Range]`), `Notes?` — todos opcionais (PATCH parcial, padrão do projeto: null = não altera).
-- **`MilkProductionDto`** (resposta / detalhe) — `Id`, `Date`, `Milking` (`EnumValueDto?`), `Volume`, `Notes`, `IsActive`, `CreatedAt`, `UpdatedAt`.
+- **`MilkProductionCreateDto`** — `SyncId?` (*v1.2*; não pode ser `Guid.Empty`), `Date` (`[Required]`; não futura via `IValidatableObject`), `Milking?`, `Volume` (`[Required]`, `[Range(0.01, 9999999.99)]`), `Notes?` (`[MaxLength(500)]`).
+- **`MilkProductionUpdateDto`** — `Date?` (não futura via `IValidatableObject`), `Milking?`, `Volume?` (`[Range]`), `Notes?`, `UpdatedAt?` (*v1.2*; momento da edição no cliente, UTC) — todos opcionais (PATCH parcial, padrão do projeto: null = não altera).
+- **`MilkProductionDto`** (resposta / detalhe / item do pull) — `Id`, `SyncId` (*v1.2*), `Date`, `Milking` (`EnumValueDto?`), `Volume`, `Notes`, `IsActive`, `CreatedAt`, `UpdatedAt`.
+- **`SyncPageDto<MilkProductionDto>`** (*v1.2*, pull) — `Items`, `NextCursor` (texto opaco), `HasMore`.
 - **`MilkProductionDayDto`** (item da listagem — resumo por dia, D8) — `Date`, `TotalVolume`, `RecordCount`.
 - **`MilkProductionListItemDto`** (item da lista de registros de um dia, `by-date`) — `Id`, `Milking` (`EnumValueDto?`), `Volume`, `Notes`.
 - **`MilkProductionFilterDto`** — `DateFrom?`, `DateTo?`, `Milking?`, `IsActive?`.
@@ -173,12 +182,13 @@ Mapeamento em `Application/Mappings/MilkProductionProfile.cs` (turno como `EnumV
 
 | Método | Rota | Descrição | Retorno |
 |--------|------|-----------|---------|
-| `POST` | `/api/milk-productions` | Registrar lançamento | `201 MilkProductionDto` / `400` |
+| `POST` | `/api/milk-productions` | Registrar lançamento (idempotente por `syncId`, *v1.2*) | `201 MilkProductionDto` / `400` |
 | `GET` | `/api/milk-productions` | Listar (resumo por dia) com filtro | `200 [MilkProductionDayDto]` |
 | `GET` | `/api/milk-productions/by-date?date=` | Listar lançamentos de um dia | `200 [MilkProductionListItemDto]` |
 | `GET` | `/api/milk-productions/{id}` | Detalhe | `200 MilkProductionDto` / `404` |
-| `PATCH` | `/api/milk-productions/{id}` | Editar (parcial) | `200 MilkProductionDto` / `400` / `404` |
-| `DELETE` | `/api/milk-productions/{id}` | Inativar (soft delete) | `204` / `404` / `409` |
+| `PATCH` | `/api/milk-productions/{id}` | Editar (parcial; last-write-wins por `updatedAt`, *v1.2*) | `200 MilkProductionDto` / `400` / `404` |
+| `DELETE` | `/api/milk-productions/{id}` | Inativar (soft delete; idempotente, *v1.2*) | `204` / `404` |
+| `GET` | `/api/milk-productions/changes?since=&limit=` | Pull incremental para o app offline (*v1.2*) | `200 SyncPageDto<MilkProductionDto>` / `400` |
 | `GET` | `/api/milk-productions/milkings` | Lookup do enum de turno | `200 [{value, label}]` |
 
 ### 6.5 Regras de Negócio
@@ -188,6 +198,9 @@ Mapeamento em `Application/Mappings/MilkProductionProfile.cs` (turno como `EnumV
 | RN-02 | `Date` não pode ser futura. | DTO (`IValidatableObject`) |
 | RN-03 | Vários lançamentos no mesmo dia são válidos — **não** há unicidade/upsert por dia. | Service (ausência de checagem) |
 | RN-04 | Isolamento de tenant: repositório filtra por `PropertyId`. | Repository |
+| RN-05 *(v1.2)* | `POST` com `syncId` já existente devolve o registro existente, **sem alterar** (mesmo com payload diferente). | Service (antes de qualquer regra) |
+| RN-06 *(v1.2)* | `PATCH` com `updatedAt` **anterior** à versão do servidor (`UpdatedAt ?? CreatedAt`) é ignorado e devolve `200` com a versão do servidor. `updatedAt` é normalizado para UTC e limitado a "agora". | Service (`SyncTimestampResolver`) |
+| RN-07 *(v1.2)* | `DELETE` em registro já inativo responde `204` sem gravar nada. | Service |
 
 ### 6.6 Camadas Impactadas
 | Camada | Arquivo | Ação |
@@ -234,15 +247,24 @@ Mapeamento em `Application/Mappings/MilkProductionProfile.cs` (turno como `EnumV
 
 ---
 
-## 8. Como habilitar offline-first depois (sem retrabalho)
+## 8. Suporte offline *(implementado na v1.2 — 02/Out/2026)*
 
-Escolher `Id int` agora **não** impede o offline-first previsto no Spec #11 (D9). Quando a frente de sync entrar, basta:
+> A versão 1.1 previa aqui a evolução "uma coluna + um caminho de upsert". Ela se confirmou **aditiva**, como planejado: o `Id int` continua sendo a PK interna e nenhuma regra de `Volume`/`Date`/`Milking` mudou. Contrato transversal, decisões, plano e validações: Spec #14 (`Docs/Specs/spec-sincronizacao-offline.md`), Parte II.
 
-- Adicionar uma **chave de idempotência do cliente** (ex.: `ClientId Guid` único) em `MilkProduction`, sem remover o `Id int` (PK interna).
-- O endpoint de ingestão passa a fazer **upsert idempotente por `ClientId`** — reenvio após falha de rede não duplica.
-- Como os lançamentos já são **fatos append-only que somam** (D2/D6), não há status nem saldo a reconciliar; qualquer nó recalcula. Nenhuma mudança na semântica de `Volume`/`Date`/`Milking`.
+**O que foi feito:**
 
-Ou seja, a evolução é **aditiva** (uma coluna + um caminho de upsert), não uma reescrita.
+| Item | Como |
+|---|---|
+| Identidade do cliente | Coluna **`SyncId`** (`uniqueidentifier`, índice único `UX_MilkProductions_SyncId`, default `NEWID()` para registros antigos e da web). O nome previsto na v1.1 era `ClientId`; adotou-se `SyncId`, padrão da Spec #14. |
+| Cursor do pull | Coluna **`RowVersion`** (`rowversion`, índice `(PropertyId, RowVersion)`). |
+| Criação idempotente | `POST` com `syncId` existente → `201` com o registro existente (RN-05). |
+| Edição | `PATCH` com `updatedAt` → last-write-wins (RN-06). |
+| Inativação | `DELETE` idempotente (RN-07). A inativação **não** passa pelo LWW: sempre vence. |
+| Pull | `GET /changes?since=&limit=` → registros alterados desde o cursor, **inclusive inativos**; paginado (máx. 500); cursor inválido → `400`. |
+| Reuso | Helpers genéricos `ConfigureSyncable`, `AddSyncableAsync`, `FindBySyncIdAsync`, `GetChangesSinceAsync`, `SyncTimestampResolver`, `SyncPaging` — base para as próximas entidades. |
+| Testes | 19 testes de service em `MuuBoi.Tests/Services/MilkProductionServiceTests.cs`. |
+
+Como os lançamentos são **fatos que somam** (D2/D6), não há saldo nem status a reconciliar no sync — o caso mais simples para iniciar o offline.
 
 ---
 
@@ -251,5 +273,5 @@ Ou seja, a evolução é **aditiva** (uma coluna + um caminho de upsert), não u
 - **Lactação, secagem (`dry-off`) e status "em lactação"** → **Spec 11.2**.
 - **Índices/agregações** (total do rebanho por período, média por vaca em lactação, DEL, proporção de vacas em lactação) → Spec 11.2 / spec de indicadores.
 - **`MilkYield` / medição individual por animal** (Spec #11, D7) → futuro.
-- **Sincronização offline-first / upsert idempotente** (Spec #11, D9) → frente futura (ver §8 para a via de evolução).
+- ~~**Sincronização offline-first / upsert idempotente**~~ → **implementado na v1.2** (§8).
 - **Cadastro/edição de animais** → Spec #1.
