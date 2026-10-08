@@ -31,6 +31,13 @@ namespace MuuBoi.Api.Controllers
             return Ok(vaccine);
         }
 
+        [HttpGet("changes")]
+        public async Task<ActionResult<SyncPageDto<VaccineDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _vaccineService.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpPost]
         public async Task<ActionResult<VaccineDto>> Create([FromBody] VaccineCreateDto dto)
         {

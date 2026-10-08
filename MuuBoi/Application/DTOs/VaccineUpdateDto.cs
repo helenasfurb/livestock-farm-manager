@@ -17,5 +17,7 @@ namespace MuuBoi.Application.DTOs
 
         // Informational only: whether this vaccine requires a booster dose.
         public bool? RequiresBooster { get; set; }
+
+        public DateTime? UpdatedAt { get; set; }
     }
 }
