@@ -3,6 +3,7 @@ namespace MuuBoi.Application.DTOs
     public class StockItemDto
     {
         public int Id { get; set; }
+        public Guid SyncId { get; set; }
         public string Name { get; set; } = string.Empty;
         public StockCategoryDto StockCategory { get; set; } = null!;
         public UnitOfMeasureDto UnitOfMeasure { get; set; } = null!;

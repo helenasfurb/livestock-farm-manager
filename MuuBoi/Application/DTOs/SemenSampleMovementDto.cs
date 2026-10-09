@@ -3,6 +3,7 @@ namespace MuuBoi.Application.DTOs
     public class SemenSampleMovementDto
     {
         public int Id { get; set; }
+        public Guid SyncId { get; set; }
         public int SemenSampleId { get; set; }
         public string SemenSampleName { get; set; } = string.Empty;
         public EnumValueDto MovementType { get; set; } = null!;

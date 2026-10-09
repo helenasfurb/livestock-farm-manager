@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Helpers;
@@ -12,20 +13,17 @@ namespace MuuBoi.Application.Services
     {
         private readonly IStockItemRepository _repository;
         private readonly IStockMovementRepository _movementRepository;
-        private readonly IStockMovementService _movementService;
         private readonly IStockReferenceRepository _referenceRepository;
         private readonly IMapper _mapper;
 
         public StockItemService(
             IStockItemRepository repository,
             IStockMovementRepository movementRepository,
-            IStockMovementService movementService,
             IStockReferenceRepository referenceRepository,
             IMapper mapper)
         {
             _repository = repository;
             _movementRepository = movementRepository;
-            _movementService = movementService;
             _referenceRepository = referenceRepository;
             _mapper = mapper;
         }
@@ -67,22 +65,44 @@ namespace MuuBoi.Application.Services
             var item = await _repository.GetByIdAsync(id)
                 ?? throw new NotFoundException($"Insumo com id '{id}' não encontrado.");
 
-            return await ComposeDetailAsync(item);
+            return await ComposeDetailAsync<StockItemDto>(item);
         }
 
-        public async Task<StockItemDto> CreateAsync(StockItemCreateDto dto)
+        public async Task<StockItemCreatedDto> CreateAsync(StockItemCreateDto dto)
         {
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return await ComposeCreatedAsync(existing, dto.InitialMovementSyncId);
+            }
+
             await ValidateReferencesAsync(dto.StockCategoryId, dto.UnitOfMeasureId);
 
             var item = _mapper.Map<StockItem>(dto);
-            var created = await _repository.CreateAsync(item);
+            item.SyncId = dto.SyncId ?? Guid.NewGuid();
 
             if (dto.InitialQuantity.HasValue)
-                await _movementService.CreateOpeningBalanceAsync(
-                    created.Id, dto.InitialQuantity.Value, dto.InitialTotalValue, dto.InitialNotes);
+                item.Movements = new List<StockMovement>
+                {
+                    new()
+                    {
+                        SyncId = dto.InitialMovementSyncId ?? Guid.NewGuid(),
+                        MovementType = StockMovementType.Input,
+                        MovementReason = StockMovementReason.OpeningBalance,
+                        MovementDate = DateTime.UtcNow,
+                        Quantity = dto.InitialQuantity.Value,
+                        TotalValue = dto.InitialTotalValue,
+                        ValueEntryMode = dto.InitialTotalValue.HasValue ? ValueEntryMode.TotalPrice : null,
+                        Notes = dto.InitialNotes,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    }
+                };
 
+            var created = await _repository.CreateAsync(item);
             var reloaded = await _repository.GetByIdAsync(created.Id) ?? created;
-            return await ComposeDetailAsync(reloaded);
+            return await ComposeCreatedAsync(reloaded, item.Movements?.FirstOrDefault()?.SyncId);
         }
 
         public async Task<StockItemDto> UpdateAsync(int id, StockItemUpdateDto dto)
@@ -96,12 +116,16 @@ namespace MuuBoi.Application.Services
             if (dto.UnitOfMeasureId.HasValue && !await _referenceRepository.UnitExistsAsync(dto.UnitOfMeasureId.Value))
                 throw new NotFoundException($"Unidade de medida com id '{dto.UnitOfMeasureId.Value}' não encontrada.");
 
+            var editedAt = SyncTimestampResolver.ResolveEditedAt(dto.UpdatedAt, DateTime.UtcNow);
+            if (SyncTimestampResolver.IsOutdated(editedAt, item))
+                return await ComposeDetailAsync<StockItemDto>(item);
+
             _mapper.Map(dto, item);
-            item.UpdatedAt = DateTime.UtcNow;
+            item.UpdatedAt = editedAt;
             await _repository.UpdateAsync(item);
 
             var reloaded = await _repository.GetByIdAsync(id) ?? item;
-            return await ComposeDetailAsync(reloaded);
+            return await ComposeDetailAsync<StockItemDto>(reloaded);
         }
 
         public async Task DeactivateAsync(int id)
@@ -110,7 +134,7 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Insumo com id '{id}' não encontrado.");
 
             if (!item.IsActive)
-                throw new ConflictException("O insumo já está inativo.");
+                return;
 
             item.IsActive = false;
             item.UpdatedAt = DateTime.UtcNow;
@@ -208,26 +232,74 @@ namespace MuuBoi.Application.Services
                 .ToList();
         }
 
-        private async Task<StockItemDto> ComposeDetailAsync(StockItem item)
+        public async Task<SyncPageDto<StockItemDto>> GetChangesAsync(string? since, int? limit)
+        {
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
+
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _repository.GetChangesAsync(cursor, take + 1);
+
+            var categories = (await _referenceRepository.GetCategoriesAsync()).ToDictionary(c => c.Id);
+            var units = (await _referenceRepository.GetUnitsAsync()).ToDictionary(u => u.Id);
+            foreach (var item in fetched)
+            {
+                item.StockCategory = categories.GetValueOrDefault(item.StockCategoryId);
+                item.UnitOfMeasure = units.GetValueOrDefault(item.UnitOfMeasureId);
+            }
+
+            var ids = fetched.Select(i => i.Id).ToList();
+            var levelsMap = await _movementRepository.GetLevelsBatchAsync(ids);
+            var consumptionMap = await _movementRepository.GetConsumptionSinceBatchAsync(
+                ids, DateTime.UtcNow.Date.AddDays(-StockForecastResolver.ConsumptionWindowDays));
+            var today = DateTime.UtcNow;
+
+            return SyncPaging.BuildPage(fetched, take, cursor, item =>
+            {
+                var dto = _mapper.Map<StockItemDto>(item);
+                FillDerived(dto, item, levelsMap.GetValueOrDefault(item.Id), consumptionMap.GetValueOrDefault(item.Id, 0m), today);
+                return dto;
+            });
+        }
+
+        private async Task<StockItemCreatedDto> ComposeCreatedAsync(StockItem item, Guid? initialMovementSyncId)
+        {
+            var dto = await ComposeDetailAsync<StockItemCreatedDto>(item);
+
+            if (initialMovementSyncId.HasValue)
+            {
+                var movement = await _movementRepository.GetBySyncIdAsync(initialMovementSyncId.Value);
+                if (movement != null && movement.StockItemId == item.Id)
+                    dto.InitialMovement = _mapper.Map<StockMovementRefDto>(movement);
+            }
+
+            return dto;
+        }
+
+        private async Task<TDto> ComposeDetailAsync<TDto>(StockItem item) where TDto : StockItemDto
         {
             var levels = await _movementRepository.GetLevelsAsync(item.Id);
             var since = DateTime.UtcNow.Date.AddDays(-StockForecastResolver.ConsumptionWindowDays);
             var consumptionMap = await _movementRepository.GetConsumptionSinceBatchAsync(new[] { item.Id }, since);
-            var consumed = consumptionMap.GetValueOrDefault(item.Id, 0m);
+
+            var dto = _mapper.Map<TDto>(item);
+            FillDerived(dto, item, levels, consumptionMap.GetValueOrDefault(item.Id, 0m), DateTime.UtcNow);
+            return dto;
+        }
+
+        private static void FillDerived(StockItemDto dto, StockItem item, StockItemLevels levels, decimal consumed, DateTime today)
+        {
             var dailyRate = StockForecastResolver.DailyConsumptionRate(consumed, StockForecastResolver.ConsumptionWindowDays);
-            var today = DateTime.UtcNow;
             var (days, runOut) = StockForecastResolver.Forecast(levels.Quantity, dailyRate, today);
             var severity = StockForecastResolver.ResolveSeverity(
                 levels.Quantity, item.ReorderPoint, runOut, item.ReplenishmentLeadDays, today);
 
-            var dto = _mapper.Map<StockItemDto>(item);
             dto.CurrentBalance = levels.Quantity;
             dto.StockValue = levels.Value;
             dto.AverageUnitCost = StockForecastResolver.CurrentAverageUnitCost(levels.Quantity, levels.Value);
             dto.DaysOfCoverage = days;
             dto.EstimatedRunOutDate = runOut;
             dto.AlertSeverity = severity.ToEnumValue();
-            return dto;
         }
 
         private async Task ValidateReferencesAsync(int categoryId, int unitId)

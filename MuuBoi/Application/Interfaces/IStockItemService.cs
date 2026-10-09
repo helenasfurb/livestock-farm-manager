@@ -6,10 +6,11 @@ namespace MuuBoi.Application.Interfaces
     {
         Task<IEnumerable<StockItemListItemDto>> GetAllAsync(StockItemFilterDto filter);
         Task<StockItemDto> GetByIdAsync(int id);
-        Task<StockItemDto> CreateAsync(StockItemCreateDto dto);
+        Task<StockItemCreatedDto> CreateAsync(StockItemCreateDto dto);
         Task<StockItemDto> UpdateAsync(int id, StockItemUpdateDto dto);
         Task DeactivateAsync(int id);
         Task<StockDashboardDto> GetDashboardAsync(StockDashboardFilterDto filter);
         Task<IEnumerable<StockAlertDto>> GetAlertsAsync();
+        Task<SyncPageDto<StockItemDto>> GetChangesAsync(string? since, int? limit);
     }
 }

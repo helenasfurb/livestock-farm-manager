@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MuuBoi.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using MuuBoi.Infrastructure.Data;
 namespace MuuBoi.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007004410_Offline_SemenSampleMovement_SyncId_RowVersion")]
+    partial class Offline_SemenSampleMovement_SyncId_RowVersion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1243,19 +1246,8 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<int?>("ReplenishmentLeadDays")
                         .HasColumnType("int");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.Property<int>("StockCategoryId")
                         .HasColumnType("int");
-
-                    b.Property<Guid>("SyncId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWID()");
 
                     b.Property<int>("UnitOfMeasureId")
                         .HasColumnType("int");
@@ -1267,17 +1259,10 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.HasIndex("StockCategoryId");
 
-                    b.HasIndex("SyncId")
-                        .IsUnique()
-                        .HasDatabaseName("UX_StockItems_SyncId");
-
                     b.HasIndex("UnitOfMeasureId");
 
                     b.HasIndex("PropertyId", "IsActive")
                         .HasDatabaseName("IX_StockItems_PropertyId_IsActive");
-
-                    b.HasIndex("PropertyId", "RowVersion")
-                        .HasDatabaseName("IX_StockItems_PropertyId_RowVersion");
 
                     b.HasIndex("PropertyId", "StockCategoryId")
                         .HasDatabaseName("IX_StockItems_PropertyId_StockCategoryId");
@@ -1319,19 +1304,8 @@ namespace MuuBoi.Infrastructure.Migrations
                         .HasPrecision(12, 3)
                         .HasColumnType("decimal(12,3)");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.Property<int>("StockItemId")
                         .HasColumnType("int");
-
-                    b.Property<Guid>("SyncId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWID()");
 
                     b.Property<decimal?>("TotalValue")
                         .HasPrecision(12, 2)
@@ -1349,15 +1323,8 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SyncId")
-                        .IsUnique()
-                        .HasDatabaseName("UX_StockMovements_SyncId");
-
                     b.HasIndex("PropertyId", "IsActive")
                         .HasDatabaseName("IX_StockMovements_PropertyId_IsActive");
-
-                    b.HasIndex("PropertyId", "RowVersion")
-                        .HasDatabaseName("IX_StockMovements_PropertyId_RowVersion");
 
                     b.HasIndex("StockItemId", "MovementDate")
                         .HasDatabaseName("IX_StockMovements_StockItemId_MovementDate");

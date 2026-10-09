@@ -73,11 +73,13 @@ namespace MuuBoi.Infrastructure.Data
                 .HasDatabaseName("IX_AnimalExitRecords_ExitDate_ExitReason");
 
             builder.Entity<SemenSample>().HasQueryFilter(s => s.PropertyId == _propertyId);
+            builder.Entity<SemenSample>().ConfigureSyncable();
             builder.Entity<SemenSample>()
                 .HasIndex(s => new { s.PropertyId, s.IsActive })
                 .HasDatabaseName("IX_SemenSamples_PropertyId_IsActive");
 
             builder.Entity<SemenSampleMovement>().HasQueryFilter(m => m.PropertyId == _propertyId);
+            builder.Entity<SemenSampleMovement>().ConfigureSyncable();
             builder.Entity<SemenSampleMovement>()
                 .HasOne(m => m.SemenSample)
                 .WithMany(s => s.Movements)
@@ -369,7 +371,9 @@ namespace MuuBoi.Infrastructure.Data
                 .HasDatabaseName("IX_AnimalMedications_HealthCaseId");
 
             builder.Entity<StockItem>().HasQueryFilter(i => i.PropertyId == _propertyId);
+            builder.Entity<StockItem>().ConfigureSyncable();
             builder.Entity<StockMovement>().HasQueryFilter(m => m.PropertyId == _propertyId);
+            builder.Entity<StockMovement>().ConfigureSyncable();
 
             builder.Entity<StockItem>()
                 .HasOne(i => i.StockCategory)

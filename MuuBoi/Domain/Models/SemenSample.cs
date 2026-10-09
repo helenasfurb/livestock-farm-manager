@@ -3,7 +3,7 @@ using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Domain.Models
 {
-    public class SemenSample : BaseEntity, ITenantEntity
+    public class SemenSample : BaseEntity, ITenantEntity, ISyncable
     {
         [Required]
         [MaxLength(100)]
@@ -20,12 +20,13 @@ namespace MuuBoi.Domain.Models
         [MaxLength(100)]
         public string? BatchNumber { get; set; }
 
-        public DateTime? BatchDate { get; set; }
-
         [MaxLength(500)]
         public string? Notes { get; set; }
 
         public Guid PropertyId { get; set; }
+
+        public Guid SyncId { get; set; }
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         public ICollection<SemenSampleMovement>? Movements { get; set; }
     }
