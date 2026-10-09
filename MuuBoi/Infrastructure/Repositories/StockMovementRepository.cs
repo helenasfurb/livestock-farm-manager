@@ -43,11 +43,17 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(m => m.Id == id);
         }
 
+        public async Task<StockMovement?> GetBySyncIdAsync(Guid syncId)
+        {
+            return await _context.StockMovements
+                .Include(m => m.StockItem)
+                    .ThenInclude(i => i!.UnitOfMeasure)
+                .FirstOrDefaultAsync(m => m.SyncId == syncId);
+        }
+
         public async Task<StockMovement> CreateAsync(StockMovement movement)
         {
-            _context.StockMovements.Add(movement);
-            await _context.SaveChangesAsync();
-            return movement;
+            return await _context.AddSyncableAsync(movement);
         }
 
         public async Task<StockMovement> UpdateAsync(StockMovement movement)
@@ -55,6 +61,11 @@ namespace MuuBoi.Infrastructure.Repositories
             _context.StockMovements.Update(movement);
             await _context.SaveChangesAsync();
             return movement;
+        }
+
+        public async Task<IReadOnlyList<StockMovement>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<StockMovement>(since, take);
         }
 
         public async Task<StockItemLevels> GetLevelsAsync(int stockItemId)

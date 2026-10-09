@@ -400,12 +400,25 @@ HTTP/1.1 409 Conflict
 | `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` | 404 | Insumo com id '{id}' não encontrado. |
 | `POST`, `PATCH /{id}` | 404 | Categoria com id '{id}' não encontrada. |
 | `POST`, `PATCH /{id}` | 404 | Unidade de medida com id '{id}' não encontrada. |
-| `DELETE /{id}` | 409 | O insumo já está inativo. |
+| `GET /changes?since=`, `GET /movements/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
 | Rotas de `/{stockItemId}/movements` | 404 | Insumo com id '{stockItemId}' não encontrado. |
 | `GET`, `PATCH`, `DELETE /{stockItemId}/movements/{movementId}` | 404 | Movimentação com id '{movementId}' não encontrada. |
 | `POST /{stockItemId}/movements` | 409 | Não é possível registrar movimentação para um insumo inativo. |
 | `PATCH /{stockItemId}/movements/{movementId}` | 422 | A data da movimentação não pode ser futura. |
-| `DELETE /{stockItemId}/movements/{movementId}` | 409 | A movimentação já está inativa. |
+
+> **Rotas com suporte offline** — insumo e movimentações (ver `Docs/Specs/spec-sincronizacao-offline-14.3-estoque.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com o insumo existente (sem duplicar o saldo inicial), incluindo `initialMovement` quando o `initialMovementSyncId` é reenviado — mesmo que a categoria/unidade enviadas sejam inválidas (o `syncId` é checado antes).
+> - `POST` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `POST` com `initialMovementSyncId` vazio → `400` "O identificador de sincronização da entrada inicial não pode ser vazio." (formato B, campo `InitialMovementSyncId`).
+> - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada).
+> - `DELETE /{id}` em insumo já inativo → `204` *(até 08/Out/2026 era `409` "O insumo já está inativo.")*.
+> - `POST /{stockItemId}/movements` com `syncId` já existente → `201` com a movimentação existente, sem recalcular o custo — mesmo que o insumo tenha sido inativado depois do primeiro envio.
+> - `POST /{stockItemId}/movements` com `syncId` vazio → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `PATCH /{stockItemId}/movements/{movementId}` com `updatedAt` mais antigo → `200` com a versão do servidor.
+> - `DELETE /{stockItemId}/movements/{movementId}` em movimentação já inativa → `204` *(até 08/Out/2026 era `409` "A movimentação já está inativa.")*.
+> - `GET /changes` e `GET /movements/changes` **não** retornam erro para `limit` fora da faixa (ajustado para 500).
+>
+> **Correção (08/Out/2026):** `PATCH /{id}` só com alguns campos (sem `stockCategoryId` e `unitOfMeasureId`) respondia `500` (violação de FK — o AutoMapper gravava `0` na categoria). Corrigido na Spec #14.3, Fase 3.
 
 ### 4.15 Vacinação — `/api/vaccination-events`
 

@@ -371,7 +371,9 @@ namespace MuuBoi.Infrastructure.Data
                 .HasDatabaseName("IX_AnimalMedications_HealthCaseId");
 
             builder.Entity<StockItem>().HasQueryFilter(i => i.PropertyId == _propertyId);
+            builder.Entity<StockItem>().ConfigureSyncable();
             builder.Entity<StockMovement>().HasQueryFilter(m => m.PropertyId == _propertyId);
+            builder.Entity<StockMovement>().ConfigureSyncable();
 
             builder.Entity<StockItem>()
                 .HasOne(i => i.StockCategory)

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Helpers;
@@ -50,6 +51,13 @@ namespace MuuBoi.Application.Services
 
         public async Task<StockMovementDto> CreateAsync(int stockItemId, StockMovementCreateDto dto)
         {
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return _mapper.Map<StockMovementDto>(existing);
+            }
+
             var item = await _itemRepository.GetByIdAsync(stockItemId)
                 ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
 
@@ -58,6 +66,7 @@ namespace MuuBoi.Application.Services
 
             var movement = _mapper.Map<StockMovement>(dto);
             movement.StockItemId = stockItemId;
+            movement.SyncId = dto.SyncId ?? Guid.NewGuid();
 
             await ApplyValuationAsync(movement, dto);
 
@@ -76,12 +85,15 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
             movement.StockItem = item;
 
+            if (dto.MovementDate.HasValue && dto.MovementDate.Value.Date > DateTime.UtcNow.Date)
+                throw new BusinessRuleException("A data da movimentação não pode ser futura.");
+
+            var editedAt = SyncTimestampResolver.ResolveEditedAt(dto.UpdatedAt, DateTime.UtcNow);
+            if (SyncTimestampResolver.IsOutdated(editedAt, movement))
+                return _mapper.Map<StockMovementDto>(movement);
+
             if (dto.MovementDate.HasValue)
-            {
-                if (dto.MovementDate.Value.Date > DateTime.UtcNow.Date)
-                    throw new BusinessRuleException("A data da movimentação não pode ser futura.");
                 movement.MovementDate = dto.MovementDate.Value;
-            }
 
             if (dto.Quantity.HasValue)
                 movement.Quantity = dto.Quantity.Value;
@@ -92,7 +104,7 @@ namespace MuuBoi.Application.Services
             if (dto.Notes != null)
                 movement.Notes = dto.Notes;
 
-            movement.UpdatedAt = DateTime.UtcNow;
+            movement.UpdatedAt = editedAt;
             var updated = await _repository.UpdateAsync(movement);
 
             return _mapper.Map<StockMovementDto>(updated);
@@ -107,30 +119,26 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
 
             if (!movement.IsActive)
-                throw new ConflictException("A movimentação já está inativa.");
+                return;
 
             movement.IsActive = false;
             movement.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(movement);
         }
 
-        public async Task CreateOpeningBalanceAsync(int stockItemId, decimal quantity, decimal? totalValue, string? notes)
+        public async Task<SyncPageDto<StockMovementDto>> GetChangesAsync(string? since, int? limit)
         {
-            var movement = new StockMovement
-            {
-                StockItemId = stockItemId,
-                MovementType = StockMovementType.Input,
-                MovementReason = StockMovementReason.OpeningBalance,
-                MovementDate = DateTime.UtcNow,
-                Quantity = quantity,
-                TotalValue = totalValue,
-                ValueEntryMode = totalValue.HasValue ? ValueEntryMode.TotalPrice : null,
-                Notes = notes,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            };
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
 
-            await _repository.CreateAsync(movement);
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _repository.GetChangesAsync(cursor, take + 1);
+
+            var items = await _itemRepository.GetByIdsAsync(fetched.Select(m => m.StockItemId));
+            foreach (var movement in fetched)
+                movement.StockItem = items.GetValueOrDefault(movement.StockItemId);
+
+            return SyncPaging.BuildPage(fetched, take, cursor, m => _mapper.Map<StockMovementDto>(m));
         }
 
         private async Task ApplyValuationAsync(StockMovement movement, StockMovementCreateDto dto)

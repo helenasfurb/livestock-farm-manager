@@ -21,9 +21,23 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.PropertyId, opt => opt.Ignore())
                 .ForMember(dest => dest.StockCategory, opt => opt.Ignore())
                 .ForMember(dest => dest.UnitOfMeasure, opt => opt.Ignore())
-                .ForMember(dest => dest.Movements, opt => opt.Ignore());
+                .ForMember(dest => dest.Movements, opt => opt.Ignore())
+                .ForMember(dest => dest.SyncId, opt => opt.Ignore())
+                .ForMember(dest => dest.RowVersion, opt => opt.Ignore());
 
             CreateMap<StockItemUpdateDto, StockItem>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.IsActive, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.PropertyId, opt => opt.Ignore())
+                .ForMember(dest => dest.SyncId, opt => opt.Ignore())
+                .ForMember(dest => dest.RowVersion, opt => opt.Ignore())
+                .ForMember(dest => dest.StockCategory, opt => opt.Ignore())
+                .ForMember(dest => dest.UnitOfMeasure, opt => opt.Ignore())
+                .ForMember(dest => dest.Movements, opt => opt.Ignore())
+                .ForMember(dest => dest.StockCategoryId, opt => opt.PreCondition(src => src.StockCategoryId.HasValue))
+                .ForMember(dest => dest.UnitOfMeasureId, opt => opt.PreCondition(src => src.UnitOfMeasureId.HasValue))
                 .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 
             CreateMap<StockItem, StockItemDto>()
@@ -33,6 +47,12 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.DaysOfCoverage, opt => opt.Ignore())
                 .ForMember(dest => dest.EstimatedRunOutDate, opt => opt.Ignore())
                 .ForMember(dest => dest.AlertSeverity, opt => opt.Ignore());
+
+            CreateMap<StockItem, StockItemCreatedDto>()
+                .IncludeBase<StockItem, StockItemDto>()
+                .ForMember(dest => dest.InitialMovement, opt => opt.Ignore());
+
+            CreateMap<StockMovement, StockMovementRefDto>();
 
             CreateMap<StockItem, StockItemListItemDto>()
                 .ForMember(dest => dest.CategoryName,
@@ -53,7 +73,9 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.StockItem, opt => opt.Ignore())
                 .ForMember(dest => dest.TotalValue, opt => opt.Ignore())
                 .ForMember(dest => dest.ValueEntryMode, opt => opt.Ignore())
-                .ForMember(dest => dest.UnitCostSnapshot, opt => opt.Ignore());
+                .ForMember(dest => dest.UnitCostSnapshot, opt => opt.Ignore())
+                .ForMember(dest => dest.SyncId, opt => opt.Ignore())
+                .ForMember(dest => dest.RowVersion, opt => opt.Ignore());
 
             CreateMap<StockMovement, StockMovementDto>()
                 .ForMember(dest => dest.StockItemName,
