@@ -113,6 +113,20 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 
+        public async Task<Animal?> GetBySyncIdAsync(Guid syncId)
+        {
+            return await _context.Animals
+                .Include(a => a.WeightRecords!.OrderByDescending(w => w.RecordedAt))
+                .Include(a => a.BodyConditionRecords!.OrderByDescending(r => r.RecordedAt).Take(1))
+                .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1))
+                .FirstOrDefaultAsync(a => a.SyncId == syncId);
+        }
+
+        public async Task<IReadOnlyList<Animal>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<Animal>(since, take);
+        }
+
         public async Task<List<int>> GetExistingAnimalIdsAsync(IReadOnlyCollection<int> ids)
         {
             if (ids == null || ids.Count == 0)
@@ -143,9 +157,7 @@ namespace MuuBoi.Infrastructure.Repositories
 
         public async Task<Animal> CreateAnimalAsync(Animal animal)
         {
-            _context.Animals.Add(animal);
-            await _context.SaveChangesAsync();
-            return animal;
+            return await _context.AddSyncableAsync(animal);
         }
 
         public async Task<Animal> UpdateAnimalAsync(Animal animal)

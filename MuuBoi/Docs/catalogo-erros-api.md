@@ -221,10 +221,20 @@ Os erros de validação de DTO (**400**, formato B) estão agrupados na §5.
 | `GET /{id}`, `PATCH /{id}`, `PATCH /{id}/exit`, `PATCH /{id}/reactivate`, `GET /{id}/exit-records` | 404 | Animal com id '{id}' não encontrado. |
 | `POST /`, `PATCH /{id}` | 409 | Já existe um animal com o brinco '{brinco}' nesta propriedade. |
 | `POST /` | 422 | A lactação inicial só se aplica a vacas e novilhas. |
-| `PATCH /{id}/exit` | 409 | Não é possível registrar saída de um animal já inativo. |
-| `PATCH /{id}/reactivate` | 409 | Não é possível reativar um animal que já está ativo. |
+| `GET /changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
 | `GET /{id}/vaccination-history` | 404 | Animal com id '{id}' não encontrado. |
 | `GET /{id}/health-history` | 404 | Animal com id '{id}' não encontrado. |
+
+> **Rotas com suporte offline** — cadastro, edição, saída e reativação (ver `Docs/Specs/spec-sincronizacao-offline-14.4-animais.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST /` com `syncId` já existente → `201` com o animal existente (sem duplicar pesagem, ECC e lactação iniciais) — mesmo que o brinco já esteja em uso por ele ou que a lactação inicial seja inválida (o `syncId` é checado antes). Inclui o reenvio simultâneo ao original.
+> - `POST /` com **outro** `syncId` e brinco em uso → continua `409` (conflito real).
+> - `POST /` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada, **sem** checar o brinco).
+> - `PATCH /{id}/exit` em animal já inativo → `200` com o animal, sem gravar *(até 09/Out/2026 era `409` "Não é possível registrar saída de um animal já inativo.")*.
+> - `PATCH /{id}/reactivate` em animal já ativo → `200` com o animal, sem gravar *(até 09/Out/2026 era `409` "Não é possível reativar um animal que já está ativo.")*.
+> - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
+>
+> **Correção (09/Out/2026):** a segunda saída de um animal reativado apagava fisicamente a saída anterior do histórico (`GET /{id}/exit-records`). Corrigido na Spec #14.4, Fase 4.
 
 Exemplo:
 
@@ -472,7 +482,7 @@ Disparados automaticamente antes do controller. A chave de `errors` é o nome do
 
 | DTO | Mensagens |
 |---|---|
-| `AnimalCreateDto` | O brinco principal é obrigatório. · O brinco principal deve ter exatamente 6 dígitos numéricos. · O sexo é obrigatório. · A classificação é obrigatória. · A classificação '{x}' é exclusiva de fêmeas. · A classificação '{x}' é exclusiva de machos. · A data do ECC inicial não pode ser futura. |
+| `AnimalCreateDto` | O identificador de sincronização não pode ser vazio. · O brinco principal é obrigatório. · O brinco principal deve ter exatamente 6 dígitos numéricos. · O sexo é obrigatório. · A classificação é obrigatória. · A classificação '{x}' é exclusiva de fêmeas. · A classificação '{x}' é exclusiva de machos. · A data do ECC inicial não pode ser futura. |
 | `AnimalUpdateDto` | O brinco principal deve ter exatamente 6 dígitos numéricos. · A classificação '{x}' é exclusiva de fêmeas. · A classificação '{x}' é exclusiva de machos. |
 | `AnimalExitDto` | O motivo de saída é obrigatório. · A data de saída é obrigatória. · A data de saída não pode ser futura. |
 | `BodyConditionRecordCreateDto` | O escore de condição corporal é obrigatório. · A data da avaliação é obrigatória. |
@@ -554,7 +564,7 @@ A senha atual errada em `PATCH /me/password` **não** vem nesse formato: é conv
 | 3 | **`int.Parse` em id da rota** → `FormatException` → **`500`** | Pesagens e medicamentos do animal | ✅ **Corrigido** (02/Out/2026): ids tipados como `int` de ponta a ponta, rotas com `{animalId:int}`/`{weightRecordId:int}`; id inválido → `404` |
 | 4 | **`404` sem mensagem** e `null` como sinal de erro (viola o `CLAUDE.md`) | Medicamentos, vacinas, pesagens, medicamentos do animal | ✅ **Corrigido** (02/Out/2026): services lançam `NotFoundException` com mensagem; `Delete` retorna `Task<bool>` |
 | 5 | **"Email já cadastrado." em dois formatos** | `AuthController.Register` (D, `message`) × `UsersController.Create` (A, `error`) | ⏳ Pendente — corrigir muda o corpo lido pelo front-end web no cadastro |
-| 6 | **`409` para "já está no estado pedido"** ("já está inativo", "já está seca", "já está ativo"...) | Vários services | Tratado por entidade no plano offline (A6). ✅ Corrigido em `MilkProduction`; ⏳ demais entidades quando ficarem sincronizáveis |
+| 6 | **`409` para "já está no estado pedido"** ("já está inativo", "já está seca", "já está ativo"...) | Vários services | Tratado por entidade no plano offline (A6). ✅ Corrigido em `MilkProduction`, vacinas, sêmen, estoque e animais (saída/reativação); ⏳ demais entidades quando ficarem sincronizáveis |
 | 7 | **`500` com mensagem de negócio** ("Propriedade não encontrada.") | `AuthController.Login` | Mantido: é de fato uma inconsistência de dados no servidor |
 | 8 | **Concordância** em "Cobertura com id '{id}' não encontrado." e "... podem ser editados." | `BreedingEventService.UpdateAsync` | ✅ **Corrigido** (02/Out/2026) |
 | 9 | **`ExceptionMiddleware` registrado depois da autenticação** — exceções na validação da sessão escapam dele | `Program.cs:177–180` | ⏳ Pendente — exige mudança no `Program.cs` |

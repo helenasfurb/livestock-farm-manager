@@ -22,11 +22,15 @@ namespace MuuBoi.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<AnimalExitRecord> CreateAsync(AnimalExitRecord record)
+        public async Task<IReadOnlyList<AnimalExitRecord>> GetByAnimalIdsAsync(IReadOnlyCollection<int> animalIds)
         {
-            _context.AnimalExitRecords.Add(record);
-            await _context.SaveChangesAsync();
-            return record;
+            if (animalIds.Count == 0)
+                return new List<AnimalExitRecord>();
+
+            return await _context.AnimalExitRecords
+                .Where(r => animalIds.Contains(r.AnimalId))
+                .AsNoTracking()
+                .ToListAsync();
         }
     }
 }

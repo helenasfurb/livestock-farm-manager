@@ -6,6 +6,8 @@ namespace MuuBoi.Application.DTOs
 {
     public class AnimalCreateDto : IValidatableObject
     {
+        public Guid? SyncId { get; set; }
+
         [Required(ErrorMessage = "O brinco principal é obrigatório.")]
         [RegularExpression(@"^\d{6}$", ErrorMessage = "O brinco principal deve ter exatamente 6 dígitos numéricos.")]
         public string TagNumber { get; set; } = string.Empty;
@@ -58,6 +60,11 @@ namespace MuuBoi.Application.DTOs
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+
             if (Classification.HasValue && Gender.HasValue)
             {
                 var femaleOnly = new[] { AnimalClassification.Heifer, AnimalClassification.Cow };
