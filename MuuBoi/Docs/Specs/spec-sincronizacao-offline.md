@@ -1,9 +1,9 @@
 # Spec #14: Sincronização Offline — Especificação e Plano de Implementação
 
 **Módulo:** Infraestrutura / Sincronização — transversal a toda a aplicação
-**Versão:** 1.2
-**Data:** 08/Out/2026
-**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2) e **Estoque de insumos e movimentações** (Spec #14.3); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
+**Versão:** 1.3
+**Data:** 09/Out/2026
+**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2), **Estoque de insumos e movimentações** (Spec #14.3) e **Animais e saídas do rebanho** (Spec #14.4); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
 **Abrangência:** contrato de sincronização do servidor/API (identidade, versionamento, tombstones, idempotência, tenant) **e** o contrato que o app offline precisa seguir para consumi-lo.
 **Relaciona-se com:** Spec 11.1 (Produção de Leite, §8) · Spec #13 (Cadastro Retroativo de Gestação, §6) · todos os specs de entidade · `Docs/catalogo-erros-api.md`
 
@@ -17,6 +17,7 @@
 | 1.0 | 03/Out/2026 | Decisões revisadas (A1–A8): **sem rota em lote** — o app envia pelas **rotas REST normais**, em ordem; pull **por recurso** (`GET /api/<recurso>/changes`). Implementação completa da produção de leite (Fases 1–7), com helpers reutilizáveis e 19 testes. |
 | 1.1 | 05/Out/2026 | A implementação de cada nova entidade passa a ficar em uma **spec filha** (`spec-sincronizacao-offline-14.N-<entidade>.md`), para este documento não crescer a cada entidade. Primeira: **Spec #14.1 — catálogo de vacinas**. |
 | 1.2 | 08/Out/2026 | §8: `StockItem` e `StockMovement` sincronizáveis (**Spec #14.3**); §13 questão 1 resolvida para o estoque de insumos. **Correção de premissa:** não existe cliente web — o único cliente é o app, que funciona online e offline pelo mesmo caminho. Menções a "web" trocadas por "outro celular" (conflitos) ou "Swagger/chamada direta" (requisições sem `syncId`/`updatedAt`) em §1, §3.3, §4, §5.2–§5.5, §5.9, §10 e §12. |
+| 1.3 | 09/Out/2026 | §8: `Animal` e `AnimalExitRecord` sincronizáveis (**Spec #14.4**). §5.5: primeira exceção ao "mesmo DTO do detalhe" (pull de animais com `AnimalSyncDto`). §5.7: reenvio do `POST` de animal resolvido. §7.5: **Condição 3** — regra de unicidade checada entre o `SyncId` e o `INSERT` precisa rechecar o `SyncId` antes do `409`. |
 
 ---
 
@@ -271,7 +272,7 @@ GET /api/milk-productions/changes?since=abc
 |---|---|
 | `since` | Ausente ou vazio → carga completa. Não numérico ou negativo → `400`. |
 | `limit` | Ausente, zero ou negativo → 500; acima de 500 → 500. **Ajusta, não dá erro.** |
-| `items` | Registros com `RowVersion > since`, em ordem crescente de `RowVersion`, **inclusive inativos** (tombstones). Mesmo DTO do detalhe. |
+| `items` | Registros com `RowVersion > since`, em ordem crescente de `RowVersion`, **inclusive inativos** (tombstones). Mesmo DTO do detalhe — **exceção:** `Animal` usa `AnimalSyncDto` (só dados do próprio animal + saídas), porque o detalhe é composto de outros recursos e custaria ~6 consultas por animal (Spec #14.4, N6). |
 | `nextCursor` | `RowVersion` do **último item da página**, como texto. Página vazia → **o mesmo cursor recebido**. |
 | `hasMore` | `true` se há mais páginas; o app pede de novo imediatamente com o `nextCursor`. |
 
@@ -343,7 +344,7 @@ App                                       Servidor
 
 | Operação reenviada | Resposta hoje |
 |---|---|
-| `POST` animal | `AnimalService.cs:121` — "Já existe um animal com o brinco '...'" |
+| `POST` animal | ✅ **Resolvido (Spec #14.4):** `SyncId` checado antes do brinco; reenvio → `201` com o existente. Antes: "Já existe um animal com o brinco '...'" |
 | `POST` gestação | `AnimalPregnancyService.cs:79` — "O animal já possui uma gestação ativa confirmada." |
 | `POST` parto | `AnimalCalvingService.cs:44` — "Esta gestação já possui um parto ativo registrado." |
 | Diagnóstico da cobertura | `BreedingEventService.cs:185` — "O diagnóstico desta cobertura já foi registrado." |
@@ -555,6 +556,8 @@ POST /api/pregnancies/42/calvings
 
 Derivados que o usuário não referencia diretamente (lactação aberta pelo parto, movimentação gerada pela cobertura) podem ter `SyncId` gerado pelo servidor e chegam ao app pelo pull.
 
+**Condição 3 — regra de unicidade ou de estado entre o `SyncId` e o `INSERT` (descoberta na Spec #14.4, 09/Out/2026).** Se o original grava depois que o reenvio passou pela checagem do `SyncId`, o reenvio esbarra na regra causada pelo **próprio** original (ex.: "Já existe um animal com o brinco ...") e recebe `409` — erro definitivo para o app, embora a operação tenha dado certo. Solução: antes de lançar a exceção da regra, **buscar o `SyncId` de novo**; se existir, devolver o existente. Se a regra viu o registro, o original já fez commit, então a segunda busca o encontra. Aplicar em gestação ("gestação ativa"), parto ("parto ativo") e qualquer outra regra desse tipo.
+
 ---
 
 ## 8. Entidades no escopo
@@ -568,7 +571,8 @@ Derivados que o usuário não referencia diretamente (lactação aberta pelo par
 | `StockItem` | ✅ **Sincronizável** (08/Out/2026) | **Spec #14.3**, Parte A (`spec-sincronizacao-offline-14.3-estoque.md`). Saldo inicial do cadastro gravado junto e endereçável pelo app (`initialMovementSyncId`) |
 | `StockMovement` | ✅ **Sincronizável** (08/Out/2026) | **Spec #14.3**, Parte B. Pull global; o app calcula saldo e valor sobre as movimentações |
 | `Medication` | ❌ Fora | CRUD será descontinuado (06/Out/2026) |
-| `Animal`, `AnimalExitRecord` | ⏳ | Pré-requisito dos eventos do animal |
+| `Animal` | ✅ **Sincronizável** (09/Out/2026) | **Spec #14.4** (`spec-sincronizacao-offline-14.4-animais.md`). Pesagem, ECC e lactação iniciais gravados junto com o animal; pull com `AnimalSyncDto` (sem status derivados) |
+| `AnimalExitRecord` | ✅ **Sincronizável** (09/Out/2026), embutido | **Spec #14.4**, Parte B. Sem `SyncId` próprio: chega no pull do animal (`exitRecords`); saída e reativação idempotentes |
 | `WeightRecord`, `BodyConditionRecord`, `AnimalMedication` | ⏳ | `WeightRecord` hoje faz **hard delete** (questão em aberto 4) |
 | `BreedingEvent`, `AnimalPregnancy`, `AnimalCalving`, `AnimalCalvingCalf` | ⏳ | Condições 1 e 2 (§7.5) |
 | `Lactation` | ⏳ | Depende de `Animal` |

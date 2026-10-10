@@ -74,6 +74,13 @@ namespace MuuBoi.Api.Controllers
             return Ok(animals);
         }
 
+        [HttpGet("changes")]
+        public async Task<ActionResult<SyncPageDto<AnimalSyncDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _animalService.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<AnimalDto>> GetById(int id)
         {

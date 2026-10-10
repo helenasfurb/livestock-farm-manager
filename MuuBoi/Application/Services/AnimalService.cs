@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Helpers;
@@ -117,8 +118,24 @@ namespace MuuBoi.Application.Services
 
         public async Task<AnimalDto> CreateAnimalAsync(AnimalCreateDto dto)
         {
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _animalRepository.GetBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return _mapper.Map<AnimalDto>(existing);
+            }
+
             if (await _animalRepository.TagNumberExistsAsync(dto.TagNumber))
+            {
+                if (dto.SyncId.HasValue)
+                {
+                    var concurrent = await _animalRepository.GetBySyncIdAsync(dto.SyncId.Value);
+                    if (concurrent != null)
+                        return _mapper.Map<AnimalDto>(concurrent);
+                }
+
                 throw new ConflictException($"Já existe um animal com o brinco '{dto.TagNumber}' nesta propriedade.");
+            }
 
             if (dto.InitialLactation != null
                 && dto.Classification != AnimalClassification.Cow
@@ -126,14 +143,12 @@ namespace MuuBoi.Application.Services
                 throw new BusinessRuleException("A lactação inicial só se aplica a vacas e novilhas.");
 
             var animal = _mapper.Map<Animal>(dto);
+            animal.SyncId = dto.SyncId ?? Guid.NewGuid();
             CreateWeightRecord(dto, animal);
             CreateBodyConditionRecord(dto, animal);
+            CreateInitialLactation(dto, animal);
 
             var created = await _animalRepository.CreateAnimalAsync(animal);
-
-            if (dto.InitialLactation != null)
-                await SeedInitialLactationAsync(created, dto.InitialLactation);
-
             return _mapper.Map<AnimalDto>(created);
         }
 
@@ -142,13 +157,17 @@ namespace MuuBoi.Application.Services
             var animal = await _animalRepository.GetAnimalByIdAsync(id)
                 ?? throw new NotFoundException($"Animal com id '{id}' não encontrado.");
 
+            var editedAt = SyncTimestampResolver.ResolveEditedAt(dto.UpdatedAt, DateTime.UtcNow);
+            if (SyncTimestampResolver.IsOutdated(editedAt, animal))
+                return _mapper.Map<AnimalDto>(animal);
+
             if (dto.TagNumber != null && await _animalRepository.TagNumberExistsAsync(dto.TagNumber, excludeAnimalId: id))
                 throw new ConflictException($"Já existe um animal com o brinco '{dto.TagNumber}' nesta propriedade.");
 
             var previousGender = animal.Gender;
 
             _mapper.Map(dto, animal);
-            animal.UpdatedAt = DateTime.UtcNow;
+            animal.UpdatedAt = editedAt;
 
             if (dto.Gender.HasValue && dto.Gender.Value != previousGender)
             {
@@ -156,7 +175,7 @@ namespace MuuBoi.Application.Services
                 if (calf != null)
                 {
                     calf.Sex = dto.Gender.Value;
-                    calf.UpdatedAt = DateTime.UtcNow;
+                    calf.UpdatedAt = editedAt;
                 }
             }
 
@@ -170,22 +189,19 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Animal com id '{id}' não encontrado.");
 
             if (!animal.IsActive)
-                throw new ConflictException("Não é possível registrar saída de um animal já inativo.");
+                return _mapper.Map<AnimalDto>(animal);
 
-            var exitRecord = new AnimalExitRecord
+            animal.ExitRecords ??= new List<AnimalExitRecord>();
+            animal.ExitRecords.Add(new AnimalExitRecord
             {
-                AnimalId = id,
                 ExitReason = dto.ExitReason,
                 ExitDate = dto.ExitDate,
                 ExitNotes = dto.ExitNotes,
                 CreatedAt = DateTime.UtcNow
-            };
-
-            await _exitRecordRepository.CreateAsync(exitRecord);
+            });
 
             animal.IsActive = false;
             animal.UpdatedAt = DateTime.UtcNow;
-            animal.ExitRecords = new List<AnimalExitRecord> { exitRecord };
 
             var updated = await _animalRepository.UpdateAnimalAsync(animal);
             return _mapper.Map<AnimalDto>(updated);
@@ -197,7 +213,7 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Animal com id '{id}' não encontrado.");
 
             if (animal.IsActive)
-                throw new ConflictException("Não é possível reativar um animal que já está ativo.");
+                return _mapper.Map<AnimalDto>(animal);
 
             animal.IsActive = true;
             animal.UpdatedAt = DateTime.UtcNow;
@@ -213,6 +229,22 @@ namespace MuuBoi.Application.Services
 
             var records = await _exitRecordRepository.GetByAnimalIdAsync(animalId);
             return _mapper.Map<IEnumerable<AnimalExitRecordDto>>(records);
+        }
+
+        public async Task<SyncPageDto<AnimalSyncDto>> GetChangesAsync(string? since, int? limit)
+        {
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
+
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _animalRepository.GetChangesAsync(cursor, take + 1);
+
+            var exits = await _exitRecordRepository.GetByAnimalIdsAsync(fetched.Select(a => a.Id).ToList());
+            var exitsByAnimal = exits.ToLookup(e => e.AnimalId);
+            foreach (var animal in fetched)
+                animal.ExitRecords = exitsByAnimal[animal.Id].ToList();
+
+            return SyncPaging.BuildPage(fetched, take, cursor, a => _mapper.Map<AnimalSyncDto>(a));
         }
 
         private static void ApplySanitaryStatus(
@@ -246,19 +278,22 @@ namespace MuuBoi.Application.Services
             dto.DaysInMilk = ProductiveStatusResolver.CurrentDaysInMilk(lactations, now);
         }
 
-        private async Task SeedInitialLactationAsync(Animal animal, LactationSeedDto seed)
+        private static void CreateInitialLactation(AnimalCreateDto dto, Animal animal)
         {
-            await _lactationRepository.CreateAsync(new Lactation
+            if (dto.InitialLactation == null) return;
+
+            animal.Lactations = new List<Lactation>
             {
-                AnimalId = animal.Id,
-                StartDate = seed.StartDate,
-                EndDate = seed.EndDate,
-                CalvingId = null,
-                Origin = LactationOrigin.InitialSeed,
-                PropertyId = animal.PropertyId,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            });
+                new()
+                {
+                    StartDate = dto.InitialLactation.StartDate,
+                    EndDate = dto.InitialLactation.EndDate,
+                    CalvingId = null,
+                    Origin = LactationOrigin.InitialSeed,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
         }
 
         private async Task ApplyReproductiveFactsAsync(AnimalDto dto, Animal animal)

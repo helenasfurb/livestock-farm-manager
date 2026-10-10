@@ -5,6 +5,6 @@ namespace MuuBoi.Application.Interfaces
     public interface IAnimalExitRecordRepository
     {
         Task<IEnumerable<AnimalExitRecord>> GetByAnimalIdAsync(int animalId);
-        Task<AnimalExitRecord> CreateAsync(AnimalExitRecord record);
+        Task<IReadOnlyList<AnimalExitRecord>> GetByAnimalIdsAsync(IReadOnlyCollection<int> animalIds);
     }
 }

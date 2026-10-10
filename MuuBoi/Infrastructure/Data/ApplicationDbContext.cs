@@ -54,6 +54,7 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<AnimalMedication>().HasQueryFilter(am => am.PropertyId == _propertyId);
 
             builder.Entity<Animal>().HasIndex(a => a.PropertyId).HasDatabaseName("IX_Animals_PropertyId");
+            builder.Entity<Animal>().ConfigureSyncable();
             builder.Entity<Vaccine>().HasIndex(v => v.PropertyId).HasDatabaseName("IX_Vaccines_PropertyId");
             builder.Entity<Vaccine>().ConfigureSyncable();
             builder.Entity<Medication>().HasIndex(m => m.PropertyId).HasDatabaseName("IX_Medications_PropertyId");
@@ -239,7 +240,7 @@ namespace MuuBoi.Infrastructure.Data
 
             builder.Entity<Lactation>()
                 .HasOne(l => l.Animal)
-                .WithMany()
+                .WithMany(a => a.Lactations)
                 .HasForeignKey(l => l.AnimalId)
                 .OnDelete(DeleteBehavior.Restrict);
 

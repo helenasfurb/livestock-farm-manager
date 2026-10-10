@@ -11,5 +11,6 @@ namespace MuuBoi.Application.Interfaces
         Task<AnimalDto> ExitAnimalAsync(int id, AnimalExitDto dto);
         Task<AnimalDto> ReactivateAnimalAsync(int id);
         Task<IEnumerable<AnimalExitRecordDto>> GetExitRecordsAsync(int animalId);
+        Task<SyncPageDto<AnimalSyncDto>> GetChangesAsync(string? since, int? limit);
     }
 }

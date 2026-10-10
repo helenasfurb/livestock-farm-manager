@@ -35,7 +35,9 @@ namespace MuuBoi.Application.Mappings
                         ? new EnumValueDto { Value = (int)src.Origin.Value, Label = src.Origin.Value.GetDescription() }
                         : null))
                 .ForMember(dest => dest.LastExitRecord,
-                    opt => opt.MapFrom(src => src.ExitRecords != null ? src.ExitRecords.FirstOrDefault() : null))
+                    opt => opt.MapFrom(src => src.ExitRecords != null
+                        ? src.ExitRecords.OrderByDescending(e => e.ExitDate).ThenByDescending(e => e.Id).FirstOrDefault()
+                        : null))
                 .ForMember(dest => dest.LastWeightRecord,
                     opt => opt.MapFrom(src => src.WeightRecords != null ? src.WeightRecords.FirstOrDefault() : null))
                 .ForMember(dest => dest.WeightRecords,
@@ -49,6 +51,32 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.CalvingIntervalDays, opt => opt.Ignore())
                 .ForMember(dest => dest.NextCalving, opt => opt.Ignore())
                 .ForMember(dest => dest.Parentage, opt => opt.Ignore());
+
+            CreateMap<Animal, AnimalSyncDto>()
+                .ForMember(dest => dest.Gender,
+                    opt => opt.MapFrom(src => src.Gender.HasValue
+                        ? new EnumValueDto { Value = (int)src.Gender.Value, Label = src.Gender.Value.GetDescription() }
+                        : null))
+                .ForMember(dest => dest.Breed,
+                    opt => opt.MapFrom(src => src.Breed.HasValue
+                        ? new EnumValueDto { Value = (int)src.Breed.Value, Label = src.Breed.Value.GetDescription() }
+                        : null))
+                .ForMember(dest => dest.Classification,
+                    opt => opt.MapFrom(src => src.Classification.HasValue
+                        ? new EnumValueDto { Value = (int)src.Classification.Value, Label = src.Classification.Value.GetDescription() }
+                        : null))
+                .ForMember(dest => dest.Purpose,
+                    opt => opt.MapFrom(src => src.Purpose.HasValue
+                        ? new EnumValueDto { Value = (int)src.Purpose.Value, Label = src.Purpose.Value.GetDescription() }
+                        : null))
+                .ForMember(dest => dest.Origin,
+                    opt => opt.MapFrom(src => src.Origin.HasValue
+                        ? new EnumValueDto { Value = (int)src.Origin.Value, Label = src.Origin.Value.GetDescription() }
+                        : null))
+                .ForMember(dest => dest.ExitRecords,
+                    opt => opt.MapFrom(src => src.ExitRecords != null
+                        ? src.ExitRecords.OrderByDescending(e => e.ExitDate).ThenByDescending(e => e.Id).ToList()
+                        : new List<AnimalExitRecord>()));
 
             CreateMap<Animal, AnimalListItemDto>()
                 .ForMember(dest => dest.Classification,
@@ -76,9 +104,15 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.WeightRecords, opt => opt.Ignore())
                 .ForMember(dest => dest.AnimalMedications, opt => opt.Ignore())
                 .ForMember(dest => dest.BodyConditionRecords, opt => opt.Ignore())
-                .ForMember(dest => dest.ExitRecords, opt => opt.Ignore());
+                .ForMember(dest => dest.ExitRecords, opt => opt.Ignore())
+                .ForMember(dest => dest.Lactations, opt => opt.Ignore())
+                .ForMember(dest => dest.SyncId, opt => opt.Ignore())
+                .ForMember(dest => dest.RowVersion, opt => opt.Ignore());
 
             CreateMap<AnimalUpdateDto, Animal>()
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.SyncId, opt => opt.Ignore())
+                .ForMember(dest => dest.RowVersion, opt => opt.Ignore())
                 .ForAllMembers(opt => opt.Condition((_, _, srcMember) => srcMember != null));
 
             CreateMap<Animal, AnimalAutocompleteItemDto>();

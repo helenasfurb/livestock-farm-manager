@@ -11,6 +11,8 @@ namespace MuuBoi.Application.Interfaces
         Task<List<int>> GetAdultFemaleIdsAsync();
         Task<List<AnimalReproductiveFactsDto>> GetReproductiveFactsAsync();
         Task<Animal?> GetAnimalByIdAsync(int id);
+        Task<Animal?> GetBySyncIdAsync(Guid syncId);
+        Task<IReadOnlyList<Animal>> GetChangesAsync(ulong since, int take);
         Task<List<int>> GetExistingAnimalIdsAsync(IReadOnlyCollection<int> ids);
         Task<IEnumerable<Animal>> GetBreedingEligibleAnimalsAsync(string? search);
         Task<Animal> CreateAnimalAsync(Animal animal);

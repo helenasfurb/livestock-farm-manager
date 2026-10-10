@@ -3,7 +3,7 @@ using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Domain.Models
 {
-    public class Animal : BaseEntity, ITenantEntity
+    public class Animal : BaseEntity, ITenantEntity, ISyncable
     {
         [MaxLength(100)]
         public string? Name { get; set; }
@@ -31,6 +31,9 @@ namespace MuuBoi.Domain.Models
 
         public Guid PropertyId { get; set; }
 
+        public Guid SyncId { get; set; }
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
         public ICollection<WeightRecord>? WeightRecords { get; set; }
         public ICollection<AnimalMedication>? AnimalMedications { get; set; }
         public ICollection<BodyConditionRecord>? BodyConditionRecords { get; set; }
@@ -38,5 +41,6 @@ namespace MuuBoi.Domain.Models
         public ICollection<BreedingEvent>? BreedingEvents { get; set; }
         public ICollection<AnimalPregnancy>? Pregnancies { get; set; }
         public ICollection<AnimalCalving>? Calvings { get; set; }
+        public ICollection<Lactation>? Lactations { get; set; }
     }
 }
