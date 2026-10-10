@@ -227,7 +227,7 @@ namespace MuuBoi.Api.Controllers
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
             var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
-            var expiresAt = DateTime.UtcNow.AddHours(24);
+            var expiresAt = DateTime.UtcNow.AddMonths(6);
 
             var token = new JwtSecurityToken(
                 claims: claims,
