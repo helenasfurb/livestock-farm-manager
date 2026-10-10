@@ -59,6 +59,7 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<Vaccine>().ConfigureSyncable();
             builder.Entity<Medication>().HasIndex(m => m.PropertyId).HasDatabaseName("IX_Medications_PropertyId");
             builder.Entity<WeightRecord>().HasIndex(w => w.PropertyId).HasDatabaseName("IX_WeightRecords_PropertyId");
+            builder.Entity<WeightRecord>().ConfigureSyncable();
             builder.Entity<AnimalMedication>().HasIndex(am => am.PropertyId).HasDatabaseName("IX_AnimalMedications_PropertyId");
 
             builder.Entity<BodyConditionRecord>()

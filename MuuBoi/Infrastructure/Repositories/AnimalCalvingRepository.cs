@@ -98,7 +98,7 @@ namespace MuuBoi.Infrastructure.Repositories
             return await _context.AnimalCalvingCalves
                 .Include(cf => cf.Calving)
                 .Include(cf => cf.Animal!)
-                    .ThenInclude(a => a.WeightRecords)
+                    .ThenInclude(a => a.WeightRecords!.Where(w => w.IsActive))
                 .FirstOrDefaultAsync(cf => cf.Id == calfId);
         }
 

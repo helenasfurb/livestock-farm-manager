@@ -55,6 +55,8 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(500, ErrorMessage = "As observações da pesagem inicial devem ter no máximo 500 caracteres.")]
         public string? InitialWeightObservations { get; set; }
 
+        public Guid? InitialWeightSyncId { get; set; }
+
         // Bloco opcional de última lactação (Spec 11.2 D17) — só para Vaca/Novilha (validado no AnimalService).
         public LactationSeedDto? InitialLactation { get; set; }
 
@@ -64,6 +66,11 @@ namespace MuuBoi.Application.DTOs
                 yield return new ValidationResult(
                     "O identificador de sincronização não pode ser vazio.",
                     new[] { nameof(SyncId) });
+
+            if (InitialWeightSyncId.HasValue && InitialWeightSyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização da pesagem inicial não pode ser vazio.",
+                    new[] { nameof(InitialWeightSyncId) });
 
             if (Classification.HasValue && Gender.HasValue)
             {

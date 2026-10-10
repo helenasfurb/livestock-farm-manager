@@ -229,6 +229,7 @@ Os erros de validação de DTO (**400**, formato B) estão agrupados na §5.
 > - `POST /` com `syncId` já existente → `201` com o animal existente (sem duplicar pesagem, ECC e lactação iniciais) — mesmo que o brinco já esteja em uso por ele ou que a lactação inicial seja inválida (o `syncId` é checado antes). Inclui o reenvio simultâneo ao original.
 > - `POST /` com **outro** `syncId` e brinco em uso → continua `409` (conflito real).
 > - `POST /` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `POST /` com `initialWeightSyncId` vazio → `400` "O identificador de sincronização da pesagem inicial não pode ser vazio." (formato B, campo `InitialWeightSyncId`). Sem `initialWeight`, o `initialWeightSyncId` é ignorado, sem erro (Spec #14.5, P3).
 > - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada, **sem** checar o brinco).
 > - `PATCH /{id}/exit` em animal já inativo → `200` com o animal, sem gravar *(até 09/Out/2026 era `409` "Não é possível registrar saída de um animal já inativo.")*.
 > - `PATCH /{id}/reactivate` em animal já ativo → `200` com o animal, sem gravar *(até 09/Out/2026 era `409` "Não é possível reativar um animal que já está ativo.")*.
@@ -256,6 +257,21 @@ HTTP/1.1 409 Conflict
 | Todas | 404 | A | Animal com id '{animalId}' não encontrado. |
 | `GET /{weightRecordId}`, `PATCH /{weightRecordId}`, `DELETE /{weightRecordId}` | 404 | A | Pesagem com id '{weightRecordId}' não encontrada. |
 | Todas, com `animalId` ou `weightRecordId` não numérico | 404 | E | — (a rota não corresponde) |
+| `POST /` sem `weight` | 400 | B | O peso é obrigatório. *(campo `Weight`; até 10/Out/2026 era `500`)* |
+| `POST /` com `syncId` vazio | 400 | B | O identificador de sincronização não pode ser vazio. *(campo `SyncId`)* |
+| `GET /api/animals/weight-records/changes?since=` | 400 | A | Cursor de sincronização inválido. *(`since` não numérico ou negativo)* |
+
+> **Rotas com suporte offline** — cadastro, edição, exclusão e pull (ver `Docs/Specs/spec-sincronizacao-offline-14.5-pesagem.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST /` com `syncId` já existente → `201` com a pesagem existente, sem alterar — inclusive por outro `animalId` na rota ou com o animal já inexistente (o `syncId` é checado antes). Inclui o reenvio simultâneo ao original.
+> - `PATCH /{weightRecordId}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada).
+> - `PATCH /{weightRecordId}` em pesagem excluída → `200`, aplicado; a pesagem continua excluída.
+> - `DELETE /{weightRecordId}` em pesagem já excluída → `204`, sem gravar *(até 10/Out/2026 a exclusão era física e a repetição dava `404` "Pesagem com id '...' não encontrada.")*.
+> - `GET /{weightRecordId}` de pesagem excluída → `200` com `isActive: false` (antes, `404`). `GET /` lista só as ativas.
+> - `GET /api/animals/weight-records/changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
+>
+> **Formato (10/Out/2026):** `recordedAt` passou de `dd/MM/yyyy` para ISO completo (`2026-10-10T12:00:00`) em todas as respostas com pesagem, inclusive `weightRecords`/`lastWeightRecord` de `/api/animals` (Spec #14.5, P8).
+>
+> **Correção (10/Out/2026):** `PATCH /{weightRecordId}` sem `weight` ou sem `weightDate` gravava `0` / `0001-01-01` nesses campos. Corrigido na Spec #14.5, Fase 5.
 
 ### 4.5 Medicamentos do animal — `/api/animals/{animalId:int}/medications`
 

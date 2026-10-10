@@ -26,6 +26,13 @@ namespace MuuBoi.Api.Controllers
             return Ok(weightRecords);
         }
 
+        [HttpGet("~/api/animals/weight-records/changes")]
+        public async Task<ActionResult<SyncPageDto<WeightRecordDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _weightRecordService.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpGet("{weightRecordId:int}")]
         public async Task<ActionResult<WeightRecordDto>> GetById(int animalId, int weightRecordId)
         {

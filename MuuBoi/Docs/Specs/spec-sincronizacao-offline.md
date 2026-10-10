@@ -1,9 +1,9 @@
 # Spec #14: Sincronização Offline — Especificação e Plano de Implementação
 
 **Módulo:** Infraestrutura / Sincronização — transversal a toda a aplicação
-**Versão:** 1.3
-**Data:** 09/Out/2026
-**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2), **Estoque de insumos e movimentações** (Spec #14.3) e **Animais e saídas do rebanho** (Spec #14.4); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
+**Versão:** 1.4
+**Data:** 10/Out/2026
+**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2), **Estoque de insumos e movimentações** (Spec #14.3), **Animais e saídas do rebanho** (Spec #14.4) e **Pesagens** (Spec #14.5); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
 **Abrangência:** contrato de sincronização do servidor/API (identidade, versionamento, tombstones, idempotência, tenant) **e** o contrato que o app offline precisa seguir para consumi-lo.
 **Relaciona-se com:** Spec 11.1 (Produção de Leite, §8) · Spec #13 (Cadastro Retroativo de Gestação, §6) · todos os specs de entidade · `Docs/catalogo-erros-api.md`
 
@@ -18,6 +18,7 @@
 | 1.1 | 05/Out/2026 | A implementação de cada nova entidade passa a ficar em uma **spec filha** (`spec-sincronizacao-offline-14.N-<entidade>.md`), para este documento não crescer a cada entidade. Primeira: **Spec #14.1 — catálogo de vacinas**. |
 | 1.2 | 08/Out/2026 | §8: `StockItem` e `StockMovement` sincronizáveis (**Spec #14.3**); §13 questão 1 resolvida para o estoque de insumos. **Correção de premissa:** não existe cliente web — o único cliente é o app, que funciona online e offline pelo mesmo caminho. Menções a "web" trocadas por "outro celular" (conflitos) ou "Swagger/chamada direta" (requisições sem `syncId`/`updatedAt`) em §1, §3.3, §4, §5.2–§5.5, §5.9, §10 e §12. |
 | 1.3 | 09/Out/2026 | §8: `Animal` e `AnimalExitRecord` sincronizáveis (**Spec #14.4**). §5.5: primeira exceção ao "mesmo DTO do detalhe" (pull de animais com `AnimalSyncDto`). §5.7: reenvio do `POST` de animal resolvido. §7.5: **Condição 3** — regra de unicidade checada entre o `SyncId` e o `INSERT` precisa rechecar o `SyncId` antes do `409`. |
+| 1.4 | 10/Out/2026 | §8: `WeightRecord` sincronizável (**Spec #14.5**) — primeira entidade filha de um registro sincronizável criado offline (A5). §13 questão 4 resolvida para a pesagem (exclusão lógica); continua aberta para `AnimalMedication`. Sumário: lista completa das specs filhas |
 
 ---
 
@@ -46,6 +47,10 @@
 
 **Specs filhas (implementação por entidade)** — ver §8
 - Spec #14.1 — Catálogo de Vacinas (`spec-sincronizacao-offline-14.1-vacinas.md`)
+- Spec #14.2 — Sêmen e movimentações manuais (`spec-sincronizacao-offline-14.2-semen.md`)
+- Spec #14.3 — Estoque de insumos e movimentações (`spec-sincronizacao-offline-14.3-estoque.md`)
+- Spec #14.4 — Animais e saídas do rebanho (`spec-sincronizacao-offline-14.4-animais.md`)
+- Spec #14.5 — Pesagens (`spec-sincronizacao-offline-14.5-pesagem.md`)
 
 ---
 
@@ -573,7 +578,8 @@ Derivados que o usuário não referencia diretamente (lactação aberta pelo par
 | `Medication` | ❌ Fora | CRUD será descontinuado (06/Out/2026) |
 | `Animal` | ✅ **Sincronizável** (09/Out/2026) | **Spec #14.4** (`spec-sincronizacao-offline-14.4-animais.md`). Pesagem, ECC e lactação iniciais gravados junto com o animal; pull com `AnimalSyncDto` (sem status derivados) |
 | `AnimalExitRecord` | ✅ **Sincronizável** (09/Out/2026), embutido | **Spec #14.4**, Parte B. Sem `SyncId` próprio: chega no pull do animal (`exitRecords`); saída e reativação idempotentes |
-| `WeightRecord`, `BodyConditionRecord`, `AnimalMedication` | ⏳ | `WeightRecord` hoje faz **hard delete** (questão em aberto 4) |
+| `WeightRecord` | ✅ **Sincronizável** (10/Out/2026) | **Spec #14.5** (`spec-sincronizacao-offline-14.5-pesagem.md`). Exclusão física convertida em lógica (questão 4); pesagem inicial do cadastro endereçável (`initialWeightSyncId`); pull global em `GET /api/animals/weight-records/changes` |
+| `BodyConditionRecord`, `AnimalMedication` | ⏳ | `BodyConditionRecord` sem `PropertyId` (Q4 da 14.4); `AnimalMedication` faz **hard delete** (questão em aberto 4) |
 | `BreedingEvent`, `AnimalPregnancy`, `AnimalCalving`, `AnimalCalvingCalf` | ⏳ | Condições 1 e 2 (§7.5) |
 | `Lactation` | ⏳ | Depende de `Animal` |
 | `VaccinationEvent` (+ `VaccinationEventAnimal` embutido), `HealthCase` (+ medicações e testes) | ⏳ | |
@@ -866,7 +872,7 @@ O overhead de várias requisições (cabeçalhos, JWT, handshake) é reduzido no
 | 1 | **Estoque de sêmen e de insumos offline:** dois dispositivos consumindo a última dose → saldo negativo no sync. | Direção: movimentações append-only com `SyncId` e saldo calculado (já é o modelo atual); saldo negativo no sync vira `422` com motivo ou alerta. **A definir** ao sincronizar essas entidades. **Sêmen, movimentações manuais (06/Out/2026, Spec #14.2 Parte B):** não há regra de saldo nas saídas manuais, então nada muda — as operações somam como online. **Estoque de insumos (08/Out/2026, Spec #14.3):** também não há regra de saldo nas saídas (saldo negativo é permitido — `spec-estoque.md`), então nada muda. Continua aberta **só** para a cobertura (`422` "Não há doses disponíveis…"). |
 | 2 | **Lista definitiva de sincronizáveis** (§8), inclusive mídias/fotos (payload grande em link instável). | ⏳ Aberta |
 | 3 | ~~Origem do `UpdatedAt` para LWW~~ | ✅ **Resolvida:** momento da edição no cliente, UTC, limitado a "agora" (§5.3) |
-| 4 | **Hard delete:** `WeightRecordRepository.DeleteWeightRecordAsync` faz `Remove` (exclusão física). Sem tombstone, a exclusão não chega aos celulares pelo pull. | ⏳ Converter para soft delete antes de sincronizar pesagens (ou tabela de tombstones) |
+| 4 | **Hard delete:** `WeightRecordRepository.DeleteWeightRecordAsync` faz `Remove` (exclusão física). Sem tombstone, a exclusão não chega aos celulares pelo pull. | ✅ **Resolvida para a pesagem** (10/Out/2026, Spec #14.5 P1): exclusão lógica e leituras filtrando as ativas. ⏳ `AnimalMedicationRepository.cs:53` também faz `Remove` — mesma conversão na spec dos casos de saúde |
 | 5 | **Reautenticação JWT** após dias offline. | ⏳ Refresh token (`POST /api/auth/refresh`) — fase própria; `401` nunca descarta a fila |
 | 6 | ~~Tamanho do lote / paginação~~ | ✅ **Resolvida:** sem lote no push; pull com `limit` padrão e máximo de 500 |
 | 7 | **Compressão de resposta** para a carga inicial do pull | ⏳ Opcional (`Program.cs`) |

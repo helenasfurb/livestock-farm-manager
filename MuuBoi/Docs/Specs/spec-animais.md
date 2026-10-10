@@ -7,6 +7,8 @@
 **Status:** Aprovado para implementação
 
 > **Sincronização offline (09/Out/2026):** `Animal` é sincronizável — ver **Spec #14.4** (`spec-sincronizacao-offline-14.4-animais.md`). Nenhuma regra de negócio desta spec foi alterada; o cadastro passou a aceitar `syncId` (reenvio devolve o existente, mesmo com o brinco já ocupado por ele), a edição aceita `updatedAt` (last-write-wins), pesagem, ECC e lactação iniciais são gravados na mesma transação do animal e há a rota de pull `GET /api/animals/changes`.
+>
+> **Pesagens (10/Out/2026):** `WeightRecord` é sincronizável — ver **Spec #14.5** (`spec-sincronizacao-offline-14.5-pesagem.md`). A exclusão de pesagem passou a ser **lógica**: o histórico de pesos e o último peso (lista e detalhe) consideram só as pesagens **ativas**. O cadastro aceita `initialWeightSyncId` para a pesagem inicial, e o `recordedAt` das pesagens passou a sair em ISO completo (antes `dd/MM/yyyy`).
 
 ---
 

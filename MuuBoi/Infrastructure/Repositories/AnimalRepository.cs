@@ -20,7 +20,7 @@ namespace MuuBoi.Infrastructure.Repositories
         public async Task<IEnumerable<Animal>> GetAllAnimalsAsync(AnimalFilterDto filter)
         {
             var query = ApplyFilters(_context.Animals
-                .Include(a => a.WeightRecords!.OrderByDescending(w => w.RecordedAt).Take(1))
+                .Include(a => a.WeightRecords!.Where(w => w.IsActive).OrderByDescending(w => w.RecordedAt).Take(1))
                 .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1)), filter);
 
             return await query.ToListAsync();
@@ -107,7 +107,7 @@ namespace MuuBoi.Infrastructure.Repositories
         public async Task<Animal?> GetAnimalByIdAsync(int id)
         {
             return await _context.Animals
-                .Include(a => a.WeightRecords!.OrderByDescending(w => w.RecordedAt))
+                .Include(a => a.WeightRecords!.Where(w => w.IsActive).OrderByDescending(w => w.RecordedAt))
                 .Include(a => a.BodyConditionRecords!.OrderByDescending(r => r.RecordedAt).Take(1))
                 .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1))
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -116,7 +116,7 @@ namespace MuuBoi.Infrastructure.Repositories
         public async Task<Animal?> GetBySyncIdAsync(Guid syncId)
         {
             return await _context.Animals
-                .Include(a => a.WeightRecords!.OrderByDescending(w => w.RecordedAt))
+                .Include(a => a.WeightRecords!.Where(w => w.IsActive).OrderByDescending(w => w.RecordedAt))
                 .Include(a => a.BodyConditionRecords!.OrderByDescending(r => r.RecordedAt).Take(1))
                 .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1))
                 .FirstOrDefaultAsync(a => a.SyncId == syncId);

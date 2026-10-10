@@ -104,7 +104,7 @@ As decisões marcadas com ⭐ eram as que pediam escolha da usuária (aprovadas 
 
 1. **Ordem:** o animal criado offline é enviado **antes** de qualquer item que o referencie (saída, reativação, e futuramente os eventos); o `Id` do `201` é usado nas rotas (A2, A5).
 2. **Pesagem, ECC e lactação iniciais** vão **dentro** do `POST` do animal (um único item na fila). O app **deve** enviar `initialWeightDate` e `initialBodyConditionDate` com o momento do cadastro: se omitidas, o servidor usa o momento do processamento (R5), que no offline pode ser dias depois.
-3. **Enquanto pesagem, ECC e lactação não forem sincronizáveis (N2):** os registros iniciais existem localmente só como parte do animal; editá-los, inativá-los ou criar outros continua exigindo conexão.
+3. **Enquanto pesagem, ECC e lactação não forem sincronizáveis (N2):** os registros iniciais existem localmente só como parte do animal; editá-los, inativá-los ou criar outros continua exigindo conexão. **Pesagem:** sincronizável desde 10/Out/2026 — ver Spec #14.5 §5 (`initialWeightSyncId` no cadastro; criar, editar e excluir pesagens funciona offline). Continua valendo para ECC e lactação.
 4. **`409` de brinco (N3):** conflito real. O item vira `Failed`, o usuário é avisado e corrige o brinco; o app atualiza o corpo **do mesmo item** (mesmo `syncId`) e retoma a fila. Vale também para o `PATCH` com brinco em uso.
 5. **Saída e reativação:** itens de fila sem `updatedAt`. No `200`, o app sobrescreve o animal local com a resposta. Se a resposta mostrar um estado diferente do que o usuário registrou (ex.: outro celular registrou a saída antes, com outro motivo), vale o do servidor (Spec #14 §3.3, efeito colateral aceito).
 6. **Pull (`GET /api/animals/changes`):** upsert por `syncId`; os registros de saída do animal são **substituídos** pela lista `exitRecords` recebida (coleção do animal, sem identidade própria no app). Status reprodutivo, produtivo e sanitário **não** vêm no pull (N6).
@@ -441,7 +441,7 @@ public async Task<AnimalDto> ExitAnimalAsync(int id, AnimalExitDto dto)
 
 **Pendências observadas (fora desta spec):**
 - A lactação inicial e o parto: a regra "lactação em aberto" bloqueia o parto de uma vaca cadastrada com lactação inicial aberta (comportamento correto, observado na validação da Fase 1) — o app precisa permitir a secagem offline antes do parto quando a lactação ficar sincronizável.
-- Próxima spec sugerida: pesagem (`WeightRecord`) — resolver antes a questão em aberto 4 da Spec #14 (hard delete) e acrescentar `initialWeightSyncId` ao `POST` do animal (N2).
+- Próxima spec sugerida: pesagem (`WeightRecord`) — resolver antes a questão em aberto 4 da Spec #14 (hard delete) e acrescentar `initialWeightSyncId` ao `POST` do animal (N2). ✅ Feita: Spec #14.5 (10/Out/2026).
 
 ## 7. Arquivos impactados
 
@@ -480,5 +480,5 @@ public async Task<AnimalDto> ExitAnimalAsync(int id, AnimalExitDto dto)
 |---|---|---|
 | Q1 | **Índice único de brinco no banco** (§3 item 12): `(PropertyId, TagNumber)` filtrado por `TagNumber IS NOT NULL` fecharia a corrida entre `SyncId` diferentes | ⏳ Fora desta spec (mudança de regra/esquema). Avaliar se houver relato real |
 | Q2 | **Status derivados offline** (N6): quando os eventos forem sincronizáveis, o app calcula tudo localmente; até lá, online | ⏳ Reavaliar a alternativa (b) da N6 se a lista offline sem status incomodar no uso |
-| Q3 | **Hard delete do `WeightRecord`** (Spec #14 §13, questão 4) | ⏳ Pré-requisito da spec da pesagem (próxima depois desta) |
+| Q3 | **Hard delete do `WeightRecord`** (Spec #14 §13, questão 4) | ✅ Resolvida na Spec #14.5 (10/Out/2026, P1): exclusão lógica |
 | Q4 | **`PropertyId` no `BodyConditionRecord`** (§3 item 10) | ⏳ Pré-requisito da spec do ECC |
