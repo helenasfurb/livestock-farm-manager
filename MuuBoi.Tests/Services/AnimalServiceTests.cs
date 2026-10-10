@@ -189,6 +189,28 @@ public class AnimalServiceTests
     }
 
     [Fact]
+    public async Task CreateAnimalAsync_WithInitialWeightSyncId_AttachesRecordWithGivenSyncId()
+    {
+        var weightSyncId = Guid.NewGuid();
+        var dto = BuildCreateDto(Guid.NewGuid());
+        dto.InitialWeight = 450;
+        dto.InitialWeightSyncId = weightSyncId;
+        await _service.CreateAnimalAsync(dto);
+        _animalRepository.Verify(r => r.CreateAnimalAsync(It.Is<Animal>(a =>
+            a.WeightRecords!.Single().SyncId == weightSyncId)), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAnimalAsync_WithoutInitialWeightSyncId_GeneratesRecordSyncId()
+    {
+        var dto = BuildCreateDto(Guid.NewGuid());
+        dto.InitialWeight = 450;
+        await _service.CreateAnimalAsync(dto);
+        _animalRepository.Verify(r => r.CreateAnimalAsync(It.Is<Animal>(a =>
+            a.WeightRecords!.Single().SyncId != Guid.Empty)), Times.Once);
+    }
+
+    [Fact]
     public async Task UpdateAnimalAsync_WithNewerClientUpdatedAt_AppliesChanges()
     {
         var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));

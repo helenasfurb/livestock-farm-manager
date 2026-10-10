@@ -10,5 +10,7 @@ namespace MuuBoi.Application.DTOs
 
         [MaxLength(500, ErrorMessage = "As observações da pesagem devem ter no máximo 500 caracteres.")]
         public string? WeightObservations { get; set; }
+
+        public DateTime? UpdatedAt { get; set; }
     }
 }

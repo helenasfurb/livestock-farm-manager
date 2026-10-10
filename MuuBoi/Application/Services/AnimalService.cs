@@ -342,6 +342,7 @@ namespace MuuBoi.Application.Services
             {
                 new()
                 {
+                    SyncId = dto.InitialWeightSyncId ?? Guid.NewGuid(),
                     Weight = dto.InitialWeight.Value,
                     RecordedAt = dto.InitialWeightDate ?? DateTime.UtcNow,
                     Observations = dto.InitialWeightObservations
