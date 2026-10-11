@@ -230,6 +230,7 @@ Os erros de validação de DTO (**400**, formato B) estão agrupados na §5.
 > - `POST /` com **outro** `syncId` e brinco em uso → continua `409` (conflito real).
 > - `POST /` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
 > - `POST /` com `initialWeightSyncId` vazio → `400` "O identificador de sincronização da pesagem inicial não pode ser vazio." (formato B, campo `InitialWeightSyncId`). Sem `initialWeight`, o `initialWeightSyncId` é ignorado, sem erro (Spec #14.5, P3).
+> - `POST /` com `initialBodyConditionSyncId` vazio → `400` "O identificador de sincronização do ECC inicial não pode ser vazio." (formato B, campo `InitialBodyConditionSyncId`). Sem `initialBodyConditionScore`, é ignorado, sem erro (Spec #14.6, C3).
 > - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada, **sem** checar o brinco).
 > - `PATCH /{id}/exit` em animal já inativo → `200` com o animal, sem gravar *(até 09/Out/2026 era `409` "Não é possível registrar saída de um animal já inativo.")*.
 > - `PATCH /{id}/reactivate` em animal já ativo → `200` com o animal, sem gravar *(até 09/Out/2026 era `409` "Não é possível reativar um animal que já está ativo.")*.
@@ -297,6 +298,18 @@ HTTP/1.1 409 Conflict
 | `POST /` | 409 | Não é possível registrar ECC de um animal inativo. |
 | `PATCH /{recordId}` | 404 | Registro de ECC com id '{recordId}' não encontrado. |
 | `POST /`, `PATCH /{recordId}` | 422 | A data da avaliação não pode ser futura. |
+| `POST /` sem `score` / sem `recordedAt` | 400 | O escore de condição corporal é obrigatório. / A data da avaliação é obrigatória. *(formato B; até 10/Out/2026 eram aceitos com escore `0` / data `0001-01-01`)* |
+| `POST /`, `PATCH /{recordId}` com `score` fora de 1–5 | 400 | Valor inválido. Valores aceitos: Magreza Severa (1), …, Obesidade Severa (5). *(formato B, campo `Score`; até 10/Out/2026 era aceito)* |
+| `POST /` com `syncId` vazio | 400 | O identificador de sincronização não pode ser vazio. *(formato B, campo `SyncId`)* |
+| `GET /api/animals/body-condition-records/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
+
+> **Rotas com suporte offline** — cadastro, edição e pull (ver `Docs/Specs/spec-sincronizacao-offline-14.6-ecc.md`). Não há exclusão de ECC. Repetir uma operação já aplicada **não é erro**:
+> - `POST /` com `syncId` já existente → `201` com o ECC existente, sem alterar — inclusive depois da saída do animal ou com o animal inexistente (o `syncId` é checado antes). Inclui o reenvio simultâneo ao original.
+> - `POST /` com **outro** `syncId` em animal inativo → continua `409` (conflito real).
+> - `PATCH /{recordId}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada). `PATCH` em ECC de animal inativo continua aceito.
+> - `GET /api/animals/body-condition-records/changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
+>
+> **Correção (10/Out/2026):** `score` e `recordedAt` ausentes ou fora do enum eram aceitos com `201`/`200` e gravavam dados inválidos. Corrigido na Spec #14.6, Fase 2 (C7).
 
 ### 4.8 Coberturas — `/api/breeding-events`, `/api/animals/{animalId}/breeding-events`
 

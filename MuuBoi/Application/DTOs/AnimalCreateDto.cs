@@ -48,6 +48,8 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(500, ErrorMessage = "As observações do ECC inicial devem ter no máximo 500 caracteres.")]
         public string? InitialBodyConditionNotes { get; set; }
 
+        public Guid? InitialBodyConditionSyncId { get; set; }
+
         public decimal? InitialWeight { get; set; }
 
         public DateTime? InitialWeightDate { get; set; }
@@ -71,6 +73,11 @@ namespace MuuBoi.Application.DTOs
                 yield return new ValidationResult(
                     "O identificador de sincronização da pesagem inicial não pode ser vazio.",
                     new[] { nameof(InitialWeightSyncId) });
+
+            if (InitialBodyConditionSyncId.HasValue && InitialBodyConditionSyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização do ECC inicial não pode ser vazio.",
+                    new[] { nameof(InitialBodyConditionSyncId) });
 
             if (Classification.HasValue && Gender.HasValue)
             {

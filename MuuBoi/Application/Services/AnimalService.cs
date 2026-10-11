@@ -358,6 +358,7 @@ namespace MuuBoi.Application.Services
             {
                 new()
                 {
+                    SyncId = dto.InitialBodyConditionSyncId ?? Guid.NewGuid(),
                     Score = dto.InitialBodyConditionScore.Value,
                     RecordedAt = dto.InitialBodyConditionDate ?? DateTime.UtcNow,
                     Notes = dto.InitialBodyConditionNotes

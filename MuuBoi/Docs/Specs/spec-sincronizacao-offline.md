@@ -1,9 +1,9 @@
 # Spec #14: Sincronização Offline — Especificação e Plano de Implementação
 
 **Módulo:** Infraestrutura / Sincronização — transversal a toda a aplicação
-**Versão:** 1.4
+**Versão:** 1.5
 **Data:** 10/Out/2026
-**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2), **Estoque de insumos e movimentações** (Spec #14.3), **Animais e saídas do rebanho** (Spec #14.4) e **Pesagens** (Spec #14.5); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
+**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2), **Estoque de insumos e movimentações** (Spec #14.3), **Animais e saídas do rebanho** (Spec #14.4), **Pesagens** (Spec #14.5) e **ECC** (Spec #14.6); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
 **Abrangência:** contrato de sincronização do servidor/API (identidade, versionamento, tombstones, idempotência, tenant) **e** o contrato que o app offline precisa seguir para consumi-lo.
 **Relaciona-se com:** Spec 11.1 (Produção de Leite, §8) · Spec #13 (Cadastro Retroativo de Gestação, §6) · todos os specs de entidade · `Docs/catalogo-erros-api.md`
 
@@ -19,6 +19,7 @@
 | 1.2 | 08/Out/2026 | §8: `StockItem` e `StockMovement` sincronizáveis (**Spec #14.3**); §13 questão 1 resolvida para o estoque de insumos. **Correção de premissa:** não existe cliente web — o único cliente é o app, que funciona online e offline pelo mesmo caminho. Menções a "web" trocadas por "outro celular" (conflitos) ou "Swagger/chamada direta" (requisições sem `syncId`/`updatedAt`) em §1, §3.3, §4, §5.2–§5.5, §5.9, §10 e §12. |
 | 1.3 | 09/Out/2026 | §8: `Animal` e `AnimalExitRecord` sincronizáveis (**Spec #14.4**). §5.5: primeira exceção ao "mesmo DTO do detalhe" (pull de animais com `AnimalSyncDto`). §5.7: reenvio do `POST` de animal resolvido. §7.5: **Condição 3** — regra de unicidade checada entre o `SyncId` e o `INSERT` precisa rechecar o `SyncId` antes do `409`. |
 | 1.4 | 10/Out/2026 | §8: `WeightRecord` sincronizável (**Spec #14.5**) — primeira entidade filha de um registro sincronizável criado offline (A5). §13 questão 4 resolvida para a pesagem (exclusão lógica); continua aberta para `AnimalMedication`. Sumário: lista completa das specs filhas |
+| 1.5 | 10/Out/2026 | §8: `BodyConditionRecord` sincronizável (**Spec #14.6**) — primeira migração da Spec #14 com backfill de dados (`PropertyId` pelo animal), que dá ao ECC o mesmo filtro de tenant das demais entidades. Sumário com a 14.6 |
 
 ---
 
@@ -51,6 +52,7 @@
 - Spec #14.3 — Estoque de insumos e movimentações (`spec-sincronizacao-offline-14.3-estoque.md`)
 - Spec #14.4 — Animais e saídas do rebanho (`spec-sincronizacao-offline-14.4-animais.md`)
 - Spec #14.5 — Pesagens (`spec-sincronizacao-offline-14.5-pesagem.md`)
+- Spec #14.6 — Escore de Condição Corporal (`spec-sincronizacao-offline-14.6-ecc.md`)
 
 ---
 
@@ -579,7 +581,8 @@ Derivados que o usuário não referencia diretamente (lactação aberta pelo par
 | `Animal` | ✅ **Sincronizável** (09/Out/2026) | **Spec #14.4** (`spec-sincronizacao-offline-14.4-animais.md`). Pesagem, ECC e lactação iniciais gravados junto com o animal; pull com `AnimalSyncDto` (sem status derivados) |
 | `AnimalExitRecord` | ✅ **Sincronizável** (09/Out/2026), embutido | **Spec #14.4**, Parte B. Sem `SyncId` próprio: chega no pull do animal (`exitRecords`); saída e reativação idempotentes |
 | `WeightRecord` | ✅ **Sincronizável** (10/Out/2026) | **Spec #14.5** (`spec-sincronizacao-offline-14.5-pesagem.md`). Exclusão física convertida em lógica (questão 4); pesagem inicial do cadastro endereçável (`initialWeightSyncId`); pull global em `GET /api/animals/weight-records/changes` |
-| `BodyConditionRecord`, `AnimalMedication` | ⏳ | `BodyConditionRecord` sem `PropertyId` (Q4 da 14.4); `AnimalMedication` faz **hard delete** (questão em aberto 4) |
+| `BodyConditionRecord` | ✅ **Sincronizável** (10/Out/2026) | **Spec #14.6** (`spec-sincronizacao-offline-14.6-ecc.md`). `PropertyId` com backfill pelo animal (Q4 da 14.4); sem exclusão (RN-04 da `spec-ecc.md`); ECC inicial endereçável (`initialBodyConditionSyncId`); pull global em `GET /api/animals/body-condition-records/changes` |
+| `AnimalMedication` | ⏳ | Faz **hard delete** (questão em aberto 4) |
 | `BreedingEvent`, `AnimalPregnancy`, `AnimalCalving`, `AnimalCalvingCalf` | ⏳ | Condições 1 e 2 (§7.5) |
 | `Lactation` | ⏳ | Depende de `Animal` |
 | `VaccinationEvent` (+ `VaccinationEventAnimal` embutido), `HealthCase` (+ medicações e testes) | ⏳ | |
