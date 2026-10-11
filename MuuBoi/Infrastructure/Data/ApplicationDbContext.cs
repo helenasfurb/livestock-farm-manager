@@ -52,6 +52,7 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<Medication>().HasQueryFilter(m => m.PropertyId == _propertyId);
             builder.Entity<WeightRecord>().HasQueryFilter(w => w.PropertyId == _propertyId);
             builder.Entity<AnimalMedication>().HasQueryFilter(am => am.PropertyId == _propertyId);
+            builder.Entity<BodyConditionRecord>().HasQueryFilter(r => r.PropertyId == _propertyId);
 
             builder.Entity<Animal>().HasIndex(a => a.PropertyId).HasDatabaseName("IX_Animals_PropertyId");
             builder.Entity<Animal>().ConfigureSyncable();
@@ -65,6 +66,8 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<BodyConditionRecord>()
                 .HasIndex(r => new { r.AnimalId, r.RecordedAt })
                 .HasDatabaseName("IX_BodyConditionRecords_AnimalId_RecordedAt");
+            builder.Entity<BodyConditionRecord>().HasIndex(r => r.PropertyId).HasDatabaseName("IX_BodyConditionRecords_PropertyId");
+            builder.Entity<BodyConditionRecord>().ConfigureSyncable();
 
             builder.Entity<AnimalExitRecord>()
                 .HasIndex(r => new { r.AnimalId, r.ExitDate })

@@ -28,11 +28,14 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(r => r.Id == id && r.AnimalId == animalId);
         }
 
+        public async Task<BodyConditionRecord?> GetBySyncIdAsync(Guid syncId)
+        {
+            return await _context.FindBySyncIdAsync<BodyConditionRecord>(syncId);
+        }
+
         public async Task<BodyConditionRecord> CreateAsync(BodyConditionRecord record)
         {
-            _context.BodyConditionRecords.Add(record);
-            await _context.SaveChangesAsync();
-            return record;
+            return await _context.AddSyncableAsync(record);
         }
 
         public async Task<BodyConditionRecord> UpdateAsync(BodyConditionRecord record)
@@ -40,6 +43,11 @@ namespace MuuBoi.Infrastructure.Repositories
             _context.BodyConditionRecords.Update(record);
             await _context.SaveChangesAsync();
             return record;
+        }
+
+        public async Task<IReadOnlyList<BodyConditionRecord>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<BodyConditionRecord>(since, take);
         }
     }
 }

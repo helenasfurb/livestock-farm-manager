@@ -7,6 +7,10 @@
 **Status:** Aprovado para implementação  
 **Depende de:** Spec #1 — Gestão de Animais
 
+> **Sincronização offline (10/Out/2026):** `BodyConditionRecord` é sincronizável — ver **Spec #14.6** (`spec-sincronizacao-offline-14.6-ecc.md`). Nenhuma regra de negócio desta spec foi alterada. A tabela ganhou `PropertyId` (preenchido pelo animal), então a RN-06 passa a ser garantida também pelo filtro de tenant da própria tabela. RN-01/RN-02 agora são de fato validadas (`score` e `recordedAt` ausentes ou escore fora de 1–5 → `400`; antes eram aceitos). O cadastro aceita `syncId`, a edição aceita `updatedAt` (last-write-wins) e há a rota de pull `GET /api/animals/body-condition-records/changes`.
+>
+> **Divergência registrada:** a RN-04 diz que o ECC é imutável (sem `PATCH` nem `DELETE`), mas o `PATCH /api/animals/{animalId}/body-condition-records/{recordId}` (escore e data) foi acrescentado depois e está em uso. Continua **sem** `DELETE`.
+
 ---
 
 ## 1. Contexto e Objetivo

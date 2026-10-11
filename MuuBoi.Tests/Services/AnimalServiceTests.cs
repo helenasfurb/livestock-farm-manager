@@ -211,6 +211,28 @@ public class AnimalServiceTests
     }
 
     [Fact]
+    public async Task CreateAnimalAsync_WithInitialBodyConditionSyncId_AttachesRecordWithGivenSyncId()
+    {
+        var bodyConditionSyncId = Guid.NewGuid();
+        var dto = BuildCreateDto(Guid.NewGuid());
+        dto.InitialBodyConditionScore = BodyConditionScore.Ideal;
+        dto.InitialBodyConditionSyncId = bodyConditionSyncId;
+        await _service.CreateAnimalAsync(dto);
+        _animalRepository.Verify(r => r.CreateAnimalAsync(It.Is<Animal>(a =>
+            a.BodyConditionRecords!.Single().SyncId == bodyConditionSyncId)), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAnimalAsync_WithoutInitialBodyConditionSyncId_GeneratesRecordSyncId()
+    {
+        var dto = BuildCreateDto(Guid.NewGuid());
+        dto.InitialBodyConditionScore = BodyConditionScore.Ideal;
+        await _service.CreateAnimalAsync(dto);
+        _animalRepository.Verify(r => r.CreateAnimalAsync(It.Is<Animal>(a =>
+            a.BodyConditionRecords!.Single().SyncId != Guid.Empty)), Times.Once);
+    }
+
+    [Fact]
     public async Task UpdateAnimalAsync_WithNewerClientUpdatedAt_AppliesChanges()
     {
         var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));

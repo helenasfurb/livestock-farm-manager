@@ -24,6 +24,13 @@ namespace MuuBoi.Api.Controllers
             return Ok(records);
         }
 
+        [HttpGet("~/api/animals/body-condition-records/changes")]
+        public async Task<ActionResult<SyncPageDto<BodyConditionRecordDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _service.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpPost]
         public async Task<ActionResult<BodyConditionRecordDto>> Create(int animalId, [FromBody] BodyConditionRecordCreateDto dto)
         {

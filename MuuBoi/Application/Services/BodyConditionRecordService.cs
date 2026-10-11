@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Domain.Exceptions;
 using MuuBoi.Domain.Models;
@@ -32,6 +34,13 @@ namespace MuuBoi.Application.Services
 
         public async Task<BodyConditionRecordDto> CreateAsync(int animalId, BodyConditionRecordCreateDto dto)
         {
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return _mapper.Map<BodyConditionRecordDto>(existing);
+            }
+
             var animal = await FindActiveAnimalAsync(animalId, requireActive: true);
 
             if (dto.RecordedAt > DateTime.UtcNow)
@@ -39,9 +48,10 @@ namespace MuuBoi.Application.Services
 
             var record = new BodyConditionRecord
             {
+                SyncId = dto.SyncId ?? Guid.NewGuid(),
                 AnimalId = animal.Id,
-                Score = dto.Score,
-                RecordedAt = dto.RecordedAt,
+                Score = dto.Score!.Value,
+                RecordedAt = dto.RecordedAt!.Value,
                 Notes = dto.Notes,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -61,16 +71,31 @@ namespace MuuBoi.Application.Services
             if (dto.RecordedAt.HasValue && dto.RecordedAt.Value > DateTime.UtcNow)
                 throw new BusinessRuleException("A data da avaliação não pode ser futura.");
 
+            var editedAt = SyncTimestampResolver.ResolveEditedAt(dto.UpdatedAt, DateTime.UtcNow);
+            if (SyncTimestampResolver.IsOutdated(editedAt, record))
+                return _mapper.Map<BodyConditionRecordDto>(record);
+
             if (dto.Score.HasValue)
                 record.Score = dto.Score.Value;
 
             if (dto.RecordedAt.HasValue)
                 record.RecordedAt = dto.RecordedAt.Value;
 
-            record.UpdatedAt = DateTime.UtcNow;
+            record.UpdatedAt = editedAt;
 
             var updated = await _repository.UpdateAsync(record);
             return _mapper.Map<BodyConditionRecordDto>(updated);
+        }
+
+        public async Task<SyncPageDto<BodyConditionRecordDto>> GetChangesAsync(string? since, int? limit)
+        {
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
+
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _repository.GetChangesAsync(cursor, take + 1);
+
+            return SyncPaging.BuildPage(fetched, take, cursor, r => _mapper.Map<BodyConditionRecordDto>(r));
         }
 
         private async Task<Animal> FindActiveAnimalAsync(int animalId, bool requireActive)
