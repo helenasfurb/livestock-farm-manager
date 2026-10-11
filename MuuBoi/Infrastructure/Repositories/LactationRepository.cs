@@ -59,11 +59,16 @@ namespace MuuBoi.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<Lactation?> GetBySyncIdAsync(Guid syncId)
+        {
+            return await _context.Lactations
+                .Include(l => l.Animal)
+                .FirstOrDefaultAsync(l => l.SyncId == syncId);
+        }
+
         public async Task<Lactation> CreateAsync(Lactation lactation)
         {
-            _context.Lactations.Add(lactation);
-            await _context.SaveChangesAsync();
-            return lactation;
+            return await _context.AddSyncableAsync(lactation);
         }
 
         public async Task<Lactation> UpdateAsync(Lactation lactation)
@@ -71,6 +76,11 @@ namespace MuuBoi.Infrastructure.Repositories
             _context.Lactations.Update(lactation);
             await _context.SaveChangesAsync();
             return lactation;
+        }
+
+        public async Task<IReadOnlyList<Lactation>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<Lactation>(since, take);
         }
     }
 }

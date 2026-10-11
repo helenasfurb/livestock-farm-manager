@@ -22,6 +22,13 @@ namespace MuuBoi.Api.Controllers
         public ActionResult<IEnumerable<LookupDto>> GetOrigins()
             => Ok(EnumHelper.ToLookup<LactationOrigin>());
 
+        [HttpGet("api/lactations/changes")]
+        public async Task<ActionResult<SyncPageDto<LactationDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _service.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpGet("api/animals/{animalId:int}/lactations")]
         public async Task<ActionResult<IEnumerable<LactationListItemDto>>> GetByAnimal(int animalId)
         {

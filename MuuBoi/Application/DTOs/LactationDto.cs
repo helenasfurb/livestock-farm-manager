@@ -3,6 +3,7 @@ namespace MuuBoi.Application.DTOs
     public class LactationDto
     {
         public int Id { get; set; }
+        public Guid SyncId { get; set; }
         public int AnimalId { get; set; }
         public string? AnimalTagNumber { get; set; }
         public DateTime StartDate { get; set; }

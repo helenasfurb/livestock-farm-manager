@@ -116,13 +116,13 @@ namespace MuuBoi.Application.Services
             return dto;
         }
 
-        public async Task<AnimalDto> CreateAnimalAsync(AnimalCreateDto dto)
+        public async Task<AnimalCreatedDto> CreateAnimalAsync(AnimalCreateDto dto)
         {
             if (dto.SyncId.HasValue)
             {
                 var existing = await _animalRepository.GetBySyncIdAsync(dto.SyncId.Value);
                 if (existing != null)
-                    return _mapper.Map<AnimalDto>(existing);
+                    return await ComposeCreatedAsync(existing, dto.InitialLactationSyncId);
             }
 
             if (await _animalRepository.TagNumberExistsAsync(dto.TagNumber))
@@ -131,7 +131,7 @@ namespace MuuBoi.Application.Services
                 {
                     var concurrent = await _animalRepository.GetBySyncIdAsync(dto.SyncId.Value);
                     if (concurrent != null)
-                        return _mapper.Map<AnimalDto>(concurrent);
+                        return await ComposeCreatedAsync(concurrent, dto.InitialLactationSyncId);
                 }
 
                 throw new ConflictException($"Já existe um animal com o brinco '{dto.TagNumber}' nesta propriedade.");
@@ -149,7 +149,21 @@ namespace MuuBoi.Application.Services
             CreateInitialLactation(dto, animal);
 
             var created = await _animalRepository.CreateAnimalAsync(animal);
-            return _mapper.Map<AnimalDto>(created);
+            return await ComposeCreatedAsync(created, created.Lactations?.FirstOrDefault()?.SyncId);
+        }
+
+        private async Task<AnimalCreatedDto> ComposeCreatedAsync(Animal animal, Guid? initialLactationSyncId)
+        {
+            var dto = _mapper.Map<AnimalCreatedDto>(animal);
+
+            if (initialLactationSyncId.HasValue)
+            {
+                var lactation = await _lactationRepository.GetBySyncIdAsync(initialLactationSyncId.Value);
+                if (lactation != null && lactation.AnimalId == animal.Id)
+                    dto.InitialLactation = _mapper.Map<LactationRefDto>(lactation);
+            }
+
+            return dto;
         }
 
         public async Task<AnimalDto> UpdateAnimalAsync(int id, AnimalUpdateDto dto)
@@ -286,7 +300,8 @@ namespace MuuBoi.Application.Services
             {
                 new()
                 {
-                    StartDate = dto.InitialLactation.StartDate,
+                    SyncId = dto.InitialLactationSyncId ?? Guid.NewGuid(),
+                    StartDate = dto.InitialLactation.StartDate!.Value,
                     EndDate = dto.InitialLactation.EndDate,
                     CalvingId = null,
                     Origin = LactationOrigin.InitialSeed,

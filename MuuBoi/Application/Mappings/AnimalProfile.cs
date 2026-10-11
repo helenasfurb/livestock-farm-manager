@@ -115,6 +115,12 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.RowVersion, opt => opt.Ignore())
                 .ForAllMembers(opt => opt.Condition((_, _, srcMember) => srcMember != null));
 
+            CreateMap<Animal, AnimalCreatedDto>()
+                .IncludeBase<Animal, AnimalDto>()
+                .ForMember(dest => dest.InitialLactation, opt => opt.Ignore());
+
+            CreateMap<Lactation, LactationRefDto>();
+
             CreateMap<Animal, AnimalAutocompleteItemDto>();
 
             CreateMap<WeightRecord, WeightRecordDto>();

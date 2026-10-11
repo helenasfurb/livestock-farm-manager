@@ -6,6 +6,8 @@ namespace MuuBoi.Application.DTOs
     {
         public DateTime? StartDate { get; set; }
 
+        public DateTime? UpdatedAt { get; set; }
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (StartDate.HasValue && StartDate.Value > DateTime.UtcNow)
