@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Helpers;
@@ -49,6 +50,13 @@ namespace MuuBoi.Application.Services
 
         public async Task<LactationDto> CreateAsync(int animalId, LactationCreateDto dto)
         {
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return ToDto(existing);
+            }
+
             var animal = await FindAnimalAsync(animalId);
 
             if (!animal.IsActive)
@@ -57,12 +65,22 @@ namespace MuuBoi.Application.Services
             EnsureLactatingClassification(animal);
 
             if (await _repository.HasOpenByAnimalIdAsync(animalId))
+            {
+                if (dto.SyncId.HasValue)
+                {
+                    var concurrent = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+                    if (concurrent != null)
+                        return ToDto(concurrent);
+                }
+
                 throw new ConflictException("O animal já possui uma lactação em aberto. Seque a atual antes de abrir outra.");
+            }
 
             var lactation = new Lactation
             {
+                SyncId = dto.SyncId ?? Guid.NewGuid(),
                 AnimalId = animalId,
-                StartDate = dto.StartDate,
+                StartDate = dto.StartDate!.Value,
                 EndDate = null,
                 CalvingId = null,
                 Origin = LactationOrigin.InitialSeed,
@@ -81,8 +99,9 @@ namespace MuuBoi.Application.Services
             var lactation = await _repository.GetByIdAsync(id)
                 ?? throw new NotFoundException($"Lactação com id '{id}' não encontrada.");
 
-            if (!lactation.IsActive)
-                throw new ConflictException("Não é possível editar uma lactação inativa.");
+            var editedAt = SyncTimestampResolver.ResolveEditedAt(dto.UpdatedAt, DateTime.UtcNow);
+            if (!lactation.IsActive || SyncTimestampResolver.IsOutdated(editedAt, lactation))
+                return ToDto(lactation);
 
             if (dto.StartDate.HasValue)
             {
@@ -92,7 +111,7 @@ namespace MuuBoi.Application.Services
                 lactation.StartDate = dto.StartDate.Value;
             }
 
-            lactation.UpdatedAt = DateTime.UtcNow;
+            lactation.UpdatedAt = editedAt;
             var updated = await _repository.UpdateAsync(lactation);
             return ToDto(updated);
         }
@@ -102,18 +121,14 @@ namespace MuuBoi.Application.Services
             var lactation = await _repository.GetByIdAsync(id)
                 ?? throw new NotFoundException($"Lactação com id '{id}' não encontrada.");
 
-            if (!lactation.IsActive)
-                throw new ConflictException("Não é possível secar uma lactação inativa.");
+            if (!lactation.IsActive || lactation.EndDate.HasValue)
+                return ToDto(lactation);
 
-            if (lactation.EndDate.HasValue)
-                throw new ConflictException("Esta lactação já está seca.");
-
-            if (dto.EndDate < lactation.StartDate)
+            if (dto.EndDate!.Value < lactation.StartDate)
                 throw new BusinessRuleException("A data da secagem não pode ser anterior ao início da lactação.");
 
-            lactation.EndDate = dto.EndDate;
+            lactation.EndDate = dto.EndDate.Value;
             lactation.DryOffNotes = dto.DryOffNotes;
-            lactation.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _repository.UpdateAsync(lactation);
             return ToDto(updated);
@@ -124,18 +139,14 @@ namespace MuuBoi.Application.Services
             var lactation = await _repository.GetByIdAsync(id)
                 ?? throw new NotFoundException($"Lactação com id '{id}' não encontrada.");
 
-            if (!lactation.IsActive)
-                throw new ConflictException("Não é possível reabrir uma lactação inativa.");
-
-            if (lactation.EndDate == null)
-                throw new ConflictException("Esta lactação já está em aberto.");
+            if (!lactation.IsActive || lactation.EndDate == null)
+                return ToDto(lactation);
 
             if (await _repository.HasOpenByAnimalIdAsync(lactation.AnimalId))
                 throw new ConflictException("O animal já possui outra lactação em aberto.");
 
             lactation.EndDate = null;
             lactation.DryOffNotes = null;
-            lactation.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _repository.UpdateAsync(lactation);
             return ToDto(updated);
@@ -147,12 +158,28 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Lactação com id '{id}' não encontrada.");
 
             if (!lactation.IsActive)
-                throw new ConflictException("A lactação já está inativa.");
+                return true;
 
             lactation.IsActive = false;
-            lactation.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(lactation);
             return true;
+        }
+
+        public async Task<SyncPageDto<LactationDto>> GetChangesAsync(string? since, int? limit)
+        {
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
+
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _repository.GetChangesAsync(cursor, take + 1);
+            var tags = await _animalRepository.GetTagNumbersByIdsAsync(fetched.Select(l => l.AnimalId).Distinct().ToList());
+
+            return SyncPaging.BuildPage(fetched, take, cursor, l =>
+            {
+                var dto = ToDto(l);
+                dto.AnimalTagNumber = tags.GetValueOrDefault(l.AnimalId);
+                return dto;
+            });
         }
 
         private async Task<Animal> FindAnimalAsync(int animalId)

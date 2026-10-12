@@ -138,6 +138,16 @@ namespace MuuBoi.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<Dictionary<int, string?>> GetTagNumbersByIdsAsync(IReadOnlyCollection<int> ids)
+        {
+            if (ids == null || ids.Count == 0)
+                return new Dictionary<int, string?>();
+
+            return await _context.Animals
+                .Where(a => ids.Contains(a.Id))
+                .ToDictionaryAsync(a => a.Id, a => a.TagNumber);
+        }
+
         public async Task<IEnumerable<Animal>> GetBreedingEligibleAnimalsAsync(string? search)
         {
             var query = _context.Animals.Where(a =>

@@ -170,6 +170,50 @@ public class AnimalServiceTests
     }
 
     [Fact]
+    public async Task CreateAnimalAsync_WithInitialLactationSyncId_ReturnsInitialLactationReference()
+    {
+        var lactationSyncId = Guid.NewGuid();
+        var dto = BuildCreateDto(Guid.NewGuid());
+        dto.InitialLactation = new LactationSeedDto { StartDate = DateTime.UtcNow.AddDays(-100) };
+        dto.InitialLactationSyncId = lactationSyncId;
+        _lactationRepository.Setup(r => r.GetBySyncIdAsync(lactationSyncId))
+            .ReturnsAsync(new Lactation { Id = 57, SyncId = lactationSyncId, AnimalId = 0 });
+        var result = await _service.CreateAnimalAsync(dto);
+        Assert.Equal(57, result.InitialLactation!.Id);
+        Assert.Equal(lactationSyncId, result.InitialLactation.SyncId);
+        _animalRepository.Verify(r => r.CreateAnimalAsync(It.Is<Animal>(a =>
+            a.Lactations!.Single().SyncId == lactationSyncId)), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAnimalAsync_WithExistingSyncIdAndInitialLactationSyncId_ReturnsSameReference()
+    {
+        var syncId = Guid.NewGuid();
+        var lactationSyncId = Guid.NewGuid();
+        var existing = BuildAnimal(DateTime.UtcNow, id: 7);
+        existing.SyncId = syncId;
+        _animalRepository.Setup(r => r.GetBySyncIdAsync(syncId)).ReturnsAsync(existing);
+        _lactationRepository.Setup(r => r.GetBySyncIdAsync(lactationSyncId))
+            .ReturnsAsync(new Lactation { Id = 57, SyncId = lactationSyncId, AnimalId = 7 });
+        var dto = BuildCreateDto(syncId);
+        dto.InitialLactation = new LactationSeedDto { StartDate = DateTime.UtcNow.AddDays(-100) };
+        dto.InitialLactationSyncId = lactationSyncId;
+        var result = await _service.CreateAnimalAsync(dto);
+        Assert.Equal(57, result.InitialLactation!.Id);
+        _animalRepository.Verify(r => r.CreateAnimalAsync(It.IsAny<Animal>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAnimalAsync_WithoutInitialLactation_ReturnsNullReference()
+    {
+        var dto = BuildCreateDto(Guid.NewGuid());
+        dto.InitialLactationSyncId = Guid.NewGuid();
+        var result = await _service.CreateAnimalAsync(dto);
+        Assert.Null(result.InitialLactation);
+        _lactationRepository.Verify(r => r.GetBySyncIdAsync(It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
     public async Task CreateAnimalAsync_WithInitialWeightAndBodyCondition_AttachesRecordsToAnimal()
     {
         var weightDate = DateTime.UtcNow.AddDays(-1);
@@ -304,10 +348,12 @@ public class AnimalServiceTests
     [Fact]
     public async Task ExitAnimalAsync_WhenActive_AddsExitRecordAndDeactivatesInSameCall()
     {
-        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2), updatedAt);
         _animalRepository.Setup(r => r.GetAnimalByIdAsync(1)).ReturnsAsync(animal);
         var result = await _service.ExitAnimalAsync(1, BuildExitDto());
         Assert.False(result.IsActive);
+        Assert.Equal(updatedAt, animal.UpdatedAt);
         Assert.Equal((int)AnimalExitReason.Sale, result.LastExitRecord!.ExitReason!.Value);
         _animalRepository.Verify(r => r.UpdateAnimalAsync(It.Is<Animal>(a =>
             !a.IsActive && a.ExitRecords!.Single().ExitReason == AnimalExitReason.Sale)), Times.Once);
@@ -342,10 +388,12 @@ public class AnimalServiceTests
     [Fact]
     public async Task ReactivateAnimalAsync_WhenInactive_Reactivates()
     {
-        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2), isActive: false);
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2), updatedAt, isActive: false);
         _animalRepository.Setup(r => r.GetAnimalByIdAsync(1)).ReturnsAsync(animal);
         var result = await _service.ReactivateAnimalAsync(1);
         Assert.True(result.IsActive);
+        Assert.Equal(updatedAt, animal.UpdatedAt);
         _animalRepository.Verify(r => r.UpdateAnimalAsync(It.Is<Animal>(a => a.IsActive)), Times.Once);
     }
 

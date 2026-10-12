@@ -62,6 +62,8 @@ namespace MuuBoi.Application.DTOs
         // Bloco opcional de última lactação (Spec 11.2 D17) — só para Vaca/Novilha (validado no AnimalService).
         public LactationSeedDto? InitialLactation { get; set; }
 
+        public Guid? InitialLactationSyncId { get; set; }
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (SyncId.HasValue && SyncId.Value == Guid.Empty)
@@ -78,6 +80,11 @@ namespace MuuBoi.Application.DTOs
                 yield return new ValidationResult(
                     "O identificador de sincronização do ECC inicial não pode ser vazio.",
                     new[] { nameof(InitialBodyConditionSyncId) });
+
+            if (InitialLactationSyncId.HasValue && InitialLactationSyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização da lactação inicial não pode ser vazio.",
+                    new[] { nameof(InitialLactationSyncId) });
 
             if (Classification.HasValue && Gender.HasValue)
             {

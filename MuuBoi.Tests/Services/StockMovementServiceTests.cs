@@ -191,8 +191,11 @@ public class StockMovementServiceTests
     [Fact]
     public async Task DeactivateAsync_WhenActive_Deactivates()
     {
-        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(BuildMovement(DateTime.UtcNow.AddDays(-1)));
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1), updatedAt);
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
         await _service.DeactivateAsync(1, 1);
+        Assert.Equal(updatedAt, movement.UpdatedAt);
         _repository.Verify(r => r.UpdateAsync(It.Is<StockMovement>(m => !m.IsActive)), Times.Once);
     }
 

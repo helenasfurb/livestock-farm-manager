@@ -103,7 +103,6 @@ namespace MuuBoi.Application.Services
                 return false;
 
             sample.IsActive = false;
-            sample.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(sample);
             return false;
         }
@@ -115,7 +114,6 @@ namespace MuuBoi.Application.Services
                 return true;
 
             sample.IsActive = true;
-            sample.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(sample);
             return true;
         }

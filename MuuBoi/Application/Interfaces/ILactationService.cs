@@ -12,5 +12,6 @@ namespace MuuBoi.Application.Interfaces
         Task<LactationDto> DryOffAsync(int id, LactationDryOffDto dto);
         Task<LactationDto> UndoDryOffAsync(int id);
         Task<bool> DeactivateAsync(int id);
+        Task<SyncPageDto<LactationDto>> GetChangesAsync(string? since, int? limit);
     }
 }

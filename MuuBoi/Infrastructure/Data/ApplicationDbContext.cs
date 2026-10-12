@@ -266,6 +266,8 @@ namespace MuuBoi.Infrastructure.Data
                 .HasIndex(l => l.CalvingId)
                 .HasDatabaseName("IX_Lactations_CalvingId");
 
+            builder.Entity<Lactation>().ConfigureSyncable();
+
             builder.Entity<VaccinationEvent>().HasQueryFilter(e => e.PropertyId == _propertyId);
 
             builder.Entity<VaccinationEvent>()

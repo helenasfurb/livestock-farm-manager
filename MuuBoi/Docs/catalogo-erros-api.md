@@ -231,6 +231,8 @@ Os erros de validação de DTO (**400**, formato B) estão agrupados na §5.
 > - `POST /` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
 > - `POST /` com `initialWeightSyncId` vazio → `400` "O identificador de sincronização da pesagem inicial não pode ser vazio." (formato B, campo `InitialWeightSyncId`). Sem `initialWeight`, o `initialWeightSyncId` é ignorado, sem erro (Spec #14.5, P3).
 > - `POST /` com `initialBodyConditionSyncId` vazio → `400` "O identificador de sincronização do ECC inicial não pode ser vazio." (formato B, campo `InitialBodyConditionSyncId`). Sem `initialBodyConditionScore`, é ignorado, sem erro (Spec #14.6, C3).
+> - `POST /` com `initialLactationSyncId` vazio → `400` "O identificador de sincronização da lactação inicial não pode ser vazio." (formato B, campo `InitialLactationSyncId`). Sem `initialLactation`, é ignorado, sem erro. A resposta do cadastro traz `initialLactation { id, syncId }` (ou `null`), inclusive no reenvio (Spec #14.7, L3).
+> - `POST /` com `initialLactation` sem `startDate` → `400` "A data de início da lactação é obrigatória." (campo `InitialLactation.StartDate`; até 11/Out/2026 gravava `0001-01-01`).
 > - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada, **sem** checar o brinco).
 > - `PATCH /{id}/exit` em animal já inativo → `200` com o animal, sem gravar *(até 09/Out/2026 era `409` "Não é possível registrar saída de um animal já inativo.")*.
 > - `PATCH /{id}/reactivate` em animal já ativo → `200` com o animal, sem gravar *(até 09/Out/2026 era `409` "Não é possível reativar um animal que já está ativo.")*.
@@ -381,17 +383,25 @@ HTTP/1.1 409 Conflict
 | `POST` | 422 | Somente vacas e novilhas podem ter lactação. |
 | `POST` | 409 | O animal já possui uma lactação em aberto. Seque a atual antes de abrir outra. |
 | `GET /api/lactations/{id}`, `PATCH`, `POST /dry-off`, `DELETE /dry-off`, `DELETE` | 404 | Lactação com id '{id}' não encontrada. |
-| `PATCH /{id}` | 409 | Não é possível editar uma lactação inativa. |
 | `PATCH /{id}` | 422 | A data de início não pode ser posterior à data da secagem. |
-| `POST /{id}/dry-off` | 409 | Não é possível secar uma lactação inativa. |
-| `POST /{id}/dry-off` | 409 | Esta lactação já está seca. |
 | `POST /{id}/dry-off` | 422 | A data da secagem não pode ser anterior ao início da lactação. |
-| `DELETE /{id}/dry-off` | 409 | Não é possível reabrir uma lactação inativa. |
-| `DELETE /{id}/dry-off` | 409 | Esta lactação já está em aberto. |
 | `DELETE /{id}/dry-off` | 409 | O animal já possui outra lactação em aberto. |
-| `DELETE /{id}` | 409 | A lactação já está inativa. |
+| `POST` sem `startDate` / `POST /{id}/dry-off` sem `endDate` | 400 | A data de início da lactação é obrigatória. / A data da secagem é obrigatória. *(formato B; até 11/Out/2026, `startDate` ausente gravava `0001-01-01` e `endDate` ausente dava `422` com a mensagem errada)* |
+| `POST` com `syncId` vazio | 400 | O identificador de sincronização não pode ser vazio. *(formato B, campo `SyncId`)* |
+| `GET /api/lactations/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
 
 > `GET /api/animals/{animalId}/lactations/current` responde **`204 No Content`** (não é erro) quando não há lactação aberta.
+>
+> **Rotas com suporte offline** — abertura, correção, secagem, desfazer secagem, exclusão e pull (ver `Docs/Specs/spec-sincronizacao-offline-14.7-lactacao.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com a lactação existente, sem alterar — inclusive quando ela própria é a "lactação em aberto" do animal, depois da saída do animal ou no reenvio simultâneo (Condição 3).
+> - `POST` com **outro** `syncId` e lactação aberta → continua `409` (conflito real).
+> - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada, **sem** checar a data da secagem).
+> - `POST /{id}/dry-off` em lactação já seca → `200` com a secagem existente, sem gravar *(até 11/Out/2026: `409` "Esta lactação já está seca.")*.
+> - `DELETE /{id}/dry-off` em lactação já aberta → `200`, sem gravar *(antes: `409` "Esta lactação já está em aberto.")*.
+> - `DELETE /{id}` em lactação já inativa → `204`, sem gravar *(antes: `409` "A lactação já está inativa.")*.
+> - `PATCH`, `POST /dry-off` e `DELETE /dry-off` em lactação **inativa** → `200` com a lactação (`isActive: false`), sem gravar *(antes: `409` "Não é possível editar/secar/reabrir uma lactação inativa.")* — a inativação sempre vence (Spec #14 §5.4).
+> - Secar, desfazer secagem e inativar **não alteram `updatedAt`** (só a edição do `startDate` altera).
+> - `GET /api/lactations/changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
 
 ### 4.12 Produção de leite — `/api/milk-productions`
 
