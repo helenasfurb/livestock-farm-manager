@@ -116,7 +116,6 @@ namespace MuuBoi.Application.Services
                 return;
 
             movement.IsActive = false;
-            movement.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(movement);
         }
 
@@ -143,7 +142,6 @@ namespace MuuBoi.Application.Services
                 return;
 
             movement.IsActive = false;
-            movement.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(movement);
         }
 

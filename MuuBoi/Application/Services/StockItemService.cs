@@ -137,7 +137,6 @@ namespace MuuBoi.Application.Services
                 return;
 
             item.IsActive = false;
-            item.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(item);
         }
 

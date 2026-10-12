@@ -108,7 +108,6 @@ namespace MuuBoi.Application.Services
                 return true;
 
             production.IsActive = false;
-            production.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(production);
             return true;
         }

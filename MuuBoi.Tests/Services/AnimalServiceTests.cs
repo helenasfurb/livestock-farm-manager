@@ -348,10 +348,12 @@ public class AnimalServiceTests
     [Fact]
     public async Task ExitAnimalAsync_WhenActive_AddsExitRecordAndDeactivatesInSameCall()
     {
-        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2), updatedAt);
         _animalRepository.Setup(r => r.GetAnimalByIdAsync(1)).ReturnsAsync(animal);
         var result = await _service.ExitAnimalAsync(1, BuildExitDto());
         Assert.False(result.IsActive);
+        Assert.Equal(updatedAt, animal.UpdatedAt);
         Assert.Equal((int)AnimalExitReason.Sale, result.LastExitRecord!.ExitReason!.Value);
         _animalRepository.Verify(r => r.UpdateAnimalAsync(It.Is<Animal>(a =>
             !a.IsActive && a.ExitRecords!.Single().ExitReason == AnimalExitReason.Sale)), Times.Once);
@@ -386,10 +388,12 @@ public class AnimalServiceTests
     [Fact]
     public async Task ReactivateAnimalAsync_WhenInactive_Reactivates()
     {
-        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2), isActive: false);
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2), updatedAt, isActive: false);
         _animalRepository.Setup(r => r.GetAnimalByIdAsync(1)).ReturnsAsync(animal);
         var result = await _service.ReactivateAnimalAsync(1);
         Assert.True(result.IsActive);
+        Assert.Equal(updatedAt, animal.UpdatedAt);
         _animalRepository.Verify(r => r.UpdateAnimalAsync(It.Is<Animal>(a => a.IsActive)), Times.Once);
     }
 

@@ -1,8 +1,8 @@
 # Spec #14: Sincronização Offline — Especificação e Plano de Implementação
 
 **Módulo:** Infraestrutura / Sincronização — transversal a toda a aplicação
-**Versão:** 1.6
-**Data:** 11/Out/2026
+**Versão:** 1.7
+**Data:** 12/Out/2026
 **Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2), **Estoque de insumos e movimentações** (Spec #14.3), **Animais e saídas do rebanho** (Spec #14.4), **Pesagens** (Spec #14.5), **ECC** (Spec #14.6) e **Lactação e secagem** (Spec #14.7); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
 **Abrangência:** contrato de sincronização do servidor/API (identidade, versionamento, tombstones, idempotência, tenant) **e** o contrato que o app offline precisa seguir para consumi-lo.
 **Relaciona-se com:** Spec 11.1 (Produção de Leite, §8) · Spec #13 (Cadastro Retroativo de Gestação, §6) · todos os specs de entidade · `Docs/catalogo-erros-api.md`
@@ -21,6 +21,7 @@
 | 1.4 | 10/Out/2026 | §8: `WeightRecord` sincronizável (**Spec #14.5**) — primeira entidade filha de um registro sincronizável criado offline (A5). §13 questão 4 resolvida para a pesagem (exclusão lógica); continua aberta para `AnimalMedication`. Sumário: lista completa das specs filhas |
 | 1.5 | 10/Out/2026 | §8: `BodyConditionRecord` sincronizável (**Spec #14.6**) — primeira migração da Spec #14 com backfill de dados (`PropertyId` pelo animal), que dá ao ECC o mesmo filtro de tenant das demais entidades. Sumário com a 14.6 |
 | 1.6 | 11/Out/2026 | §8: `Lactation` sincronizável (**Spec #14.7**) — primeira aplicação da Condição 3 a uma invariante de estado ("uma lactação aberta por animal") e primeira referência a derivado do cadastro do **animal** na resposta (`initialLactation`). Operações em lactação inativa respondem `2xx` com o estado do servidor (§5.4) e mudanças de estado não alteram `UpdatedAt` (L7). §13 questão 8 (nova). Sumário com a 14.7 |
+| 1.7 | 12/Out/2026 | §13 questão 8 resolvida: mudanças de estado não alteram `UpdatedAt` em nenhuma entidade sincronizável (regra nova na §5.4) |
 
 ---
 
@@ -263,6 +264,7 @@ Por hora de chegada, o celular A venceria e a correção de terça se perderia. 
 - **Estado já é o pedido** (ex.: inativar algo inativo) → `2xx` com o recurso, **sem gravar nada**: `UpdatedAt` e `RowVersion` não mudam, para o registro não "reaparecer" no pull.
 - **A inativação não passa pelo LWW — sempre vence.** O `DELETE` não leva `updatedAt`. Se o celular A inativar offline na segunda e o celular B editar na terça, a sincronização de sexta inativa o registro (com a edição do celular B preservada nos campos). Motivos: excluir é intenção explícita, e com soft delete nada se perde (dá para reativar). A alternativa exigiria corpo no `DELETE` e criaria o caso de um registro excluído que "volta".
 - `PATCH` em registro inativo continua aceito (edita sem reativar).
+- **Mudanças de estado não alteram `UpdatedAt`** (inativar, reativar, saída do rebanho, secagem etc.). O `UpdatedAt` é o relógio do LWW das **edições** (§5.3); se a mudança de estado o carimbasse com a hora do servidor, uma edição offline feita **depois** dela no mesmo celular seria descartada no sync. O `RowVersion` continua avançando e leva a mudança ao pull (§13 questão 8).
 
 ### 5.5 Pull incremental: `GET /api/<recurso>/changes?since=&limit=`
 
@@ -881,7 +883,7 @@ O overhead de várias requisições (cabeçalhos, JWT, handshake) é reduzido no
 | 5 | **Reautenticação JWT** após dias offline. | ⏳ Refresh token (`POST /api/auth/refresh`) — fase própria; `401` nunca descarta a fila |
 | 6 | ~~Tamanho do lote / paginação~~ | ✅ **Resolvida:** sem lote no push; pull com `limit` padrão e máximo de 500 |
 | 7 | **Compressão de resposta** para a carga inicial do pull | ⏳ Opcional (`Program.cs`) |
-| 8 | **Mudanças de estado carimbam `UpdatedAt` com a hora do servidor** (encontrada na Spec #14.7, §3 item 7): saída/reativação do animal (14.4) e inativação/reativação da amostra de sêmen (14.2) gravam `UpdatedAt = agora`. Uma edição offline do **mesmo** celular feita **depois** da mudança de estado (ex.: registra a saída às 10:00 e corrige o nome às 10:05, sincroniza às 18:00) é descartada pelo LWW, porque a mudança de estado chega primeiro e carimba 18:00 | ⏳ Corrigir numa tarefa própria com a regra da L7 da 14.7 (mudanças de estado não alteram `UpdatedAt`; o `RowVersion` continua levando a mudança ao pull). Já aplicada à lactação |
+| 8 | **Mudanças de estado carimbam `UpdatedAt` com a hora do servidor** (encontrada na Spec #14.7, §3 item 7): saída/reativação do animal (14.4) e inativação/reativação da amostra de sêmen (14.2) gravam `UpdatedAt = agora`. Uma edição offline do **mesmo** celular feita **depois** da mudança de estado (ex.: registra a saída às 10:00 e corrige o nome às 10:05, sincroniza às 18:00) é descartada pelo LWW, porque a mudança de estado chega primeiro e carimba 18:00 | ✅ **Resolvida** (12/Out/2026): regra da L7 da 14.7 generalizada na §5.4. Aplicada ao animal (saída e reativação), à amostra de sêmen (inativação e reativação) e, pelo mesmo motivo (todas têm `PATCH` com LWW), ao insumo, à movimentação de estoque, à movimentação de sêmen (inclusive a inativação automática pelo evento reprodutivo) e à produção de leite. Testes de cada uma conferem que o `UpdatedAt` não muda |
 
 ## 14. Fora do escopo
 

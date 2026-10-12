@@ -169,11 +169,13 @@ public class MilkProductionServiceTests
     [Fact]
     public async Task DeactivateAsync_WhenActive_DeactivatesAndReturnsTrue()
     {
-        var production = BuildProduction(DateTime.UtcNow.AddDays(-1));
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var production = BuildProduction(DateTime.UtcNow.AddDays(-1), updatedAt);
         _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(production);
         var result = await _service.DeactivateAsync(1);
         Assert.True(result);
         Assert.False(production.IsActive);
+        Assert.Equal(updatedAt, production.UpdatedAt);
         _repository.Verify(r => r.UpdateAsync(production), Times.Once);
     }
 

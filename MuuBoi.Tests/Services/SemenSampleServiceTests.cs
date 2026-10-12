@@ -202,10 +202,12 @@ public class SemenSampleServiceTests
     [Fact]
     public async Task DeactivateAsync_WhenActive_DeactivatesAndReturnsFalse()
     {
-        var sample = BuildSample(DateTime.UtcNow.AddDays(-1));
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var sample = BuildSample(DateTime.UtcNow.AddDays(-1), updatedAt);
         _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(sample);
         var result = await _service.DeactivateAsync(1);
         Assert.False(result);
+        Assert.Equal(updatedAt, sample.UpdatedAt);
         _repository.Verify(r => r.UpdateAsync(It.Is<SemenSample>(s => !s.IsActive)), Times.Once);
     }
 
@@ -222,10 +224,12 @@ public class SemenSampleServiceTests
     [Fact]
     public async Task ReactivateAsync_WhenInactive_ReactivatesAndReturnsTrue()
     {
-        var sample = BuildSample(DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddHours(-1), isActive: false);
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var sample = BuildSample(DateTime.UtcNow.AddDays(-1), updatedAt, isActive: false);
         _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(sample);
         var result = await _service.ReactivateAsync(1);
         Assert.True(result);
+        Assert.Equal(updatedAt, sample.UpdatedAt);
         _repository.Verify(r => r.UpdateAsync(It.Is<SemenSample>(s => s.IsActive)), Times.Once);
     }
 

@@ -230,9 +230,11 @@ public class StockItemServiceTests
     [Fact]
     public async Task DeactivateAsync_WhenActive_Deactivates()
     {
-        var item = BuildItem(DateTime.UtcNow.AddDays(-1));
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var item = BuildItem(DateTime.UtcNow.AddDays(-1), updatedAt);
         _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(item);
         await _service.DeactivateAsync(1);
+        Assert.Equal(updatedAt, item.UpdatedAt);
         _repository.Verify(r => r.UpdateAsync(It.Is<StockItem>(i => !i.IsActive)), Times.Once);
     }
 

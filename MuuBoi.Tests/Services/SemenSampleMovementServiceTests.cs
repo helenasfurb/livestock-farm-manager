@@ -190,9 +190,11 @@ public class SemenSampleMovementServiceTests
     [Fact]
     public async Task DeactivateAsync_WhenActive_Deactivates()
     {
-        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1));
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1), updatedAt);
         _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
         await _service.DeactivateAsync(1, 1);
+        Assert.Equal(updatedAt, movement.UpdatedAt);
         _repository.Verify(r => r.UpdateAsync(It.Is<SemenSampleMovement>(m => !m.IsActive)), Times.Once);
     }
 
@@ -221,6 +223,18 @@ public class SemenSampleMovementServiceTests
         _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
         await Assert.ThrowsAsync<ConflictException>(() => _service.DeactivateAsync(1, 1));
         _repository.Verify(r => r.UpdateAsync(It.IsAny<SemenSampleMovement>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task InactivateForBreedingEventAsync_WhenMovementExists_DeactivatesWithoutChangingUpdatedAt()
+    {
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1), updatedAt, breedingEventId: 3);
+        _repository.Setup(r => r.GetByBreedingEventIdAsync(3)).ReturnsAsync(movement);
+        await _service.InactivateForBreedingEventAsync(3);
+        Assert.False(movement.IsActive);
+        Assert.Equal(updatedAt, movement.UpdatedAt);
+        _repository.Verify(r => r.UpdateAsync(movement), Times.Once);
     }
 
     [Fact]

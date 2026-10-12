@@ -215,7 +215,6 @@ namespace MuuBoi.Application.Services
             });
 
             animal.IsActive = false;
-            animal.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _animalRepository.UpdateAnimalAsync(animal);
             return _mapper.Map<AnimalDto>(updated);
@@ -230,7 +229,6 @@ namespace MuuBoi.Application.Services
                 return _mapper.Map<AnimalDto>(animal);
 
             animal.IsActive = true;
-            animal.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _animalRepository.UpdateAnimalAsync(animal);
             return _mapper.Map<AnimalDto>(updated);
