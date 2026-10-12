@@ -1,12 +1,15 @@
 using System.ComponentModel.DataAnnotations;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Application.DTOs
 {
     public class VaccinationEventCreateDto : IValidatableObject
     {
+        public Guid? SyncId { get; set; }
+
         [Required(ErrorMessage = "A vacina é obrigatória.")]
-        public int VaccineId { get; set; }
+        public int? VaccineId { get; set; }
 
         [Required(ErrorMessage = "Informe ao menos um animal.")]
         [MinLength(1, ErrorMessage = "Informe ao menos um animal.")]
@@ -17,6 +20,7 @@ namespace MuuBoi.Application.DTOs
         public DateTime? PredictedDate { get; set; }
 
         // Optional; defaults to FirstDose (event without a parent) when omitted.
+        [ValidEnum(typeof(DoseType))]
         public DoseType? DoseType { get; set; }
 
         [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
@@ -24,6 +28,11 @@ namespace MuuBoi.Application.DTOs
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+
             if (!ApplicationDate.HasValue && !PredictedDate.HasValue)
                 yield return new ValidationResult(
                     "Informe ao menos uma data: de aplicação ou prevista.",

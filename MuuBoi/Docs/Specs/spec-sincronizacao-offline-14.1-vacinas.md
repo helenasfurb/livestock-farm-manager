@@ -15,7 +15,7 @@
 
 **Por que agora:** é um catálogo (Spec #14 §8, ordem sugerida), sem FK para outras entidades sincronizáveis — como a `MilkProduction`, não exige a resolução de `Id` da A5. Cada operação grava **um único registro**, então a Condição 1 da Spec #14 §7.5 (uma transação por operação) não se aplica.
 
-**Dependência futura:** `VaccinationEvent` referencia `VaccineId`. Quando os eventos entrarem no offline, uma vacina criada offline precisará estar sincronizada antes do evento que a usa — garantido pelo envio sequencial e pela resolução do `ServerId` no app (A2, A5, Spec #14 §5.8).
+**Dependência futura (✅ cumprida em 12/Out/2026, Spec #14.8):** `VaccinationEvent` referencia `VaccineId`. Quando os eventos entrarem no offline, uma vacina criada offline precisará estar sincronizada antes do evento que a usa — garantido pelo envio sequencial e pela resolução do `ServerId` no app (A2, A5, Spec #14 §5.8). A Spec #14.8 aceita também vacina **inativa** no evento (V10), para uma vacina excluída em outro celular não travar a fila.
 
 **Mudanças nas rotas:**
 

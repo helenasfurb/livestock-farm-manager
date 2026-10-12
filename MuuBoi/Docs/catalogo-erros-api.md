@@ -480,7 +480,19 @@ HTTP/1.1 409 Conflict
 | `POST /{id}/booster` | 422 | A data prevista do reforço não pode ser anterior à data de aplicação do evento pai. |
 | `POST /{id}/booster` | 422 | A data prevista do reforço não pode ser anterior à data prevista do evento pai. |
 | `POST /{id}/booster` | 409 | Já existe um reforço para este evento. |
-| `DELETE /{id}` | 409 | O evento de vacinação já está inativo. |
+| `POST` | 400 | A vacina é obrigatória. *(formato B, campo `VaccineId` — antes, sem `vaccineId`, respondia `404` "Vacina com id '0' não encontrada.")* |
+| `POST`, `PATCH /{id}` | 400 | Valor inválido. Valores aceitos: Primeira dose (1), Reforço (2). *(formato B, campo `DoseType` — antes, um `doseType` fora do enum era gravado)* |
+| `POST /{id}/booster` | 400 | A data prevista é obrigatória. *(formato B, campo `PredictedDate` — antes, sem `predictedDate`, respondia `422` com a mensagem da data do pai)* |
+| `GET /changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
+
+> **Rotas com suporte offline** — eventos e reforços (ver `Docs/Specs/spec-sincronizacao-offline-14.8-vacinacao.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com o evento existente e a lista **original** de animais — mesmo que a vacina tenha sido excluída depois ou que a lista enviada seja outra (o `syncId` é checado antes da vacina e dos animais).
+> - `POST /{id}/booster` com `syncId` já existente → `201` com o reforço existente, inclusive quando ele próprio é o "reforço já existente" do pai e quando o pai foi inativado depois.
+> - Dois reforços diferentes do mesmo pai ao mesmo tempo → um `201` e os demais `409` "Já existe um reforço para este evento." *(até 12/Out/2026 a corrida respondia `500`)*.
+> - `POST` e `POST /{id}/booster` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada).
+> - `DELETE /{id}` em evento já inativo → `204` *(até 12/Out/2026 era `409` "O evento de vacinação já está inativo.")*.
+> - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
 
 Exemplo:
 

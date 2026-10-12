@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Interfaces;
@@ -54,11 +55,62 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(e => e.Id == id);
         }
 
+        public async Task<VaccinationEvent?> GetBySyncIdAsync(Guid syncId)
+        {
+            return await _context.VaccinationEvents
+                .Include(e => e.Vaccine)
+                .Include(e => e.EventAnimals!)
+                    .ThenInclude(a => a.Animal)
+                .Include(e => e.ParentEvent)
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(e => e.SyncId == syncId);
+        }
+
         public async Task<VaccinationEvent> CreateAsync(VaccinationEvent vaccinationEvent)
         {
-            _context.VaccinationEvents.Add(vaccinationEvent);
-            await _context.SaveChangesAsync();
-            return vaccinationEvent;
+            return await _context.AddSyncableAsync(vaccinationEvent);
+        }
+
+        public async Task<VaccinationEvent?> CreateBoosterAsync(VaccinationEvent booster)
+        {
+            try
+            {
+                return await _context.AddSyncableAsync(booster);
+            }
+            catch (DbUpdateException ex) when (IsActiveBoosterUniqueViolation(ex))
+            {
+                foreach (var link in booster.EventAnimals?.ToList() ?? new List<VaccinationEventAnimal>())
+                    _context.Entry(link).State = EntityState.Detached;
+                _context.Entry(booster).State = EntityState.Detached;
+                return null;
+            }
+        }
+
+        public async Task<IReadOnlyList<VaccinationEvent>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<VaccinationEvent>(since, take);
+        }
+
+        public async Task<Dictionary<int, List<int>>> GetAnimalIdsByEventIdsAsync(IReadOnlyCollection<int> eventIds)
+        {
+            if (eventIds.Count == 0)
+                return new Dictionary<int, List<int>>();
+
+            var links = await _context.VaccinationEventAnimals
+                .Where(a => eventIds.Contains(a.VaccinationEventId))
+                .Select(a => new { a.VaccinationEventId, a.AnimalId })
+                .ToListAsync();
+
+            return links
+                .GroupBy(l => l.VaccinationEventId)
+                .ToDictionary(g => g.Key, g => g.Select(l => l.AnimalId).OrderBy(id => id).ToList());
+        }
+
+        private static bool IsActiveBoosterUniqueViolation(DbUpdateException ex)
+        {
+            return ex.InnerException is SqlException sql
+                && (sql.Number == 2601 || sql.Number == 2627)
+                && sql.Message.Contains("UX_VaccinationEvents_ParentEventId_Active");
         }
 
         public async Task<VaccinationEvent> UpdateAsync(VaccinationEvent vaccinationEvent)

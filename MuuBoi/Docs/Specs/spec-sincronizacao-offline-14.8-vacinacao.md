@@ -1,9 +1,9 @@
 # Spec #14.8: Sincronização Offline — Eventos de Vacinação e Reforços
 
 **Módulo:** Infraestrutura / Sincronização — Controle Sanitário (Vacinação)
-**Versão:** 0.2
+**Versão:** 1.0
 **Data:** 12/Out/2026
-**Status:** 🟢 **Aprovada.** Decisões V1–V10 fechadas (V4, V7 e V8 como propostas). Pré-requisito (Spec #14 §13 questão 8) concluído. Nenhuma fase implementada.
+**Status:** ✅ **Implementada** (Fases 1–8) na branch `feature/offline-vaccination-events`. Decisões V1–V10 fechadas (V4, V7 e V8 como propostas).
 
 ### Histórico de versões
 
@@ -11,6 +11,7 @@
 |---|---|---|
 | 0.1 | 11/Out/2026 | Rascunho: evento de vacinação (com a lista de animais embutida) e reforço planejados **sem alterar nenhuma regra de negócio**; Condição 3 e índice único no reforço; pull com DTO próprio |
 | 0.2 | 12/Out/2026 | Aprovada: V4 (corrida tratada no repositório), V7 (`VaccinationEventSyncDto`) e V8 (validação → `400`, se a Fase 2 confirmar) fechadas como propostas. Pré-requisito concluído na branch `fix/state-changes-keep-updated-at` |
+| 1.0 | 12/Out/2026 | Implementada: Fases 1–8. §3 item 9 confirmado (V8 aplicada na criação, no `PATCH` e no reforço). V4: o desanexo das ligações percorre uma cópia da lista (ver Fase 3). 21 testes novos (225 no total) |
 
 **Depende de:** Spec #14 (`spec-sincronizacao-offline.md`) — contrato, decisões, helpers (§7.2), receita (§7.4), Condições 1–3 (§7.5), §5.9 (`VaccinationEventAnimal` embutido) e §13 questão 8 (mudanças de estado não alteram `UpdatedAt`) · Spec #14.1 (catálogo de vacinas, sincronizável) · Spec #14.4 (animais, sincronizáveis; N6 — pull com DTO próprio) · Spec #14.7 (L2 — Condição 3; L7 — mudança de estado sem `UpdatedAt`). Esta spec **não** redecide nada da #14.
 **Relaciona-se com:** `spec-controle-sanitario-vacinacao.md` (D1–D12, RN-01–RN-09) · `Docs/catalogo-erros-api.md` (seção de eventos de vacinação)
@@ -108,14 +109,14 @@ As marcadas com ⭐ foram escolhidas pela usuária em 12/Out/2026 (todas como pr
 
 | Fase | Status |
 |---|---|
-| 1 — Domínio e banco (V1) | ⏳ |
-| 2 — Criação idempotente (+ confirmação do §3 item 9 e V8) | ⏳ |
-| 3 — Reforço idempotente: Condição 3 e índice único (V3, V4) | ⏳ |
-| 4 — Edição com last-write-wins (V5) | ⏳ |
-| 5 — Inativação idempotente (V6) | ⏳ |
-| 6 — Pull incremental com `VaccinationEventSyncDto` (V7, V9) | ⏳ |
-| 7 — Testes | ⏳ |
-| 8 — Documentação | ⏳ |
+| 1 — Domínio e banco (V1) | ✅ 12/Out/2026 — migração `20261012150050_Offline_VaccinationEvent_SyncId_RowVersion` aplicada no banco local; 7 eventos (3 reforços) com `SyncId` distintos; 23 ligações intactas |
+| 2 — Criação idempotente (+ confirmação do §3 item 9 e V8) | ✅ 12/Out/2026 — §3 item 9 confirmado (os três casos, e também `PATCH` com `doseType: 7`); V8 aplicada na criação; validações da §6.2 todas como esperado (20 simultâneos: 20 × `201`, 1 evento, 3 ligações; 6 corridas resolvidas pelo `UX_VaccinationEvents_SyncId`, nenhum `500`) |
+| 3 — Reforço idempotente: Condição 3 e índice único (V3, V4) | ✅ 12/Out/2026 — validações da §6.3 todas como esperado (20 simultâneos do mesmo reforço: 20 × `201`; 10 + 10 de dois reforços: 10 × `201` + 10 × `409`; nenhum `500`, nenhuma ligação órfã). Na V4, o desanexo das ligações percorre uma cópia da lista: o EF remove a ligação desanexada de `EventAnimals` e o `foreach` direto lançava `InvalidOperationException` (`500`) |
+| 4 — Edição com last-write-wins (V5) | ✅ 12/Out/2026 — validações da §6.4 todas como esperado (mais novo, `-03:00`, reenvio, mais antigo, sem `updatedAt`, relógio adiantado, evento inativo editável); V8 aplicada no `PATCH` (`doseType: 7` → `400`). Datas sem `Z` na resposta lida do banco: já conhecido (Spec #14, tarefa separada) |
+| 5 — Inativação idempotente (V6) | ✅ 12/Out/2026 — `204` → `204`; no repetido `RowVersion` e `UpdatedAt` inalterados; na inativação `UpdatedAt` inalterado e `RowVersion` avança; inativar o pai não toca o reforço (R9); inexistente `404` |
+| 6 — Pull incremental com `VaccinationEventSyncDto` (V7, V9) | ✅ 12/Out/2026 — validações da §6.6 todas como esperado: pull inicial (35 eventos, 12 reforços, 7 inativos); pull × `GET /{id}` sem divergências; isolamento entre duas contas; criar/reforçar/editar/inativar → cada evento uma vez, estado final; reforço novo → só o reforço; paginação de 7 sem duplicatas; cursor inválido `400`; `limit` limitado a 500; sem colisão de rotas; **2 consultas por página** |
+| 7 — Testes | ✅ 12/Out/2026 — `VaccinationEventServiceTests` com os 21 testes da §6.7; suíte completa 225/225 |
+| 8 — Documentação | ✅ 12/Out/2026 — Spec #14 (v1.8: §5.5, §8, sumário), Spec #14.1 (dependência cumprida), `catalogo-erros-api.md` (§4.15), `spec-controle-sanitario-vacinacao.md` (nota no topo e D9) |
 
 Branch: `feature/offline-vaccination-events`, a partir da branch que tiver a correção da Spec #14 §13 questão 8 (ou do `dev`, depois do merge). Cada fase é proposta com o código exato e só implementada após aprovação. Validação manual na API local, com as contas de teste das specs anteriores.
 
