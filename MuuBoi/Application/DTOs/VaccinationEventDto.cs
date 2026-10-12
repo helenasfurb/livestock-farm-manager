@@ -3,6 +3,7 @@ namespace MuuBoi.Application.DTOs
     public class VaccinationEventDto
     {
         public int Id { get; set; }
+        public Guid SyncId { get; set; }
         public int VaccineId { get; set; }
         public string? VaccineName { get; set; }
         public EnumValueDto? DoseType { get; set; }

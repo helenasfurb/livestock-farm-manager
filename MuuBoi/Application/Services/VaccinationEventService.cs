@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Helpers;
@@ -63,12 +64,20 @@ namespace MuuBoi.Application.Services
 
         public async Task<VaccinationEventDto> CreateAsync(VaccinationEventCreateDto dto)
         {
-            await EnsureVaccineExistsAsync(dto.VaccineId);
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return await GetByIdAsync(existing.Id);
+            }
+
+            await EnsureVaccineExistsAsync(dto.VaccineId!.Value);
             await EnsureAnimalsExistAsync(dto.AnimalIds);
 
             var vaccinationEvent = new VaccinationEvent
             {
-                VaccineId = dto.VaccineId,
+                SyncId = dto.SyncId ?? Guid.NewGuid(),
+                VaccineId = dto.VaccineId!.Value,
                 // No parent on a manual event → default FirstDose, editable (D6).
                 DoseType = dto.DoseType ?? DoseType.FirstDose,
                 ApplicationDate = dto.ApplicationDate,
@@ -85,29 +94,39 @@ namespace MuuBoi.Application.Services
 
         public async Task<VaccinationEventDto> CreateBoosterAsync(int parentId, VaccinationBoosterCreateDto dto)
         {
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return await GetByIdAsync(existing.Id);
+            }
+
             var parent = await _repository.GetByIdAsync(parentId)
                 ?? throw new NotFoundException($"Evento de vacinação com id '{parentId}' não encontrado.");
 
+            var predictedDate = dto.PredictedDate!.Value;
+
             // Only rule: the booster's predicted date cannot precede either of the parent's dates.
-            if (parent.ApplicationDate.HasValue && dto.PredictedDate.Date < parent.ApplicationDate.Value.Date)
+            if (parent.ApplicationDate.HasValue && predictedDate.Date < parent.ApplicationDate.Value.Date)
                 throw new BusinessRuleException(
                     "A data prevista do reforço não pode ser anterior à data de aplicação do evento pai.");
 
-            if (parent.PredictedDate.HasValue && dto.PredictedDate.Date < parent.PredictedDate.Value.Date)
+            if (parent.PredictedDate.HasValue && predictedDate.Date < parent.PredictedDate.Value.Date)
                 throw new BusinessRuleException(
                     "A data prevista do reforço não pode ser anterior à data prevista do evento pai.");
 
             // One booster per parent.
             var existingChild = await _repository.GetActiveChildByParentIdAsync(parentId);
             if (existingChild != null)
-                throw new ConflictException("Já existe um reforço para este evento.");
+                return await ExistingBySyncIdOrConflictAsync(dto.SyncId);
 
             var animalIds = parent.EventAnimals?.Select(a => a.AnimalId).ToList() ?? new List<int>();
             var booster = new VaccinationEvent
             {
+                SyncId = dto.SyncId ?? Guid.NewGuid(),
                 VaccineId = parent.VaccineId,
                 DoseType = DoseType.Booster,
-                PredictedDate = dto.PredictedDate,
+                PredictedDate = predictedDate,
                 ApplicationDate = null,
                 ParentEventId = parentId,
                 Notes = dto.Notes,
@@ -116,14 +135,33 @@ namespace MuuBoi.Application.Services
                     .ToList()
             };
 
-            var created = await _repository.CreateAsync(booster);
+            var created = await _repository.CreateBoosterAsync(booster);
+            if (created == null)
+                return await ExistingBySyncIdOrConflictAsync(dto.SyncId);
+
             return await GetByIdAsync(created.Id);
+        }
+
+        private async Task<VaccinationEventDto> ExistingBySyncIdOrConflictAsync(Guid? syncId)
+        {
+            if (syncId.HasValue)
+            {
+                var existing = await _repository.GetBySyncIdAsync(syncId.Value);
+                if (existing != null)
+                    return await GetByIdAsync(existing.Id);
+            }
+
+            throw new ConflictException("Já existe um reforço para este evento.");
         }
 
         public async Task<VaccinationEventDto> UpdateAsync(int id, VaccinationEventUpdateDto dto)
         {
             var vaccinationEvent = await _repository.GetByIdAsync(id)
                 ?? throw new NotFoundException($"Evento de vacinação com id '{id}' não encontrado.");
+
+            var editedAt = SyncTimestampResolver.ResolveEditedAt(dto.UpdatedAt, DateTime.UtcNow);
+            if (SyncTimestampResolver.IsOutdated(editedAt, vaccinationEvent))
+                return await GetByIdAsync(id);
 
             if (dto.ApplicationDate.HasValue)
                 vaccinationEvent.ApplicationDate = dto.ApplicationDate.Value;
@@ -137,10 +175,27 @@ namespace MuuBoi.Application.Services
             if (dto.Notes != null)
                 vaccinationEvent.Notes = dto.Notes;
 
-            vaccinationEvent.UpdatedAt = DateTime.UtcNow;
+            vaccinationEvent.UpdatedAt = editedAt;
             await _repository.UpdateAsync(vaccinationEvent);
 
             return await GetByIdAsync(id);
+        }
+
+        public async Task<SyncPageDto<VaccinationEventSyncDto>> GetChangesAsync(string? since, int? limit)
+        {
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
+
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _repository.GetChangesAsync(cursor, take + 1);
+            var animalIds = await _repository.GetAnimalIdsByEventIdsAsync(fetched.Select(e => e.Id).ToList());
+
+            return SyncPaging.BuildPage(fetched, take, cursor, e =>
+            {
+                var dto = _mapper.Map<VaccinationEventSyncDto>(e);
+                dto.AnimalIds = animalIds.TryGetValue(e.Id, out var ids) ? ids : new List<int>();
+                return dto;
+            });
         }
 
         public async Task<bool> DeactivateAsync(int id)
@@ -149,10 +204,9 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Evento de vacinação com id '{id}' não encontrado.");
 
             if (!vaccinationEvent.IsActive)
-                throw new ConflictException("O evento de vacinação já está inativo.");
+                return true;
 
             vaccinationEvent.IsActive = false;
-            vaccinationEvent.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(vaccinationEvent);
             return true;
         }

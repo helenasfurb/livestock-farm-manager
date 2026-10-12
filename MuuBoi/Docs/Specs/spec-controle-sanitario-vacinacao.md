@@ -7,6 +7,8 @@
 **Status:** Especificada (não implementada)
 **Depende de:** Spec #1 (Animais) — para `Animal`, tenant/`BaseEntity`. Reaproveita a entidade **`Vaccine`** já existente (catálogo por fazenda).
 
+> **Sincronização offline (12/Out/2026):** eventos e reforços passaram a ser sincronizáveis pela **Spec #14.8** (`spec-sincronizacao-offline-14.8-vacinacao.md`), sem alterar as regras desta spec (D1–D12, RN-01–RN-09). A evolução offline-first prevista na D9 está cumprida. Mudanças visíveis na API: `syncId` aditivo nas respostas; `DELETE` repetido → `204` (antes `409`); `doseType` inválido, criação sem `vaccineId` e reforço sem `predictedDate` → `400`; nova rota `GET /api/vaccination-events/changes`.
+
 > **Decisões de escopo desta spec (definidas com a orientadora do TCC em 03/Set):**
 > - **Substitui/depreciar** o modelo atual `AnimalVaccination` (registro *por animal*). O novo átomo de escrita é o **`VaccinationEvent`** (em lote, N animais por evento). Ver §7 (migração/depreciação).
 > - **Server-side agora**: `Id int`, `PropertyId`, `BaseEntity`, soft delete, `ExceptionMiddleware`, criação do reforço **no serviço** (não no device). Offline-first fica como **evolução futura aditiva** (§8), sem retrabalho de modelo — mesmo racional da Spec 11.1 (D5).
@@ -62,7 +64,7 @@ O **reforço** é a única exceção deliberada à regra "derivar em vez de grav
 | D6 | **`DoseType`** é flag gravada no evento, com **default vindo da linhagem** (sem pai → `FirstDose`; spawn → `Booster`), **editável**. | Análise D6: dado imutável do nascimento; default editável cobre onboarding num só campo. |
 | D7 | **Sem trava** entre `PredictedDate` e `ApplicationDate` — antecipar e atrasar são ambos legítimos. | Análise D7: a data de aplicação registra quando aconteceu, ponto. |
 | D8 | **Leitura derivada única**: histórico por animal (extrato), incluindo `nextDoseDate` da próxima dose prevista. A grade animais × vacinas da análise foi **retirada** (04/Set). | Análise D8 (parcial): mantém o extrato; a grade fica para uma eventual tela dedicada. |
-| D9 | **Server-side agora** (`Id int`, `PropertyId`, `BaseEntity`, spawn no serviço). Offline-first = evolução futura aditiva. | Decisão TCC (03/Set): implementável já; alinha com Spec 11.1 (D5). Análise D9 vira §8. |
+| D9 | **Server-side agora** (`Id int`, `PropertyId`, `BaseEntity`, spawn no serviço). Offline-first = evolução futura aditiva. | Decisão TCC (03/Set): implementável já; alinha com Spec 11.1 (D5). Análise D9 vira §8. **Cumprida em 12/Out/2026 (Spec #14.8), sem mudança de modelo.** |
 | D10 | **Substitui/depreciar `AnimalVaccination`**; `VaccinationEvent` é o novo átomo. | Decisão TCC (03/Set): evita duas fontes de verdade para vacinação. |
 | D11 | Resolver como **helper estático** em `Application/Helpers/` (não interface `I...`). | Convenção real do projeto (`ReproductiveStatusResolver`, `ProductiveStatusResolver`). |
 | D12 | **`Vaccine` por fazenda** (mantém `PropertyId`). | Decisão TCC (03/Set): menor esforço; catálogo global fica fora (Q5). |

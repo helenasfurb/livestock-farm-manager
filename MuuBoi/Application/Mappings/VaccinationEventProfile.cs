@@ -38,6 +38,15 @@ namespace MuuBoi.Application.Mappings
                     opt => opt.MapFrom(src => src.EventAnimals != null ? src.EventAnimals.Count : 0))
                 .ForMember(dest => dest.Status, opt => opt.Ignore());
 
+            CreateMap<VaccinationEvent, VaccinationEventSyncDto>()
+                .ForMember(dest => dest.DoseType,
+                    opt => opt.MapFrom(src => new EnumValueDto
+                    {
+                        Value = (int)src.DoseType,
+                        Label = src.DoseType.GetDescription()
+                    }))
+                .ForMember(dest => dest.AnimalIds, opt => opt.Ignore());
+
             CreateMap<VaccinationEventAnimal, VaccinationEventAnimalDto>()
                 .ForMember(dest => dest.Name,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.Name : null))

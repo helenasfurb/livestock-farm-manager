@@ -305,6 +305,8 @@ namespace MuuBoi.Infrastructure.Data
                 .HasFilter("[ParentEventId] IS NOT NULL AND [IsActive] = 1")
                 .HasDatabaseName("UX_VaccinationEvents_ParentEventId_Active");
 
+            builder.Entity<VaccinationEvent>().ConfigureSyncable();
+
             builder.Entity<VaccinationEventAnimal>()
                 .HasKey(x => new { x.VaccinationEventId, x.AnimalId });
 
