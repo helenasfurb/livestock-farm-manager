@@ -18,6 +18,8 @@ namespace MuuBoi.Application.Interfaces
 
         Task<IEnumerable<HealthCaseListItemDto>> GetAnimalHistoryAsync(int animalId);
 
+        Task<SyncPageDto<HealthCaseSyncDto>> GetChangesAsync(string? since, int? limit);
+
         /// <summary>Resolved sanitary status per animal (bulk, no N+1). Animals with no facts are absent (Healthy).</summary>
         Task<Dictionary<int, AnimalSanitaryStatusDto>> GetSanitaryStatusMapAsync(IReadOnlyCollection<int> animalIds);
     }

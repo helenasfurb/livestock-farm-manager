@@ -35,6 +35,20 @@ namespace MuuBoi.Application.Mappings
 
             CreateMap<MastitisTest, MastitisTestDto>()
                 .ForMember(d => d.TestType, o => o.MapFrom(s => new EnumValueDto { Value = (int)s.TestType, Label = s.TestType.GetDescription() }));
+
+            CreateMap<HealthCase, HealthCaseSyncDto>()
+                .ForMember(d => d.DiseaseType, o => o.MapFrom(s => new EnumValueDto { Value = (int)s.DiseaseType, Label = s.DiseaseType.GetDescription() }))
+                .ForMember(d => d.AffectedQuarters, o => o.MapFrom(s => s.AffectedQuarters.HasValue
+                    ? EnumHelper.ToFlagValues(s.AffectedQuarters.Value)
+                    : new List<EnumValueDto>()))
+                .ForMember(d => d.Medications, o => o.Ignore())
+                .ForMember(d => d.Tests, o => o.Ignore());
+
+            CreateMap<AnimalMedication, MedicationUseSyncDto>()
+                .ForMember(d => d.Dose, o => o.MapFrom(s => s.DosageDescription));
+
+            CreateMap<MastitisTest, MastitisTestSyncDto>()
+                .ForMember(d => d.TestType, o => o.MapFrom(s => new EnumValueDto { Value = (int)s.TestType, Label = s.TestType.GetDescription() }));
         }
     }
 }

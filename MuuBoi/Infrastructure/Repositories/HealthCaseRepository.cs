@@ -56,11 +56,20 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
+        public async Task<HealthCase?> GetBySyncIdAsync(Guid syncId)
+        {
+            return await _context.HealthCases
+                .Include(c => c.Animal)
+                .Include(c => c.Tests!.Where(t => t.IsActive))
+                .Include(c => c.Medications!.Where(m => m.IsActive))
+                    .ThenInclude(m => m.Medication)
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(c => c.SyncId == syncId);
+        }
+
         public async Task<HealthCase> CreateAsync(HealthCase healthCase)
         {
-            _context.HealthCases.Add(healthCase);
-            await _context.SaveChangesAsync();
-            return healthCase;
+            return await _context.AddSyncableAsync(healthCase);
         }
 
         public async Task<HealthCase> UpdateAsync(HealthCase healthCase)
@@ -83,9 +92,11 @@ namespace MuuBoi.Infrastructure.Repositories
 
         public async Task<AnimalMedication> AddMedicationAsync(AnimalMedication medication)
         {
-            _context.AnimalMedications.Add(medication);
-            await _context.SaveChangesAsync();
-            return medication;
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            var saved = await _context.AddSyncableAsync(medication);
+            await TouchHealthCaseAsync(saved.HealthCaseId!.Value);
+            await transaction.CommitAsync();
+            return saved;
         }
 
         public async Task<AnimalMedication?> GetMedicationAsync(int medicationId, int healthCaseId)
@@ -95,18 +106,30 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(m => m.Id == medicationId && m.HealthCaseId == healthCaseId);
         }
 
+        public async Task<AnimalMedication?> GetMedicationBySyncIdAsync(Guid syncId)
+        {
+            return await _context.AnimalMedications
+                .Include(m => m.Medication)
+                .FirstOrDefaultAsync(m => m.SyncId == syncId);
+        }
+
         public async Task<AnimalMedication> UpdateMedicationAsync(AnimalMedication medication)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             _context.AnimalMedications.Update(medication);
             await _context.SaveChangesAsync();
+            await TouchHealthCaseAsync(medication.HealthCaseId!.Value);
+            await transaction.CommitAsync();
             return medication;
         }
 
         public async Task<MastitisTest> AddTestAsync(MastitisTest test)
         {
-            _context.MastitisTests.Add(test);
-            await _context.SaveChangesAsync();
-            return test;
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            var saved = await _context.AddSyncableAsync(test);
+            await TouchHealthCaseAsync(saved.HealthCaseId);
+            await transaction.CommitAsync();
+            return saved;
         }
 
         public async Task<MastitisTest?> GetTestAsync(int testId, int healthCaseId)
@@ -115,10 +138,50 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(t => t.Id == testId && t.HealthCaseId == healthCaseId);
         }
 
+        public async Task<MastitisTest?> GetTestBySyncIdAsync(Guid syncId)
+        {
+            return await _context.MastitisTests.FirstOrDefaultAsync(t => t.SyncId == syncId);
+        }
+
+        public async Task<IReadOnlyList<HealthCase>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<HealthCase>(since, take);
+        }
+
+        public async Task<List<AnimalMedication>> GetMedicationsByCaseIdsAsync(IReadOnlyCollection<int> caseIds)
+        {
+            if (caseIds.Count == 0)
+                return new List<AnimalMedication>();
+
+            return await _context.AnimalMedications
+                .Where(m => m.HealthCaseId != null && caseIds.Contains(m.HealthCaseId.Value))
+                .ToListAsync();
+        }
+
+        public async Task<List<MastitisTest>> GetTestsByCaseIdsAsync(IReadOnlyCollection<int> caseIds)
+        {
+            if (caseIds.Count == 0)
+                return new List<MastitisTest>();
+
+            return await _context.MastitisTests
+                .Where(t => caseIds.Contains(t.HealthCaseId))
+                .ToListAsync();
+        }
+
+        private async Task TouchHealthCaseAsync(int healthCaseId)
+        {
+            await _context.HealthCases
+                .Where(c => c.Id == healthCaseId)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsActive, c => c.IsActive));
+        }
+
         public async Task<MastitisTest> UpdateTestAsync(MastitisTest test)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             _context.MastitisTests.Update(test);
             await _context.SaveChangesAsync();
+            await TouchHealthCaseAsync(test.HealthCaseId);
+            await transaction.CommitAsync();
             return test;
         }
 

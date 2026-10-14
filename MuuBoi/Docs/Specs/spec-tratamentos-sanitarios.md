@@ -7,6 +7,8 @@
 **Status:** Especificada (não implementada)
 **Depende de:** Spec #1 (Animais) — `Animal`, tenant/`BaseEntity`. **Reaproveita e estende** `AnimalMedication` (já existente); o fluxo de tratamento grava o medicamento como **nome livre** (`MedicationName`), sem catálogo (D13). Par complementar da spec **Controle Sanitário — Vacinação** (`VaccinationEvent`, preventivo).
 
+> **Sincronização offline (13/Out/2026):** casos, aplicações do caso e testes passaram a ser sincronizáveis pela **Spec #14.9** (`spec-sincronizacao-offline-14.9-casos-saude.md`), sem alterar as regras desta spec (D1–D13). A evolução offline-first prevista (§8) está cumprida para o fluxo do caso; o **uso avulso** de medicação ficou fora. Mudanças visíveis na API: `syncId` aditivo no caso, nas aplicações e nos testes; `DELETE` repetido → `204` (antes `409`); `animalId` e datas ausentes e quartos inválidos → `400`; nova rota `GET /api/health-cases/changes`. Pendente (Q3 da 14.9): aplicações de caso **inativo** continuam contando na carência do animal — investigar numa tarefa própria.
+
 > **Decisões de escopo desta spec (07/Set):**
 > - **Server-side agora** (`Id int`, `PropertyId`, `BaseEntity`, soft delete, `ExceptionMiddleware`, resolvers como **helpers estáticos** em `Application/Helpers/`). Offline-first fica como **evolução futura aditiva** (§8) — mesmo racional das specs de Vacinação (D9) e 11.1.
 > - **`MedicationUse` não é entidade nova**: é o **`AnimalMedication` existente estendido** com `HealthCaseId int?` (nulo = uso avulso). Evita duas fontes de verdade para "medicamento com carência no nível do animal".

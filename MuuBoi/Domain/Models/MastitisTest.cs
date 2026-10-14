@@ -7,7 +7,7 @@ namespace MuuBoi.Domain.Models
     /// A mastitis test recorded at the case level (1:N with <see cref="HealthCase"/>).
     /// <see cref="Result"/> is free text to accommodate different natures (Alterado, ++, 350 mil cél/mL, S. aureus).
     /// </summary>
-    public class MastitisTest : BaseEntity, ITenantEntity
+    public class MastitisTest : BaseEntity, ITenantEntity, ISyncable
     {
         [Required]
         public int HealthCaseId { get; set; }
@@ -20,6 +20,9 @@ namespace MuuBoi.Domain.Models
         public DateTime TestDate { get; set; }
 
         public Guid PropertyId { get; set; }
+
+        public Guid SyncId { get; set; }
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         public HealthCase? HealthCase { get; set; }
     }

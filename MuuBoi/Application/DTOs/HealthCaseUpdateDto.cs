@@ -18,8 +18,15 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(1000, ErrorMessage = "As observações devem ter no máximo 1000 caracteres.")]
         public string? Notes { get; set; }
 
+        public DateTime? UpdatedAt { get; set; }
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            if (AffectedQuarters.HasValue && ((int)AffectedQuarters.Value < 1 || (int)AffectedQuarters.Value > 15))
+                yield return new ValidationResult(
+                    "Quartos afetados inválidos.",
+                    new[] { nameof(AffectedQuarters) });
+
             if (DiagnosisDate.HasValue && DiagnosisDate.Value.Date > DateTime.UtcNow.Date)
                 yield return new ValidationResult(
                     "A data de diagnóstico não pode ser futura.",

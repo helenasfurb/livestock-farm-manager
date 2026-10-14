@@ -379,6 +379,10 @@ namespace MuuBoi.Infrastructure.Data
                 .HasIndex(m => m.HealthCaseId)
                 .HasDatabaseName("IX_AnimalMedications_HealthCaseId");
 
+            builder.Entity<HealthCase>().ConfigureSyncable();
+            builder.Entity<MastitisTest>().ConfigureSyncable();
+            builder.Entity<AnimalMedication>().ConfigureSyncable();
+
             builder.Entity<StockItem>().HasQueryFilter(i => i.PropertyId == _propertyId);
             builder.Entity<StockItem>().ConfigureSyncable();
             builder.Entity<StockMovement>().HasQueryFilter(m => m.PropertyId == _propertyId);
