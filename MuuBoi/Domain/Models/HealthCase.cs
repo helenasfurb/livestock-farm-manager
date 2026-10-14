@@ -7,7 +7,7 @@ namespace MuuBoi.Domain.Models
     /// A single disease occurrence in one animal (the write atom of the curative axis).
     /// Status and milk withdrawal are never stored — resolved at read time.
     /// </summary>
-    public class HealthCase : BaseEntity, ITenantEntity
+    public class HealthCase : BaseEntity, ITenantEntity, ISyncable
     {
         [Required]
         public int AnimalId { get; set; }
@@ -27,6 +27,9 @@ namespace MuuBoi.Domain.Models
         public string? Notes { get; set; }
 
         public Guid PropertyId { get; set; }
+
+        public Guid SyncId { get; set; }
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         public Animal? Animal { get; set; }
         public ICollection<MastitisTest>? Tests { get; set; }

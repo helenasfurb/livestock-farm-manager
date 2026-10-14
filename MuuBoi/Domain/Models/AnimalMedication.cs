@@ -2,7 +2,7 @@
 
 namespace MuuBoi.Domain.Models
 {
-    public class AnimalMedication : BaseEntity, ITenantEntity
+    public class AnimalMedication : BaseEntity, ITenantEntity, ISyncable
     {
         [Required]
         public int AnimalId { get; set; }
@@ -33,6 +33,9 @@ namespace MuuBoi.Domain.Models
         public string? Observations { get; set; }
 
         public Guid PropertyId { get; set; }
+
+        public Guid SyncId { get; set; }
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         public Animal? Animal { get; set; }
         public Medication? Medication { get; set; }

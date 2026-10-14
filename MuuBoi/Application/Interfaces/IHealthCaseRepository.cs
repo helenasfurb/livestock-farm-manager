@@ -7,6 +7,7 @@ namespace MuuBoi.Application.Interfaces
     {
         Task<IEnumerable<HealthCase>> GetAllAsync(HealthCaseFilterDto filter);
         Task<HealthCase?> GetByIdAsync(int id);
+        Task<HealthCase?> GetBySyncIdAsync(Guid syncId);
         Task<HealthCase> CreateAsync(HealthCase healthCase);
         Task<HealthCase> UpdateAsync(HealthCase healthCase);
 
@@ -15,10 +16,16 @@ namespace MuuBoi.Application.Interfaces
 
         Task<AnimalMedication> AddMedicationAsync(AnimalMedication medication);
         Task<AnimalMedication?> GetMedicationAsync(int medicationId, int healthCaseId);
+        Task<AnimalMedication?> GetMedicationBySyncIdAsync(Guid syncId);
         Task<AnimalMedication> UpdateMedicationAsync(AnimalMedication medication);
 
         Task<MastitisTest> AddTestAsync(MastitisTest test);
         Task<MastitisTest?> GetTestAsync(int testId, int healthCaseId);
+        Task<MastitisTest?> GetTestBySyncIdAsync(Guid syncId);
+
+        Task<IReadOnlyList<HealthCase>> GetChangesAsync(ulong since, int take);
+        Task<List<AnimalMedication>> GetMedicationsByCaseIdsAsync(IReadOnlyCollection<int> caseIds);
+        Task<List<MastitisTest>> GetTestsByCaseIdsAsync(IReadOnlyCollection<int> caseIds);
         Task<MastitisTest> UpdateTestAsync(MastitisTest test);
 
         /// <summary>

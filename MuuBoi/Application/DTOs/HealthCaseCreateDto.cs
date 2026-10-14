@@ -5,8 +5,10 @@ namespace MuuBoi.Application.DTOs
 {
     public class HealthCaseCreateDto : IValidatableObject
     {
+        public Guid? SyncId { get; set; }
+
         [Required(ErrorMessage = "O animal é obrigatório.")]
-        public int AnimalId { get; set; }
+        public int? AnimalId { get; set; }
 
         public DiseaseType DiseaseType { get; set; }
 
@@ -14,7 +16,7 @@ namespace MuuBoi.Application.DTOs
         public string? DiseaseName { get; set; }
 
         [Required(ErrorMessage = "A data de diagnóstico é obrigatória.")]
-        public DateTime DiagnosisDate { get; set; }
+        public DateTime? DiagnosisDate { get; set; }
 
         public Quarter? AffectedQuarters { get; set; }
 
@@ -23,6 +25,11 @@ namespace MuuBoi.Application.DTOs
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+
             if (!Enum.IsDefined(typeof(DiseaseType), DiseaseType))
                 yield return new ValidationResult(
                     "Informe o tipo de doença.",
@@ -38,7 +45,12 @@ namespace MuuBoi.Application.DTOs
                     "Quartos afetados só se aplicam a casos de mastite.",
                     new[] { nameof(AffectedQuarters) });
 
-            if (DiagnosisDate.Date > DateTime.UtcNow.Date)
+            if (AffectedQuarters.HasValue && ((int)AffectedQuarters.Value < 1 || (int)AffectedQuarters.Value > 15))
+                yield return new ValidationResult(
+                    "Quartos afetados inválidos.",
+                    new[] { nameof(AffectedQuarters) });
+
+            if (DiagnosisDate.HasValue && DiagnosisDate.Value.Date > DateTime.UtcNow.Date)
                 yield return new ValidationResult(
                     "A data de diagnóstico não pode ser futura.",
                     new[] { nameof(DiagnosisDate) });

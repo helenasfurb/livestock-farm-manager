@@ -513,11 +513,26 @@ HTTP/1.1 404 Not Found
 |---|---|---|
 | `POST` | 404 | Animal com id '{animalId}' não encontrado. |
 | `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`, `POST /{id}/medications`, `POST /{id}/tests` | 404 | Caso de saúde com id '{id}' não encontrado. |
-| `DELETE /{id}` | 409 | O caso de saúde já está inativo. |
 | `DELETE /{id}/medications/{medicationId}` | 404 | Aplicação com id '{medicationId}' não encontrada. |
-| `DELETE /{id}/medications/{medicationId}` | 409 | A aplicação já está inativa. |
 | `DELETE /{id}/tests/{testId}` | 404 | Teste com id '{testId}' não encontrado. |
-| `DELETE /{id}/tests/{testId}` | 409 | O teste já está inativo. |
+| `POST` | 400 | O animal é obrigatório. *(formato B, campo `AnimalId` — antes, sem `animalId`, respondia `404` "Animal com id '0' não encontrado.")* |
+| `POST` | 400 | A data de diagnóstico é obrigatória. *(formato B, campo `DiagnosisDate` — antes, sem a data, gravava `0001-01-01`)* |
+| `POST`, `PATCH /{id}` | 400 | Quartos afetados inválidos. *(formato B, campo `AffectedQuarters` — fora de 1–15; antes era gravado)* |
+| `POST /{id}/medications` | 400 | A data de aplicação é obrigatória. *(formato B, campo `ApplicationDate` — antes, sem a data, gravava `0001-01-01`)* |
+| `POST /{id}/tests` | 400 | A data do teste é obrigatória. *(formato B, campo `TestDate` — antes, sem a data, gravava `0001-01-01`)* |
+| `GET /changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
+
+> **Rotas com suporte offline** — caso, aplicações e testes (ver `Docs/Specs/spec-sincronizacao-offline-14.9-casos-saude.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com o caso existente e os dados **originais** — mesmo que o animal tenha sido reclassificado depois (o `syncId` é checado antes do animal e da regra da mastite).
+> - `POST /{id}/medications` e `POST /{id}/tests` com `syncId` já existente → `201` com a aplicação/teste existente (sem duplicar a carência) — mesmo que o caso tenha sido inativado depois.
+> - `POST`, `POST /{id}/medications` e `POST /{id}/tests` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada, inclusive o encerramento).
+> - `DELETE /{id}` em caso já inativo → `204` *(até 13/Out/2026 era `409` "O caso de saúde já está inativo.")*.
+> - `DELETE /{id}/medications/{medicationId}` em aplicação já inativa → `204` *(até 13/Out/2026 era `409` "A aplicação já está inativa.")*.
+> - `DELETE /{id}/tests/{testId}` em teste já inativo → `204` *(até 13/Out/2026 era `409` "O teste já está inativo.")*.
+> - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
+>
+> O uso avulso de medicação (`/api/animals/{animalId}/medications`) **não** tem suporte offline e continua com exclusão física.
 
 ### 4.17 Somente leitura (sem erros de domínio)
 

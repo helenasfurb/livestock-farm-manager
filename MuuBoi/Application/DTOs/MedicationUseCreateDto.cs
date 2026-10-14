@@ -5,12 +5,14 @@ namespace MuuBoi.Application.DTOs
     /// <summary>Append a medication application to a health case (POST /health-cases/{id}/medications).</summary>
     public class MedicationUseCreateDto : IValidatableObject
     {
+        public Guid? SyncId { get; set; }
+
         [Required(ErrorMessage = "O medicamento é obrigatório.")]
         [MaxLength(200, ErrorMessage = "O nome do medicamento deve ter no máximo 200 caracteres.")]
         public string MedicationName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "A data de aplicação é obrigatória.")]
-        public DateTime ApplicationDate { get; set; }
+        public DateTime? ApplicationDate { get; set; }
 
         // Milk withdrawal in days; defaults to the catalog's DefaultWithdrawalPeriodDays when omitted.
         public int? WithdrawalPeriodDays { get; set; }
@@ -23,7 +25,12 @@ namespace MuuBoi.Application.DTOs
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (ApplicationDate.Date > DateTime.UtcNow.Date)
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+
+            if (ApplicationDate.HasValue && ApplicationDate.Value.Date > DateTime.UtcNow.Date)
                 yield return new ValidationResult(
                     "A data de aplicação não pode ser futura.",
                     new[] { nameof(ApplicationDate) });

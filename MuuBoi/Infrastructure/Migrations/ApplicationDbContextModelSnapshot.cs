@@ -424,6 +424,17 @@ namespace MuuBoi.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SyncId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -441,6 +452,13 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.HasIndex("PropertyId")
                         .HasDatabaseName("IX_AnimalMedications_PropertyId");
+
+                    b.HasIndex("SyncId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_AnimalMedications_SyncId");
+
+                    b.HasIndex("PropertyId", "RowVersion")
+                        .HasDatabaseName("IX_AnimalMedications_PropertyId_RowVersion");
 
                     b.ToTable("AnimalMedications");
                 });
@@ -774,6 +792,17 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<DateTime?>("ResolvedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SyncId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -784,6 +813,10 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.HasIndex("PropertyId")
                         .HasDatabaseName("IX_HealthCases_PropertyId");
 
+                    b.HasIndex("SyncId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_HealthCases_SyncId");
+
                     b.HasIndex("PropertyId", "AnimalId")
                         .HasDatabaseName("IX_HealthCases_PropertyId_AnimalId");
 
@@ -792,6 +825,9 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.HasIndex("PropertyId", "DiseaseType")
                         .HasDatabaseName("IX_HealthCases_PropertyId_DiseaseType");
+
+                    b.HasIndex("PropertyId", "RowVersion")
+                        .HasDatabaseName("IX_HealthCases_PropertyId_RowVersion");
 
                     b.ToTable("HealthCases");
                 });
@@ -894,6 +930,17 @@ namespace MuuBoi.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SyncId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
+
                     b.Property<DateTime>("TestDate")
                         .HasColumnType("datetime2");
 
@@ -910,6 +957,13 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.HasIndex("PropertyId")
                         .HasDatabaseName("IX_MastitisTests_PropertyId");
+
+                    b.HasIndex("SyncId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_MastitisTests_SyncId");
+
+                    b.HasIndex("PropertyId", "RowVersion")
+                        .HasDatabaseName("IX_MastitisTests_PropertyId_RowVersion");
 
                     b.ToTable("MastitisTests");
                 });

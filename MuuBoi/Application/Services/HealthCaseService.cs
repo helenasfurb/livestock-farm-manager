@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Helpers;
@@ -47,18 +48,27 @@ namespace MuuBoi.Application.Services
 
         public async Task<HealthCaseDto> CreateAsync(HealthCaseCreateDto dto)
         {
-            var animal = await _animalRepository.GetAnimalByIdAsync(dto.AnimalId)
-                ?? throw new NotFoundException($"Animal com id '{dto.AnimalId}' não encontrado.");
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return await GetByIdAsync(existing.Id);
+            }
+
+            var animalId = dto.AnimalId!.Value;
+            var animal = await _animalRepository.GetAnimalByIdAsync(animalId)
+                ?? throw new NotFoundException($"Animal com id '{animalId}' não encontrado.");
 
             if (dto.DiseaseType == DiseaseType.Mastitis)
                 EnsureMastitisEligible(animal);
 
             var healthCase = new HealthCase
             {
-                AnimalId = dto.AnimalId,
+                SyncId = dto.SyncId ?? Guid.NewGuid(),
+                AnimalId = animalId,
                 DiseaseType = dto.DiseaseType,
                 DiseaseName = dto.DiseaseType == DiseaseType.Other ? dto.DiseaseName : null,
-                DiagnosisDate = dto.DiagnosisDate,
+                DiagnosisDate = dto.DiagnosisDate!.Value,
                 AffectedQuarters = dto.DiseaseType == DiseaseType.Mastitis ? dto.AffectedQuarters : null,
                 Notes = dto.Notes
             };
@@ -71,6 +81,10 @@ namespace MuuBoi.Application.Services
         {
             var healthCase = await _repository.GetByIdAsync(id)
                 ?? throw new NotFoundException($"Caso de saúde com id '{id}' não encontrado.");
+
+            var editedAt = SyncTimestampResolver.ResolveEditedAt(dto.UpdatedAt, DateTime.UtcNow);
+            if (SyncTimestampResolver.IsOutdated(editedAt, healthCase))
+                return BuildDetail(healthCase, DateTime.UtcNow);
 
             if (dto.DiseaseName != null && healthCase.DiseaseType == DiseaseType.Other)
                 healthCase.DiseaseName = dto.DiseaseName;
@@ -87,7 +101,7 @@ namespace MuuBoi.Application.Services
             if (dto.Notes != null)
                 healthCase.Notes = dto.Notes;
 
-            healthCase.UpdatedAt = DateTime.UtcNow;
+            healthCase.UpdatedAt = editedAt;
             await _repository.UpdateAsync(healthCase);
 
             return await GetByIdAsync(id);
@@ -99,25 +113,32 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Caso de saúde com id '{id}' não encontrado.");
 
             if (!healthCase.IsActive)
-                throw new ConflictException("O caso de saúde já está inativo.");
+                return true;
 
             healthCase.IsActive = false;
-            healthCase.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(healthCase);
             return true;
         }
 
         public async Task<MedicationUseDto> AddMedicationAsync(int healthCaseId, MedicationUseCreateDto dto)
         {
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetMedicationBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return BuildMedicationUse(existing);
+            }
+
             var healthCase = await _repository.GetByIdAsync(healthCaseId)
                 ?? throw new NotFoundException($"Caso de saúde com id '{healthCaseId}' não encontrado.");
 
             var application = new AnimalMedication
             {
+                SyncId = dto.SyncId ?? Guid.NewGuid(),
                 AnimalId = healthCase.AnimalId,
                 HealthCaseId = healthCase.Id,
                 MedicationName = dto.MedicationName,
-                ApplicationDate = dto.ApplicationDate,
+                ApplicationDate = dto.ApplicationDate!.Value,
                 WithdrawalPeriodDays = dto.WithdrawalPeriodDays ?? 0,
                 DosageDescription = dto.Dose,
                 Responsible = dto.Responsible
@@ -134,25 +155,32 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Aplicação com id '{medicationId}' não encontrada.");
 
             if (!medication.IsActive)
-                throw new ConflictException("A aplicação já está inativa.");
+                return true;
 
             medication.IsActive = false;
-            medication.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateMedicationAsync(medication);
             return true;
         }
 
         public async Task<MastitisTestDto> AddTestAsync(int healthCaseId, MastitisTestCreateDto dto)
         {
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetTestBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return _mapper.Map<MastitisTestDto>(existing);
+            }
+
             var healthCase = await _repository.GetByIdAsync(healthCaseId)
                 ?? throw new NotFoundException($"Caso de saúde com id '{healthCaseId}' não encontrado.");
 
             var test = new MastitisTest
             {
+                SyncId = dto.SyncId ?? Guid.NewGuid(),
                 HealthCaseId = healthCase.Id,
                 TestType = dto.TestType,
                 Result = dto.Result,
-                TestDate = dto.TestDate
+                TestDate = dto.TestDate!.Value
             };
 
             var created = await _repository.AddTestAsync(test);
@@ -165,12 +193,31 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Teste com id '{testId}' não encontrado.");
 
             if (!test.IsActive)
-                throw new ConflictException("O teste já está inativo.");
+                return true;
 
             test.IsActive = false;
-            test.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateTestAsync(test);
             return true;
+        }
+
+        public async Task<SyncPageDto<HealthCaseSyncDto>> GetChangesAsync(string? since, int? limit)
+        {
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
+
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _repository.GetChangesAsync(cursor, take + 1);
+            var caseIds = fetched.Select(c => c.Id).ToList();
+            var medications = (await _repository.GetMedicationsByCaseIdsAsync(caseIds)).ToLookup(m => m.HealthCaseId!.Value);
+            var tests = (await _repository.GetTestsByCaseIdsAsync(caseIds)).ToLookup(t => t.HealthCaseId);
+
+            return SyncPaging.BuildPage(fetched, take, cursor, c =>
+            {
+                var dto = _mapper.Map<HealthCaseSyncDto>(c);
+                dto.Medications = _mapper.Map<List<MedicationUseSyncDto>>(medications[c.Id]);
+                dto.Tests = _mapper.Map<List<MastitisTestSyncDto>>(tests[c.Id]);
+                return dto;
+            });
         }
 
         public async Task<IEnumerable<HealthCaseListItemDto>> GetAnimalHistoryAsync(int animalId)
