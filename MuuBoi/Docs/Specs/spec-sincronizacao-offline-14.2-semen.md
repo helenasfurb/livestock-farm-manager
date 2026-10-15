@@ -6,6 +6,7 @@
 **Status:**
 - **Parte A — Catálogo (`SemenSample`):** ✅ **Implementada e validada** (06/Out/2026) — Fases 1–7, decisões S1–S3. Branch `feature/offline-semen-samples`.
 - **Parte B — Movimentações manuais (`SemenSampleMovement`):** ✅ **Implementada e validada** (06/Out/2026) — Fases B1–B7, decisões M1–M4. Nenhuma regra de negócio alterada (R1–R8).
+- **Nota (14/Out/2026, Spec #14.10):** a saída de sêmen gerada pela cobertura passou a ser gravada **no mesmo `SaveChanges`** da cobertura (criação, edição — que agora move a saída para a amostra/data novas — e inativação), com `SyncId` gerado pelo servidor. `SemenSampleMovementService.CreateForBreedingEventAsync` e `InactivateForBreedingEventAsync` foram removidos. A cobertura aceita saldo negativo.
 
 ### Histórico de versões
 

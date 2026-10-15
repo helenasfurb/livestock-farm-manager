@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Application.DTOs
@@ -6,22 +7,23 @@ namespace MuuBoi.Application.DTOs
     public class AnimalPregnancyStatusUpdateDto : IValidatableObject
     {
         [Required(ErrorMessage = "O status é obrigatório.")]
-        public AnimalPregnancyStatus Status { get; set; }
+        [ValidEnum(typeof(AnimalPregnancyStatus))]
+        public AnimalPregnancyStatus? Status { get; set; }
 
         [Required(ErrorMessage = "A data da perda é obrigatória.")]
-        public DateTime LossDate { get; set; }
+        public DateTime? LossDate { get; set; }
 
         [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (Status != AnimalPregnancyStatus.LostPregnancy)
+            if (Status.HasValue && Status != AnimalPregnancyStatus.LostPregnancy)
                 yield return new ValidationResult(
                     "Apenas o status 'Parto interrompido' pode ser definido manualmente. 'Parto realizado' é gerado automaticamente pelo sistema.",
                     new[] { nameof(Status) });
 
-            if (LossDate > DateTime.UtcNow)
+            if (LossDate.HasValue && LossDate.Value > DateTime.UtcNow)
                 yield return new ValidationResult(
                     "A data da perda não pode ser futura.",
                     new[] { nameof(LossDate) });

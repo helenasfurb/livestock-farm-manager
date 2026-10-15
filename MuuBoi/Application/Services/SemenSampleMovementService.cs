@@ -119,32 +119,6 @@ namespace MuuBoi.Application.Services
             await _repository.UpdateAsync(movement);
         }
 
-        public async Task CreateForBreedingEventAsync(BreedingEvent breedingEvent)
-        {
-            var movement = new SemenSampleMovement
-            {
-                SemenSampleId = breedingEvent.SemenSampleId!.Value,
-                MovementType = SemenMovementType.Output,
-                MovementDate = breedingEvent.BreedingDate,
-                Quantity = 1,
-                BreedingEventId = breedingEvent.Id,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            await _repository.CreateAsync(movement);
-        }
-
-        public async Task InactivateForBreedingEventAsync(int breedingEventId)
-        {
-            var movement = await _repository.GetByBreedingEventIdAsync(breedingEventId);
-            if (movement == null)
-                return;
-
-            movement.IsActive = false;
-            await _repository.UpdateAsync(movement);
-        }
-
         public async Task<SyncPageDto<SemenSampleMovementDto>> GetChangesAsync(string? since, int? limit)
         {
             if (!SyncPaging.TryDecodeCursor(since, out var cursor))

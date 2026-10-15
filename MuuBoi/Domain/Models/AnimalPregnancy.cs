@@ -3,7 +3,7 @@ using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Domain.Models
 {
-    public class AnimalPregnancy : BaseEntity, ITenantEntity
+    public class AnimalPregnancy : BaseEntity, ITenantEntity, ISyncable
     {
         public int AnimalId { get; set; }
 
@@ -30,10 +30,10 @@ namespace MuuBoi.Domain.Models
         [MaxLength(500)]
         public string? Notes { get; set; }
 
-        // Chave de idempotência do cadastro (RN-07 / gancho da Spec #14).
-        public Guid? ClientRequestId { get; set; }
-
         public Guid PropertyId { get; set; }
+
+        public Guid SyncId { get; set; }
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         public Animal? Animal { get; set; }
         public BreedingEvent? BreedingEvent { get; set; }

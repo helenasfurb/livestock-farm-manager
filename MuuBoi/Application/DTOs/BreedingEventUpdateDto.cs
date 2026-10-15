@@ -13,6 +13,8 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
 
+        public DateTime? UpdatedAt { get; set; }
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (BreedingDate.HasValue && BreedingDate.Value > DateTime.UtcNow)

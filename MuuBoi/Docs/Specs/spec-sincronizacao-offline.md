@@ -1,9 +1,9 @@
 # Spec #14: Sincronização Offline — Especificação e Plano de Implementação
 
 **Módulo:** Infraestrutura / Sincronização — transversal a toda a aplicação
-**Versão:** 1.9
-**Data:** 13/Out/2026
-**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2), **Estoque de insumos e movimentações** (Spec #14.3), **Animais e saídas do rebanho** (Spec #14.4), **Pesagens** (Spec #14.5), **ECC** (Spec #14.6), **Lactação e secagem** (Spec #14.7), **Eventos de vacinação e reforços** (Spec #14.8) e **Casos de saúde, aplicações e testes** (Spec #14.9); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
+**Versão:** 1.10
+**Data:** 14/Out/2026
+**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2), **Estoque de insumos e movimentações** (Spec #14.3), **Animais e saídas do rebanho** (Spec #14.4), **Pesagens** (Spec #14.5), **ECC** (Spec #14.6), **Lactação e secagem** (Spec #14.7), **Eventos de vacinação e reforços** (Spec #14.8), **Casos de saúde, aplicações e testes** (Spec #14.9) e **Cobertura, diagnóstico e gestação** (Spec #14.10); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
 **Abrangência:** contrato de sincronização do servidor/API (identidade, versionamento, tombstones, idempotência, tenant) **e** o contrato que o app offline precisa seguir para consumi-lo.
 **Relaciona-se com:** Spec 11.1 (Produção de Leite, §8) · Spec #13 (Cadastro Retroativo de Gestação, §6) · todos os specs de entidade · `Docs/catalogo-erros-api.md`
 
@@ -24,6 +24,7 @@
 | 1.7 | 12/Out/2026 | §13 questão 8 resolvida: mudanças de estado não alteram `UpdatedAt` em nenhuma entidade sincronizável (regra nova na §5.4) |
 | 1.8 | 12/Out/2026 | §8: `VaccinationEvent` sincronizável, com `VaccinationEventAnimal` embutido (**Spec #14.8**) — primeira operação com várias referências resolvidas pelo app (vacina + lista de animais) e primeira corrida tratada num índice único que **não** é o do `SyncId` (reforço: "um ativo por evento", tratado no repositório, sem mudar o `AddSyncableAsync`). §5.5: segunda exceção ao "mesmo DTO do detalhe" (`VaccinationEventSyncDto`). Sumário com a 14.8 |
 | 1.9 | 13/Out/2026 | §8: `HealthCase`, `AnimalMedication` (do caso) e `MastitisTest` sincronizáveis (**Spec #14.9**) — primeiros **filhos com identidade própria embutidos** no pull do pai: criar ou inativar um filho "toca" o caso (`UPDATE` direto, sem checar `RowVersion`, na mesma transação) para o caso reaparecer no pull. §5.5: terceira exceção ao "mesmo DTO do detalhe" (`HealthCaseSyncDto`). §13 questão 4 restrita ao uso avulso de medicação. Sumário com a 14.9 |
+| 1.10 | 14/Out/2026 | §8: `BreedingEvent` e `AnimalPregnancy` sincronizáveis (**Spec #14.10**) — primeira aplicação das **Condições 1 e 2** a derivados criados pelo servidor: a cobertura por IA grava a saída de sêmen no mesmo `SaveChanges`; o diagnóstico positivo grava a gestação no mesmo `SaveChanges`, com o `syncId` vindo do app (`pregnancySyncId`). `ClientRequestId` da gestação retroativa (Spec #13) unificado no `SyncId`. **§13 questão 1 resolvida para a cobertura:** a cobertura aceita saldo de sêmen negativo (única mudança de regra, decidida pela usuária). Sumário com a 14.10 |
 
 ---
 
@@ -60,6 +61,7 @@
 - Spec #14.7 — Lactação e Secagem (`spec-sincronizacao-offline-14.7-lactacao.md`)
 - Spec #14.8 — Eventos de Vacinação e Reforços (`spec-sincronizacao-offline-14.8-vacinacao.md`)
 - Spec #14.9 — Casos de Saúde, Aplicações e Testes (`spec-sincronizacao-offline-14.9-casos-saude.md`)
+- Spec #14.10 — Cobertura, Diagnóstico e Gestação (`spec-sincronizacao-offline-14.10-cobertura-gestacao.md`)
 
 ---
 
@@ -592,7 +594,9 @@ Derivados que o usuário não referencia diretamente (lactação aberta pelo par
 | `BodyConditionRecord` | ✅ **Sincronizável** (10/Out/2026) | **Spec #14.6** (`spec-sincronizacao-offline-14.6-ecc.md`). `PropertyId` com backfill pelo animal (Q4 da 14.4); sem exclusão (RN-04 da `spec-ecc.md`); ECC inicial endereçável (`initialBodyConditionSyncId`); pull global em `GET /api/animals/body-condition-records/changes` |
 | `AnimalMedication` (do caso de saúde) | ✅ **Sincronizável** (13/Out/2026), embutido | **Spec #14.9**. `SyncId` próprio (o app endereça a aplicação no `DELETE`); chega no pull do caso (`medications`, inclusive inativas); criar/inativar toca o caso |
 | `AnimalMedication` (uso avulso, `HealthCaseId = null`) | ❌ Fora | **Spec #14.9**, H7: rota legada `/api/animals/{animalId}/medications` com **hard delete** (questão em aberto 4); catálogo `Medication` descontinuado |
-| `BreedingEvent`, `AnimalPregnancy`, `AnimalCalving`, `AnimalCalvingCalf` | ⏳ | Condições 1 e 2 (§7.5) |
+| `BreedingEvent` | ✅ **Sincronizável** (14/Out/2026) | **Spec #14.10** (`spec-sincronizacao-offline-14.10-cobertura-gestacao.md`). Saída de sêmen da IA no mesmo `SaveChanges` (criação, edição e inativação); diagnóstico idempotente com a gestação no mesmo `SaveChanges`; aceita saldo de sêmen negativo; pull em `GET /api/breeding-events/changes` |
+| `AnimalPregnancy` | ✅ **Sincronizável** (14/Out/2026) | **Spec #14.10**. Gestação do diagnóstico com `SyncId` do app (`pregnancySyncId`); retroativa com `syncId` (antigo `ClientRequestId`); perda e inativação idempotentes; pull em `GET /api/pregnancies/changes` |
+| `AnimalCalving`, `AnimalCalvingCalf` | ⏳ | **Spec #14.11** (próxima). Condições 1 e 2 (§7.5): crias como animais, pesagem de nascimento, lactação e ECC |
 | `Lactation` | ✅ **Sincronizável** (11/Out/2026) | **Spec #14.7** (`spec-sincronizacao-offline-14.7-lactacao.md`). Secar, desfazer secagem e inativar idempotentes; Condição 3 na abertura; lactação inicial com referência na resposta do cadastro (`initialLactation { id, syncId }`); pull em `GET /api/lactations/changes`. A lactação aberta pelo parto fica para a spec do parto |
 | `VaccinationEvent` | ✅ **Sincronizável** (12/Out/2026) | **Spec #14.8** (`spec-sincronizacao-offline-14.8-vacinacao.md`). Criação e reforço idempotentes (Condição 3 no reforço; corrida no índice `UX_VaccinationEvents_ParentEventId_Active` vira `201`/`409`, não `500`); pull com `VaccinationEventSyncDto` em `GET /api/vaccination-events/changes` |
 | `VaccinationEventAnimal` | ✅ **Sincronizável** (12/Out/2026), embutido | **Spec #14.8**. Sem `SyncId` próprio: chega no pull do evento (`animalIds`); a lista não muda depois da criação |
@@ -884,7 +888,7 @@ O overhead de várias requisições (cabeçalhos, JWT, handshake) é reduzido no
 
 | # | Questão | Situação |
 |---|---|---|
-| 1 | **Estoque de sêmen e de insumos offline:** dois dispositivos consumindo a última dose → saldo negativo no sync. | Direção: movimentações append-only com `SyncId` e saldo calculado (já é o modelo atual); saldo negativo no sync vira `422` com motivo ou alerta. **A definir** ao sincronizar essas entidades. **Sêmen, movimentações manuais (06/Out/2026, Spec #14.2 Parte B):** não há regra de saldo nas saídas manuais, então nada muda — as operações somam como online. **Estoque de insumos (08/Out/2026, Spec #14.3):** também não há regra de saldo nas saídas (saldo negativo é permitido — `spec-estoque.md`), então nada muda. Continua aberta **só** para a cobertura (`422` "Não há doses disponíveis…"). |
+| 1 | **Estoque de sêmen e de insumos offline:** dois dispositivos consumindo a última dose → saldo negativo no sync. | Direção: movimentações append-only com `SyncId` e saldo calculado (já é o modelo atual); saldo negativo no sync vira `422` com motivo ou alerta. **A definir** ao sincronizar essas entidades. **Sêmen, movimentações manuais (06/Out/2026, Spec #14.2 Parte B):** não há regra de saldo nas saídas manuais, então nada muda — as operações somam como online. **Estoque de insumos (08/Out/2026, Spec #14.3):** também não há regra de saldo nas saídas (saldo negativo é permitido — `spec-estoque.md`), então nada muda. ~~Continua aberta só para a cobertura~~ ✅ **Resolvida para a cobertura** (14/Out/2026, Spec #14.10, B4): a cobertura por IA aceita saldo negativo — a inseminação já aconteceu no campo; o `422` "Não há doses disponíveis…" foi removido, online e offline. |
 | 2 | **Lista definitiva de sincronizáveis** (§8), inclusive mídias/fotos (payload grande em link instável). | ⏳ Aberta |
 | 3 | ~~Origem do `UpdatedAt` para LWW~~ | ✅ **Resolvida:** momento da edição no cliente, UTC, limitado a "agora" (§5.3) |
 | 4 | **Hard delete:** `WeightRecordRepository.DeleteWeightRecordAsync` faz `Remove` (exclusão física). Sem tombstone, a exclusão não chega aos celulares pelo pull. | ✅ **Resolvida para a pesagem** (10/Out/2026, Spec #14.5 P1): exclusão lógica e leituras filtrando as ativas. ⏳ `AnimalMedicationRepository.cs:53` também faz `Remove` — **restrita ao uso avulso** (13/Out/2026, Spec #14.9 H7): as aplicações do caso de saúde já usam exclusão lógica e estão no offline; o uso avulso ficou fora (sem dados, catálogo descontinuado) |

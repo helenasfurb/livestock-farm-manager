@@ -58,6 +58,13 @@ namespace MuuBoi.Api.Controllers
             return Ok(events);
         }
 
+        [HttpGet("api/breeding-events/changes")]
+        public async Task<ActionResult<SyncPageDto<BreedingEventSyncDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _service.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpGet("api/breeding-events/{id:int}")]
         public async Task<ActionResult<BreedingEventDto>> GetById(int id)
         {

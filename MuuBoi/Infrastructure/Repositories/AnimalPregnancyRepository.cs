@@ -63,9 +63,12 @@ namespace MuuBoi.Infrastructure.Repositories
 
         public async Task<AnimalPregnancy> CreateAsync(AnimalPregnancy pregnancy)
         {
-            _context.AnimalPregnancies.Add(pregnancy);
-            await _context.SaveChangesAsync();
-            return pregnancy;
+            return await _context.AddSyncableAsync(pregnancy);
+        }
+
+        public async Task<IReadOnlyList<AnimalPregnancy>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<AnimalPregnancy>(since, take);
         }
 
         public async Task<AnimalPregnancy> UpdateAsync(AnimalPregnancy pregnancy)
@@ -99,13 +102,13 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<AnimalPregnancy?> GetByClientRequestIdAsync(Guid clientRequestId)
+        public async Task<AnimalPregnancy?> GetBySyncIdAsync(Guid syncId)
         {
             return await _context.AnimalPregnancies
                 .Include(p => p.Animal)
                 .Include(p => p.SireAnimal)
                 .Include(p => p.SemenSample)
-                .FirstOrDefaultAsync(p => p.ClientRequestId == clientRequestId);
+                .FirstOrDefaultAsync(p => p.SyncId == syncId);
         }
 
         public async Task<int> GetLostCountAsync(DateTime from, DateTime to)
