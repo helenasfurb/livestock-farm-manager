@@ -3,6 +3,7 @@ namespace MuuBoi.Application.DTOs
     public class AnimalPregnancyDto
     {
         public int Id { get; set; }
+        public Guid SyncId { get; set; }
         public int AnimalId { get; set; }
         public string AnimalTagNumber { get; set; } = string.Empty;
         public int? BreedingEventId { get; set; }

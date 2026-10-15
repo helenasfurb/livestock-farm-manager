@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Domain.Enums;
 using MuuBoi.Domain.Exceptions;
@@ -55,10 +57,10 @@ namespace MuuBoi.Application.Services
 
         public async Task<AnimalPregnancyDto> CreateRetroactiveAsync(int animalId, AnimalPregnancyRetroactiveCreateDto dto)
         {
-            // RN-07: idempotência — reenvio com o mesmo ClientRequestId devolve a gestação já criada.
-            if (dto.ClientRequestId.HasValue)
+            // RN-07: idempotência — reenvio com o mesmo SyncId devolve a gestação já criada.
+            if (dto.SyncId.HasValue)
             {
-                var existing = await _repository.GetByClientRequestIdAsync(dto.ClientRequestId.Value);
+                var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
                 if (existing != null)
                     return _mapper.Map<AnimalPregnancyDto>(existing);
             }
@@ -76,7 +78,8 @@ namespace MuuBoi.Application.Services
 
             // RN-02: não empilhar gestação ativa confirmada.
             if (await _repository.HasActiveConfirmedByAnimalIdAsync(animalId))
-                throw new ConflictException("O animal já possui uma gestação ativa confirmada.");
+                return await ExistingBySyncIdAsync(dto.SyncId)
+                    ?? throw new ConflictException("O animal já possui uma gestação ativa confirmada.");
 
             // RN-04: no máximo um entre touro e sêmen (também validado no DTO).
             if (dto.SireAnimalId.HasValue && dto.SemenSampleId.HasValue)
@@ -111,7 +114,8 @@ namespace MuuBoi.Application.Services
             var expectedCalvingDate = dto.ExpectedCalvingDate
                 ?? dto.EstimatedConceptionDate!.Value.AddDays(GestationDays);
 
-            if (expectedCalvingDate <= dto.ConfirmationDate)
+            var confirmationDate = dto.ConfirmationDate!.Value;
+            if (expectedCalvingDate <= confirmationDate)
                 throw new BusinessRuleException("A data prevista de parto deve ser posterior à data de confirmação.");
 
             var pregnancy = new AnimalPregnancy
@@ -120,11 +124,11 @@ namespace MuuBoi.Application.Services
                 BreedingEventId = null,
                 SireAnimalId = dto.SireAnimalId,
                 SemenSampleId = dto.SemenSampleId,
-                ConfirmationDate = dto.ConfirmationDate,
+                ConfirmationDate = confirmationDate,
                 ExpectedCalvingDate = expectedCalvingDate,
                 Status = AnimalPregnancyStatus.Confirmed,
                 Notes = dto.Notes,
-                ClientRequestId = dto.ClientRequestId,
+                SyncId = dto.SyncId ?? Guid.NewGuid(),
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
@@ -138,22 +142,43 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<AnimalPregnancyDto>(created);
         }
 
+        private async Task<AnimalPregnancyDto?> ExistingBySyncIdAsync(Guid? syncId)
+        {
+            if (!syncId.HasValue)
+                return null;
+
+            var existing = await _repository.GetBySyncIdAsync(syncId.Value);
+            return existing == null ? null : _mapper.Map<AnimalPregnancyDto>(existing);
+        }
+
         public async Task<AnimalPregnancyDto> RegisterLossAsync(int id, AnimalPregnancyStatusUpdateDto dto)
         {
             var pregnancy = await _repository.GetByIdAsync(id)
                 ?? throw new NotFoundException($"Gestação com id '{id}' não encontrada.");
 
+            if (pregnancy.Status == AnimalPregnancyStatus.LostPregnancy)
+                return _mapper.Map<AnimalPregnancyDto>(pregnancy);
+
             if (pregnancy.Status != AnimalPregnancyStatus.Confirmed)
                 throw new ConflictException("Apenas gestações confirmadas podem ser marcadas como interrompidas.");
 
             pregnancy.Status = AnimalPregnancyStatus.LostPregnancy;
-            pregnancy.LossDate = dto.LossDate;
+            pregnancy.LossDate = dto.LossDate!.Value;
             if (dto.Notes != null)
                 pregnancy.Notes = dto.Notes;
-            pregnancy.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _repository.UpdateAsync(pregnancy);
             return _mapper.Map<AnimalPregnancyDto>(updated);
+        }
+
+        public async Task<SyncPageDto<AnimalPregnancySyncDto>> GetChangesAsync(string? since, int? limit)
+        {
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
+
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _repository.GetChangesAsync(cursor, take + 1);
+            return SyncPaging.BuildPage(fetched, take, cursor, p => _mapper.Map<AnimalPregnancySyncDto>(p));
         }
 
         public async Task<bool> InactivateAsync(int id)
@@ -162,26 +187,26 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Gestação com id '{id}' não encontrada.");
 
             if (!pregnancy.IsActive)
-                throw new ConflictException("A gestação já está inativa.");
+                return true;
 
             if (await _calvingRepository.HasActiveByPregnancyIdAsync(pregnancy.Id))
                 throw new ConflictException("Esta gestação possui um parto ativo vinculado. Inative o parto primeiro.");
 
             pregnancy.IsActive = false;
-            pregnancy.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(pregnancy);
             return true;
         }
 
-        public async Task<bool> CreateForBreedingEventAsync(BreedingEvent breedingEvent, DateTime confirmationDate, int? gestationalAge = null)
+        public AnimalPregnancy BuildForBreedingEvent(BreedingEvent breedingEvent, DateTime confirmationDate, int? gestationalAge, Guid syncId)
         {
             // RN-04: com idade gestacional, a data prevista deriva do diagnóstico; sem ela, da cobertura.
             var expectedCalvingDate = gestationalAge.HasValue
                 ? confirmationDate.AddDays(GestationDays - gestationalAge.Value)
                 : breedingEvent.BreedingDate.AddDays(GestationDays);
 
-            var pregnancy = new AnimalPregnancy
+            return new AnimalPregnancy
             {
+                SyncId = syncId,
                 AnimalId = breedingEvent.AnimalId,
                 BreedingEventId = breedingEvent.Id,
                 ConfirmationDate = confirmationDate,
@@ -192,9 +217,6 @@ namespace MuuBoi.Application.Services
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
-
-            await _repository.CreateAsync(pregnancy);
-            return true;
         }
     }
 }

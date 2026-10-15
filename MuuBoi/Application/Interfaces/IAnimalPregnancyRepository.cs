@@ -13,7 +13,8 @@ namespace MuuBoi.Application.Interfaces
         Task<bool> ExistsActiveForBreedingEventAsync(int breedingEventId);
         Task<bool> HasActiveConfirmedByAnimalIdAsync(int animalId);
         Task<AnimalPregnancy?> GetActiveConfirmedByAnimalIdAsync(int animalId);
-        Task<AnimalPregnancy?> GetByClientRequestIdAsync(Guid clientRequestId);
+        Task<AnimalPregnancy?> GetBySyncIdAsync(Guid syncId);
+        Task<IReadOnlyList<AnimalPregnancy>> GetChangesAsync(ulong since, int take);
         Task<int> GetLostCountAsync(DateTime from, DateTime to);
         Task<IEnumerable<AnimalPregnancy>> GetActiveConfirmedForForecastAsync();
     }

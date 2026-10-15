@@ -36,6 +36,13 @@ namespace MuuBoi.Api.Controllers
             return Ok(pregnancies);
         }
 
+        [HttpGet("api/pregnancies/changes")]
+        public async Task<ActionResult<SyncPageDto<AnimalPregnancySyncDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _service.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpGet("api/pregnancies/{id:int}")]
         public async Task<ActionResult<AnimalPregnancyDto>> GetById(int id)
         {

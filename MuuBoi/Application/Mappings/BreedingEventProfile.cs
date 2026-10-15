@@ -10,6 +10,10 @@ namespace MuuBoi.Application.Mappings
         public BreedingEventProfile()
         {
             CreateMap<BreedingEvent, BreedingEventDto>()
+                .ForMember(dest => dest.PregnancyId,
+                    opt => opt.MapFrom(src => src.Pregnancy != null ? src.Pregnancy.Id : (int?)null))
+                .ForMember(dest => dest.PregnancySyncId,
+                    opt => opt.MapFrom(src => src.Pregnancy != null ? src.Pregnancy.SyncId : (Guid?)null))
                 .ForMember(dest => dest.AnimalTagNumber,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : string.Empty))
                 .ForMember(dest => dest.ReproductionType,
@@ -39,6 +43,28 @@ namespace MuuBoi.Application.Mappings
                         }
                         : null));
 
+            CreateMap<BreedingEvent, BreedingEventSyncDto>()
+                .ForMember(dest => dest.ReproductionType,
+                    opt => opt.MapFrom(src => new EnumValueDto
+                    {
+                        Value = (int)src.ReproductionType,
+                        Label = src.ReproductionType.GetDescription()
+                    }))
+                .ForMember(dest => dest.Status,
+                    opt => opt.MapFrom(src => new EnumValueDto
+                    {
+                        Value = (int)src.Status,
+                        Label = src.Status.GetDescription()
+                    }))
+                .ForMember(dest => dest.DiagnosisMethod,
+                    opt => opt.MapFrom(src => src.DiagnosisMethod.HasValue
+                        ? new EnumValueDto
+                        {
+                            Value = (int)src.DiagnosisMethod.Value,
+                            Label = src.DiagnosisMethod.Value.GetDescription()
+                        }
+                        : null));
+
             CreateMap<BreedingEvent, BreedingEventListItemDto>()
                 .ForMember(dest => dest.AnimalTagNumber,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : string.Empty))
@@ -59,6 +85,7 @@ namespace MuuBoi.Application.Mappings
 
             CreateMap<BreedingEventCreateDto, BreedingEvent>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.SyncId, opt => opt.Ignore())
                 .ForMember(dest => dest.AnimalId, opt => opt.Ignore())
                 .ForMember(dest => dest.ServiceNumber, opt => opt.Ignore())
                 .ForMember(dest => dest.Status, opt => opt.Ignore())

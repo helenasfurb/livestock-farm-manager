@@ -9,7 +9,7 @@ namespace MuuBoi.Application.DTOs
     public class AnimalPregnancyRetroactiveCreateDto : IValidatableObject
     {
         [Required(ErrorMessage = "A data de confirmação é obrigatória.")]
-        public DateTime ConfirmationDate { get; set; }
+        public DateTime? ConfirmationDate { get; set; }
 
         /// <summary>
         /// Data estimada de concepção. Se a data prevista de parto não for informada,
@@ -34,10 +34,15 @@ namespace MuuBoi.Application.DTOs
         public string? Notes { get; set; }
 
         /// <summary>Chave de idempotência (RN-07): reenvio com o mesmo valor não cria gestação duplicada.</summary>
-        public Guid? ClientRequestId { get; set; }
+        public Guid? SyncId { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+
             // RN-03: pelo menos uma das datas deve ser informada (podem coexistir).
             if (!EstimatedConceptionDate.HasValue && !ExpectedCalvingDate.HasValue)
                 yield return new ValidationResult(
@@ -45,7 +50,7 @@ namespace MuuBoi.Application.DTOs
                     new[] { nameof(EstimatedConceptionDate), nameof(ExpectedCalvingDate) });
 
             // RN-03: se a data prevista foi informada direto, deve ser posterior à confirmação.
-            if (ExpectedCalvingDate.HasValue && ExpectedCalvingDate.Value <= ConfirmationDate)
+            if (ExpectedCalvingDate.HasValue && ConfirmationDate.HasValue && ExpectedCalvingDate.Value <= ConfirmationDate.Value)
                 yield return new ValidationResult(
                     "A data prevista de parto deve ser posterior à data de confirmação.",
                     new[] { nameof(ExpectedCalvingDate) });
@@ -56,7 +61,7 @@ namespace MuuBoi.Application.DTOs
                     "Informe no máximo um entre touro (SireAnimalId) e sêmen (SemenSampleId).",
                     new[] { nameof(SireAnimalId), nameof(SemenSampleId) });
 
-            if (ConfirmationDate > DateTime.UtcNow)
+            if (ConfirmationDate.HasValue && ConfirmationDate.Value > DateTime.UtcNow)
                 yield return new ValidationResult(
                     "A data de confirmação não pode ser futura.",
                     new[] { nameof(ConfirmationDate) });

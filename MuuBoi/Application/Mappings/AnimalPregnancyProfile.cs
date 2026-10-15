@@ -27,6 +27,14 @@ namespace MuuBoi.Application.Mappings
                         ? src.Calvings.FirstOrDefault(c => c.IsActive)
                         : null));
 
+            CreateMap<AnimalPregnancy, AnimalPregnancySyncDto>()
+                .ForMember(dest => dest.Status,
+                    opt => opt.MapFrom(src => new EnumValueDto
+                    {
+                        Value = (int)src.Status,
+                        Label = src.Status.GetDescription()
+                    }));
+
             CreateMap<AnimalPregnancy, AnimalPregnancyListItemDto>()
                 .ForMember(dest => dest.AnimalTagNumber,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : string.Empty))

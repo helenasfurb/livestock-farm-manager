@@ -325,7 +325,6 @@ HTTP/1.1 409 Conflict
 | `POST` | 422 | O animal possui uma gestação ativa. Não é possível registrar uma nova cobertura. |
 | `POST`, `PATCH /{id}` | 404 | Amostra de sêmen com id '{id}' não encontrada. |
 | `POST`, `PATCH /{id}` | 409 | A amostra de sêmen selecionada está inativa. |
-| `POST` | 422 | Não há doses disponíveis para a amostra de sêmen selecionada. |
 | `POST`, `PATCH /{id}` | 404 | Touro com id '{id}' não encontrado. |
 | `POST`, `PATCH /{id}` | 409 | O touro selecionado está inativo. |
 | `POST`, `PATCH /{id}` | 422 | O animal informado como touro pai não possui classificação 'Touro'. |
@@ -335,8 +334,21 @@ HTTP/1.1 409 Conflict
 | `PATCH /{id}/status` | 409 | O diagnóstico desta cobertura já foi registrado. |
 | `PATCH /{id}/status` | 422 | A data do diagnóstico não pode ser anterior à data da cobertura. |
 | `DELETE /{id}` | 404 | Cobertura com id '{id}' não encontrada. |
-| `DELETE /{id}` | 409 | A cobertura já está inativa. |
 | `DELETE /{id}` | 409 | Esta cobertura possui uma gestação ativa vinculada. Inative a gestação primeiro. |
+| `POST` | 400 | A data da cobertura é obrigatória. / O tipo de reprodução é obrigatório. / Valor inválido (tipo de reprodução fora do enum). *(formato B — antes, sem data gravava `0001-01-01` e tipo `0` ou `9` era gravado)* |
+| `PATCH /{id}/status` | 400 | O status é obrigatório. / A data do diagnóstico é obrigatória. / Valor inválido (método fora do enum). *(formato B — antes, sem status gravava status `0` e sem data respondia `422` com a mensagem da data da cobertura)* |
+| `PATCH /{id}/status` | 400 | O identificador da gestação só se aplica ao diagnóstico positivo. *(campo `PregnancySyncId`)* |
+| `GET /api/breeding-events/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A)* |
+
+> **Rotas com suporte offline** — coberturas (ver `Docs/Specs/spec-sincronizacao-offline-14.10-cobertura-gestacao.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com a cobertura existente — mesmo que a vaca tenha sido vendida, o sêmen inativado ou a cobertura já esteja "aguardando diagnóstico" (o `syncId` é rechecado antes do `422`).
+> - `PATCH /{id}/status` repetido com o **mesmo** resultado → `200` com o estado atual *(até 14/Out/2026 era `409` "O diagnóstico desta cobertura já foi registrado.")*; resultado **diferente** → `409` (mantido).
+> - `PATCH /{id}` com `updatedAt` mais antigo → `200` com a versão do servidor.
+> - `DELETE /{id}` em cobertura já inativa → `204` *(até 14/Out/2026 era `409` "A cobertura já está inativa.")*.
+> - `syncId` / `pregnancySyncId` vazios → `400` "O identificador de sincronização … não pode ser vazio."
+> - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
+>
+> **Mudança de regra (14/Out/2026):** a cobertura por IA **não** exige mais dose disponível — o `422` "Não há doses disponíveis para a amostra de sêmen selecionada." foi removido (saldo negativo permitido, Spec #14.10 B4).
 
 ### 4.9 Gestações — `/api/pregnancies`, `/api/animals/{animalId}/pregnancies`
 
@@ -355,8 +367,16 @@ HTTP/1.1 409 Conflict
 | `POST` | 409 | A amostra de sêmen informada está inativa. |
 | `POST` | 422 | A data prevista de parto deve ser posterior à data de confirmação. |
 | `PATCH /{id}/status` | 409 | Apenas gestações confirmadas podem ser marcadas como interrompidas. |
-| `DELETE /{id}` | 409 | A gestação já está inativa. |
 | `DELETE /{id}` | 409 | Esta gestação possui um parto ativo vinculado. Inative o parto primeiro. |
+| `POST` | 400 | A data de confirmação é obrigatória. *(formato B — antes, sem a data gravava `0001-01-01`)* |
+| `PATCH /{id}/status` | 400 | A data da perda é obrigatória. / Valor inválido (status fora do enum). *(formato B — antes, sem a data gravava `0001-01-01`)* |
+| `GET /api/pregnancies/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A)* |
+
+> **Rotas com suporte offline** — gestações (ver `Docs/Specs/spec-sincronizacao-offline-14.10-cobertura-gestacao.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` (retroativa) com `syncId` já existente → `201` com a gestação existente — mesmo que a vaca já tenha gestação ativa (o `syncId` é rechecado antes do `409`). O campo **`clientRequestId` (Spec #13) foi substituído por `syncId`** (14/Out/2026).
+> - `PATCH /{id}/status` (perda) em gestação já perdida → `200` com o estado atual, sem gravar.
+> - `DELETE /{id}` em gestação já inativa → `204` *(até 14/Out/2026 era `409` "A gestação já está inativa.")*.
+> - A gestação do diagnóstico positivo é criada pela cobertura (`PATCH /api/breeding-events/{id}/status`, campo `pregnancySyncId`).
 
 ### 4.10 Partos — `/api/pregnancies/{pregnancyId}/calvings`, `/api/calvings`
 

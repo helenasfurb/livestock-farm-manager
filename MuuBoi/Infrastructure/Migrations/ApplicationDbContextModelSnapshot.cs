@@ -477,9 +477,6 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<int?>("BreedingEventId")
                         .HasColumnType("int");
 
-                    b.Property<Guid?>("ClientRequestId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime>("ConfirmationDate")
                         .HasColumnType("datetime2");
 
@@ -505,6 +502,12 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<int?>("SemenSampleId")
                         .HasColumnType("int");
 
@@ -513,6 +516,11 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
+
+                    b.Property<Guid>("SyncId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -524,17 +532,19 @@ namespace MuuBoi.Infrastructure.Migrations
                         .HasDatabaseName("IX_AnimalPregnancies_BreedingEventId")
                         .HasFilter("[BreedingEventId] IS NOT NULL");
 
-                    b.HasIndex("ClientRequestId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_AnimalPregnancies_ClientRequestId")
-                        .HasFilter("[ClientRequestId] IS NOT NULL");
-
                     b.HasIndex("SemenSampleId");
 
                     b.HasIndex("SireAnimalId");
 
+                    b.HasIndex("SyncId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_AnimalPregnancies_SyncId");
+
                     b.HasIndex("PropertyId", "IsActive")
                         .HasDatabaseName("IX_AnimalPregnancies_PropertyId_IsActive");
+
+                    b.HasIndex("PropertyId", "RowVersion")
+                        .HasDatabaseName("IX_AnimalPregnancies_PropertyId_RowVersion");
 
                     b.HasIndex("AnimalId", "Status", "IsActive")
                         .HasDatabaseName("IX_AnimalPregnancies_AnimalId_Status_IsActive");
@@ -721,6 +731,12 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<int>("ReproductionType")
                         .HasColumnType("int");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<int?>("SemenSampleId")
                         .HasColumnType("int");
 
@@ -733,6 +749,11 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("SyncId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -743,8 +764,15 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.HasIndex("SireAnimalId");
 
+                    b.HasIndex("SyncId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_BreedingEvents_SyncId");
+
                     b.HasIndex("AnimalId", "BreedingDate")
                         .HasDatabaseName("IX_BreedingEvents_AnimalId_BreedingDate");
+
+                    b.HasIndex("PropertyId", "RowVersion")
+                        .HasDatabaseName("IX_BreedingEvents_PropertyId_RowVersion");
 
                     b.HasIndex("AnimalId", "Status", "IsActive")
                         .HasDatabaseName("IX_BreedingEvents_AnimalId_Status_IsActive");

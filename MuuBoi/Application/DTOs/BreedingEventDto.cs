@@ -3,6 +3,9 @@ namespace MuuBoi.Application.DTOs
     public class BreedingEventDto
     {
         public int Id { get; set; }
+        public Guid SyncId { get; set; }
+        public int? PregnancyId { get; set; }
+        public Guid? PregnancySyncId { get; set; }
         public int AnimalId { get; set; }
         public string AnimalTagNumber { get; set; } = string.Empty;
         public EnumValueDto? ReproductionType { get; set; }

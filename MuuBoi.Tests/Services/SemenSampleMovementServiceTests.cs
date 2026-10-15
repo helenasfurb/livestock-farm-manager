@@ -226,18 +226,6 @@ public class SemenSampleMovementServiceTests
     }
 
     [Fact]
-    public async Task InactivateForBreedingEventAsync_WhenMovementExists_DeactivatesWithoutChangingUpdatedAt()
-    {
-        var updatedAt = DateTime.UtcNow.AddHours(-1);
-        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1), updatedAt, breedingEventId: 3);
-        _repository.Setup(r => r.GetByBreedingEventIdAsync(3)).ReturnsAsync(movement);
-        await _service.InactivateForBreedingEventAsync(3);
-        Assert.False(movement.IsActive);
-        Assert.Equal(updatedAt, movement.UpdatedAt);
-        _repository.Verify(r => r.UpdateAsync(movement), Times.Once);
-    }
-
-    [Fact]
     public async Task GetChangesAsync_WithInvalidCursor_ThrowsValidationException()
     {
         await Assert.ThrowsAsync<ValidationException>(() => _service.GetChangesAsync("abc", null));

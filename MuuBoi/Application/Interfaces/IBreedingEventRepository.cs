@@ -9,8 +9,12 @@ namespace MuuBoi.Application.Interfaces
         Task<IEnumerable<BreedingEvent>> GetAllAsync(BreedingEventFilterDto filter);
         Task<BreedingEvent?> GetByIdAsync(int id);
         Task<int> CountActiveByAnimalIdAsync(int animalId);
-        Task<BreedingEvent> CreateAsync(BreedingEvent breedingEvent);
+        Task<BreedingEvent?> GetBySyncIdAsync(Guid syncId);
+        Task<BreedingEvent> CreateAsync(BreedingEvent breedingEvent, SemenSampleMovement? semenOutput);
         Task<BreedingEvent> UpdateAsync(BreedingEvent breedingEvent);
+        Task<BreedingEvent?> SaveDiagnosisAsync(BreedingEvent breedingEvent, AnimalPregnancy? pregnancy);
+        Task<SemenSampleMovement?> GetSemenOutputAsync(int breedingEventId);
+        Task<IReadOnlyList<BreedingEvent>> GetChangesAsync(ulong since, int take);
         Task<bool> HasActiveByAnimalIdAsync(int animalId);
         Task<DateTime?> GetLastActiveAwaitingDiagnosisDateAsync(int animalId);
         Task<(int Successful, int Unsuccessful, int Awaiting)> GetStatusCountsAsync(DateTime from, DateTime to);
