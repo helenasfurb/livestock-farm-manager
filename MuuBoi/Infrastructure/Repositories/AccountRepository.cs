@@ -60,6 +60,9 @@ namespace MuuBoi.Infrastructure.Repositories
             await _context.Vaccines.IgnoreQueryFilters().Where(x => x.PropertyId == propertyId).ExecuteDeleteAsync();
             await _context.Medications.IgnoreQueryFilters().Where(x => x.PropertyId == propertyId).ExecuteDeleteAsync();
 
+            await _context.LoginEvents.Where(x => x.PropertyId == propertyId).ExecuteDeleteAsync();
+            await _context.UsageDaily.Where(x => x.PropertyId == propertyId).ExecuteDeleteAsync();
+
             await _context.Users.Where(u => u.PropertyId == propertyId).ExecuteDeleteAsync();
             await _context.Properties.Where(p => p.Id == propertyId).ExecuteDeleteAsync();
 

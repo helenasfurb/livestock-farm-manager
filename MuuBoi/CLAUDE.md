@@ -86,11 +86,12 @@ The service layer uses domain exceptions for all error signaling. `ExceptionMidd
 
 | Exception | HTTP Status | When to use |
 |-----------|-------------|-------------|
+| `UnauthorizedException` | `401 Unauthorized` | Invalid credentials outside the Identity flow (e.g., portal operator login) |
 | `NotFoundException` | `404 Not Found` | Required entity does not exist |
 | `ConflictException` | `409 Conflict` | State conflict — e.g., duplicate unique field, entity already in target state |
 | `BusinessRuleException` | `422 Unprocessable Entity` | Business rule violation that requires a DB query and cannot be caught by DTO validation alone |
 
-All three exception classes live in `Domain/Exceptions/`. `ExceptionMiddleware` must handle all three.
+All four exception classes live in `Domain/Exceptions/`. `ExceptionMiddleware` must handle all four.
 
 ## Testing conventions
 

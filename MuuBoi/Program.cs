@@ -1,16 +1,21 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MuuBoi.Api.Middleware;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
+using MuuBoi.Application.Options;
 using MuuBoi.Application.Services;
 using MuuBoi.Infrastructure.Data;
 using MuuBoi.Infrastructure.Repositories;
 using MuuBoi.Infrastructure.Services;
 using MuuBoi.Domain.Models;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +29,13 @@ builder.Services.AddIdentityCore<ApplicationUser>()
 
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT Key não configurada.");
+
+builder.Services.Configure<PortalOptions>(builder.Configuration.GetSection("Portal"));
+
+var portalJwtKey = builder.Configuration["Portal:JwtKey"];
+var portalSigningKey = string.IsNullOrEmpty(portalJwtKey)
+    ? RandomNumberGenerator.GetBytes(64)
+    : Encoding.UTF8.GetBytes(portalJwtKey);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -60,9 +72,48 @@ builder.Services.AddAuthentication(options =>
                 context.Fail("Sessão inválida.");
         }
     };
+})
+.AddJwtBearer(PortalAuthDefaults.Scheme, options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = false,
+        ValidateAudience = true,
+        ValidAudience = PortalAuthDefaults.Audience,
+        ValidateIssuerSigningKey = true,
+        ValidateLifetime = true,
+        IssuerSigningKey = new SymmetricSecurityKey(portalSigningKey),
+        ClockSkew = TimeSpan.Zero
+    };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(PortalAuthDefaults.Policy, policy => policy
+        .AddAuthenticationSchemes(PortalAuthDefaults.Scheme)
+        .RequireAuthenticatedUser()
+        .RequireRole(PortalAuthDefaults.Role));
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, ct) =>
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { error = "Muitas tentativas. Tente novamente mais tarde." }, ct);
+
+    options.AddPolicy(PortalAuthDefaults.LoginRateLimit, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ResolveClientIp(httpContext),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0
+            }));
+});
+
+builder.Services.AddScoped<IPortalAuthService, PortalAuthService>();
 
 builder.Services.AddScoped<IAnimalRepository, AnimalRepository>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
@@ -123,6 +174,15 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IUsageTracker, UsageTracker>();
+builder.Services.AddScoped<IUsageRepository, UsageRepository>();
+builder.Services.AddScoped<IUsageService, UsageService>();
+builder.Services.AddHostedService<UsageFlushService>();
+
+builder.Services.AddScoped<IPortalRepository, PortalRepository>();
+builder.Services.AddScoped<IPortalMetricsService, PortalMetricsService>();
+
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ISessionValidator, SessionValidator>();
 
@@ -176,6 +236,9 @@ if (!app.Environment.IsEnvironment("Docker"))
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
+
+app.UseMiddleware<UsageTrackingMiddleware>();
 
 app.UseMiddleware<ExceptionMiddleware>();
 
@@ -189,3 +252,12 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+static string ResolveClientIp(HttpContext context)
+{
+    var forwarded = context.Request.Headers["X-Forwarded-For"].ToString();
+    if (!string.IsNullOrEmpty(forwarded))
+        return forwarded.Split(',').Last().Trim();
+
+    return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+}

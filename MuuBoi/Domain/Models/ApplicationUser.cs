@@ -15,6 +15,8 @@ namespace MuuBoi.Domain.Models
 
         public UserRole Role { get; set; } = UserRole.Member;
 
+        public DateTime? LastSeenAt { get; set; }
+
         public Property? Property { get; set; }
     }
 }

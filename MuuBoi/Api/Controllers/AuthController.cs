@@ -25,19 +25,22 @@ namespace MuuBoi.Api.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IAccountService _accountService;
         private readonly ISessionValidator _sessionValidator;
+        private readonly IUsageService _usageService;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
             IConfiguration configuration,
             ApplicationDbContext context,
             IAccountService accountService,
-            ISessionValidator sessionValidator)
+            ISessionValidator sessionValidator,
+            IUsageService usageService)
         {
             _userManager = userManager;
             _configuration = configuration;
             _context = context;
             _accountService = accountService;
             _sessionValidator = sessionValidator;
+            _usageService = usageService;
         }
 
         [HttpPost("register")]
@@ -102,6 +105,8 @@ namespace MuuBoi.Api.Controllers
 
             if (string.IsNullOrEmpty(user.SecurityStamp))
                 await _userManager.UpdateSecurityStampAsync(user);
+
+            await _usageService.RecordLoginAsync(user.Id, user.PropertyId);
 
             return Ok(BuildAuthResponse(user, property));
         }

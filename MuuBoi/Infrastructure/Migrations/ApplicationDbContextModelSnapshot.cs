@@ -610,6 +610,9 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
 
@@ -967,6 +970,46 @@ namespace MuuBoi.Infrastructure.Migrations
                         .HasDatabaseName("IX_Lactations_PropertyId_AnimalId_EndDate");
 
                     b.ToTable("Lactations");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.LoginEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt")
+                        .HasDatabaseName("IX_LoginEvents_OccurredAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("PropertyId", "OccurredAt")
+                        .HasDatabaseName("IX_LoginEvents_PropertyId_OccurredAt");
+
+                    b.ToTable("LoginEvents");
                 });
 
             modelBuilder.Entity("MuuBoi.Domain.Models.MastitisTest", b =>
@@ -1635,6 +1678,50 @@ namespace MuuBoi.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MuuBoi.Domain.Models.UsageDaily", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Logins")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Pulls")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Pushes")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date")
+                        .HasDatabaseName("IX_UsageDaily_Date");
+
+                    b.HasIndex("PropertyId", "Date")
+                        .IsUnique()
+                        .HasDatabaseName("UX_UsageDaily_PropertyId_Date");
+
+                    b.ToTable("UsageDaily");
+                });
+
             modelBuilder.Entity("MuuBoi.Domain.Models.VaccinationEvent", b =>
                 {
                     b.Property<int>("Id")
@@ -2088,6 +2175,25 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Navigation("Calving");
                 });
 
+            modelBuilder.Entity("MuuBoi.Domain.Models.LoginEvent", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MuuBoi.Domain.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MuuBoi.Domain.Models.MastitisTest", b =>
                 {
                     b.HasOne("MuuBoi.Domain.Models.HealthCase", "HealthCase")
@@ -2145,6 +2251,17 @@ namespace MuuBoi.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("StockItem");
+                });
+
+            modelBuilder.Entity("MuuBoi.Domain.Models.UsageDaily", b =>
+                {
+                    b.HasOne("MuuBoi.Domain.Models.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Property");
                 });
 
             modelBuilder.Entity("MuuBoi.Domain.Models.VaccinationEvent", b =>
