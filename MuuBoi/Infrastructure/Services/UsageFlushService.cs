@@ -50,7 +50,7 @@ namespace MuuBoi.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Falha ao gravar o registro de uso.");
+                _logger.LogError(ex, "Failed to persist usage counters.");
             }
         }
     }

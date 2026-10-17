@@ -224,6 +224,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseSwagger();

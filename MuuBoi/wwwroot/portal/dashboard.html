@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Portal MuuBoi</title>
+    <link rel="stylesheet" href="portal.css" />
+</head>
+<body>
+    <header class="topbar">
+        <h1>Portal MuuBoi</h1>
+        <button id="logout" class="button button-secondary" type="button">Sair</button>
+    </header>
+    <main class="dashboard">
+        <p id="error" class="error" role="alert" hidden></p>
+
+        <section>
+            <div class="toolbar">
+                <h2>Visão geral</h2>
+                <div class="filters">
+                    <select id="period" aria-label="Período">
+                        <option value="7">Últimos 7 dias</option>
+                        <option value="30" selected>Últimos 30 dias</option>
+                        <option value="90">Últimos 90 dias</option>
+                    </select>
+                </div>
+            </div>
+            <div id="stats" class="stats"></div>
+        </section>
+
+        <section class="charts">
+            <div class="card">
+                <h3>Logins por dia</h3>
+                <div class="chart"><canvas id="chart-logins"></canvas></div>
+            </div>
+            <div class="card">
+                <h3>Sincronizações por dia</h3>
+                <div class="chart"><canvas id="chart-sync"></canvas></div>
+            </div>
+            <div class="card">
+                <h3>Novas propriedades por mês</h3>
+                <div class="chart"><canvas id="chart-properties"></canvas></div>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="toolbar">
+                <h2>Propriedades</h2>
+                <div class="filters">
+                    <input id="search" type="search" placeholder="Buscar por nome" aria-label="Buscar por nome" maxlength="200" />
+                    <select id="sort" aria-label="Ordenar por">
+                        <option value="lastSeen">Último acesso</option>
+                        <option value="name">Nome</option>
+                        <option value="animals">Nº de animais</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Criada em</th>
+                            <th class="num">Usuários (ativos/total)</th>
+                            <th class="num">Animais ativos</th>
+                            <th>Último acesso</th>
+                            <th class="num">Logins (30d)</th>
+                            <th class="num">Envios (30d)</th>
+                            <th class="num">Consultas (30d)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"></tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <button id="previous" class="button" type="button">Anterior</button>
+                <span id="page-info"></span>
+                <button id="next" class="button" type="button">Próxima</button>
+            </div>
+        </section>
+    </main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha512-CQBWl4fJHWbryGE+Pc7UAxWMUMNMWzWxF4SQo9CgkJIN1kx6djDQZjh3Y8SZ1d+6I+1zze6Z7kHXO7q3UyZAWw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="portal.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>
