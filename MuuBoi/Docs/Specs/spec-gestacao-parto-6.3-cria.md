@@ -9,6 +9,8 @@
 **Parte de:** Spec #6 (Gestação e Parto)  
 **Ver também:** Spec 6.1 (Gestação), Spec 6.2 (Parto)
 
+> **Sincronização offline (16/Out/2026):** a cria passou a ser sincronizável pela **Spec #14.11**, embutida no pull do parto. O brinco da cria viva passou a seguir a **mesma regra do cadastro de animal (6 dígitos numéricos)**, já que ela vira um animal (decisão P9). A edição da cria usa LWW por registro (cria, animal, pesagem de nascimento); sexo ausente ou fora do enum → `400` (antes, sem sexo virava macho).
+
 ---
 
 ## 1. Contexto e Objetivo

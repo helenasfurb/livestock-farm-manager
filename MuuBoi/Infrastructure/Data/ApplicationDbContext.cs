@@ -221,6 +221,9 @@ namespace MuuBoi.Infrastructure.Data
                 .HasIndex(cf => cf.CalvingId)
                 .HasDatabaseName("IX_AnimalCalvingCalves_CalvingId");
 
+            builder.Entity<AnimalCalving>().ConfigureSyncable();
+            builder.Entity<AnimalCalvingCalf>().ConfigureSyncable();
+
             builder.Entity<MilkProduction>().HasQueryFilter(m => m.PropertyId == _propertyId);
 
             builder.Entity<MilkProduction>()

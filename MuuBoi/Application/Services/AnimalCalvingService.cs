@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Domain.Enums;
 using MuuBoi.Domain.Exceptions;
@@ -11,7 +13,7 @@ namespace MuuBoi.Application.Services
     {
         private readonly IAnimalCalvingRepository _repository;
         private readonly IAnimalPregnancyRepository _pregnancyRepository;
-        private readonly IBodyConditionRecordService _bodyConditionRecordService;
+        private readonly IBodyConditionRecordRepository _bodyConditionRecordRepository;
         private readonly ILactationRepository _lactationRepository;
         private readonly IAnimalRepository _animalRepository;
         private readonly IMapper _mapper;
@@ -19,43 +21,62 @@ namespace MuuBoi.Application.Services
         public AnimalCalvingService(
             IAnimalCalvingRepository repository,
             IAnimalPregnancyRepository pregnancyRepository,
-            IBodyConditionRecordService bodyConditionRecordService,
+            IBodyConditionRecordRepository bodyConditionRecordRepository,
             ILactationRepository lactationRepository,
             IAnimalRepository animalRepository,
             IMapper mapper)
         {
             _repository = repository;
             _pregnancyRepository = pregnancyRepository;
-            _bodyConditionRecordService = bodyConditionRecordService;
+            _bodyConditionRecordRepository = bodyConditionRecordRepository;
             _lactationRepository = lactationRepository;
             _animalRepository = animalRepository;
             _mapper = mapper;
         }
 
-        public async Task<AnimalCalvingDto> CreateAsync(int pregnancyId, AnimalCalvingCreateDto dto)
+        public async Task<AnimalCalvingCreatedDto> CreateAsync(int pregnancyId, AnimalCalvingCreateDto dto)
         {
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return await ComposeCreatedAsync(existing, dto.BodyConditionSyncId);
+            }
+
             var pregnancy = await _pregnancyRepository.GetByIdAsync(pregnancyId)
                 ?? throw new NotFoundException($"Gestação com id '{pregnancyId}' não encontrada.");
 
             if (pregnancy.Status != AnimalPregnancyStatus.Confirmed)
-                throw new ConflictException("O parto só pode ser registrado para uma gestação confirmada.");
+                return await ExistingBySyncIdAsync(dto)
+                    ?? throw new ConflictException("O parto só pode ser registrado para uma gestação confirmada.");
 
             if (await _repository.HasActiveByPregnancyIdAsync(pregnancy.Id))
-                throw new ConflictException("Esta gestação já possui um parto ativo registrado.");
+                return await ExistingBySyncIdAsync(dto)
+                    ?? throw new ConflictException("Esta gestação já possui um parto ativo registrado.");
 
-            if (dto.CalvingDate < pregnancy.ConfirmationDate)
+            var calvingDate = dto.CalvingDate!.Value;
+
+            if (calvingDate < pregnancy.ConfirmationDate)
                 throw new BusinessRuleException("A data do parto não pode ser anterior à data de confirmação da gestação.");
 
             if (await _lactationRepository.HasOpenByAnimalIdAsync(pregnancy.AnimalId))
-                throw new BusinessRuleException("O animal possui uma lactação em aberto. Registre a secagem antes de lançar um novo parto.");
+                return await ExistingBySyncIdAsync(dto)
+                    ?? throw new BusinessRuleException("O animal possui uma lactação em aberto. Registre a secagem antes de lançar um novo parto.");
 
-            await ValidateCalfTagsAsync(dto.Calves);
+            var tagConflict = await FindCalfTagConflictAsync(dto.Calves);
+            if (tagConflict != null)
+                return await ExistingBySyncIdAsync(dto)
+                    ?? throw new ConflictException(tagConflict);
+
+            if (dto.BodyConditionScore.HasValue && pregnancy.Animal is { IsActive: false })
+                throw new ConflictException("Não é possível registrar ECC de um animal inativo.");
 
             var calving = new AnimalCalving
             {
+                SyncId = dto.SyncId ?? Guid.NewGuid(),
                 AnimalPregnancyId = pregnancy.Id,
                 AnimalId = pregnancy.AnimalId,
-                CalvingDate = dto.CalvingDate,
+                CalvingDate = calvingDate,
                 Notes = dto.Notes,
                 PropertyId = pregnancy.PropertyId,
                 IsActive = true,
@@ -63,39 +84,73 @@ namespace MuuBoi.Application.Services
                 Calves = dto.Calves.Select(calfDto =>
                 {
                     var calf = _mapper.Map<AnimalCalvingCalf>(calfDto);
+                    calf.SyncId = calfDto.SyncId ?? Guid.NewGuid();
                     calf.PropertyId = pregnancy.PropertyId;
                     if (calfDto.VitalStatus == CalfVitalStatus.Live)
-                        calf.Animal = BuildCalfAnimal(calfDto, dto.CalvingDate, pregnancy.PropertyId);
+                        calf.Animal = BuildCalfAnimal(calfDto, calvingDate, pregnancy.PropertyId);
                     return calf;
                 }).ToList()
             };
 
-            var created = await _repository.CreateAsync(calving);
-
             pregnancy.Status = AnimalPregnancyStatus.Calved;
-            pregnancy.UpdatedAt = DateTime.UtcNow;
-            await _pregnancyRepository.UpdateAsync(pregnancy);
 
-            await _lactationRepository.CreateAsync(new Lactation
+            var lactation = new Lactation
             {
+                SyncId = dto.LactationSyncId ?? Guid.NewGuid(),
                 AnimalId = pregnancy.AnimalId,
-                StartDate = dto.CalvingDate,
+                StartDate = calvingDate,
                 EndDate = null,
-                CalvingId = created.Id,
                 Origin = LactationOrigin.Calving,
                 PropertyId = pregnancy.PropertyId,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
-            });
+            };
 
-            if (dto.BodyConditionScore.HasValue)
-                await _bodyConditionRecordService.CreateAsync(pregnancy.AnimalId, new BodyConditionRecordCreateDto
+            var bodyCondition = dto.BodyConditionScore.HasValue
+                ? new BodyConditionRecord
                 {
+                    SyncId = dto.BodyConditionSyncId ?? Guid.NewGuid(),
+                    AnimalId = pregnancy.AnimalId,
                     Score = dto.BodyConditionScore.Value,
-                    RecordedAt = dto.CalvingDate
-                });
+                    RecordedAt = calvingDate,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                }
+                : null;
 
-            return _mapper.Map<AnimalCalvingDto>(created);
+            var created = await _repository.CreateAsync(calving, lactation, bodyCondition);
+            if (created == null)
+                return await ExistingBySyncIdAsync(dto)
+                    ?? throw new ConflictException("Esta gestação já possui um parto ativo registrado.");
+
+            return await ComposeCreatedAsync(created, bodyCondition?.SyncId);
+        }
+
+        private async Task<AnimalCalvingCreatedDto?> ExistingBySyncIdAsync(AnimalCalvingCreateDto dto)
+        {
+            if (!dto.SyncId.HasValue)
+                return null;
+
+            var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+            return existing == null ? null : await ComposeCreatedAsync(existing, dto.BodyConditionSyncId);
+        }
+
+        private async Task<AnimalCalvingCreatedDto> ComposeCreatedAsync(AnimalCalving calving, Guid? bodyConditionSyncId)
+        {
+            var dto = _mapper.Map<AnimalCalvingCreatedDto>(calving);
+
+            var lactation = await _lactationRepository.GetByCalvingIdAsync(calving.Id);
+            if (lactation != null)
+                dto.Lactation = new LactationRefDto { Id = lactation.Id, SyncId = lactation.SyncId };
+
+            if (bodyConditionSyncId.HasValue)
+            {
+                var bodyCondition = await _bodyConditionRecordRepository.GetBySyncIdAsync(bodyConditionSyncId.Value);
+                if (bodyCondition != null && bodyCondition.AnimalId == calving.AnimalId)
+                    dto.BodyCondition = new SyncRefDto { Id = bodyCondition.Id, SyncId = bodyCondition.SyncId };
+            }
+
+            return dto;
         }
 
         public async Task<AnimalCalvingCalfDto> UpdateCalfAsync(int calvingId, int calfId, AnimalCalvingCalfUpdateDto dto)
@@ -108,29 +163,52 @@ namespace MuuBoi.Application.Services
             if (!calf.IsActive || calf.Calving == null || !calf.Calving.IsActive)
                 throw new ConflictException("Não é possível editar uma cria de um parto inativo.");
 
+            var editedAt = SyncTimestampResolver.ResolveEditedAt(dto.UpdatedAt, DateTime.UtcNow);
+            if (SyncTimestampResolver.IsOutdated(editedAt, calf))
+                return _mapper.Map<AnimalCalvingCalfDto>(calf);
+
             if (dto.Notes != null)
                 calf.Notes = dto.Notes;
 
             if (dto.Sex.HasValue)
             {
                 calf.Sex = dto.Sex.Value;
-                if (calf.Animal != null)
+                if (calf.Animal != null && !SyncTimestampResolver.IsOutdated(editedAt, calf.Animal))
+                {
                     calf.Animal.Gender = dto.Sex.Value;
+                    calf.Animal.UpdatedAt = editedAt;
+                }
             }
 
             if (dto.WeightKg.HasValue)
             {
                 calf.WeightKg = dto.WeightKg.Value;
                 if (calf.Animal != null)
-                    ApplyBirthWeight(calf.Animal, dto.WeightKg.Value, calf.Calving.CalvingDate, calf.Notes);
+                    ApplyBirthWeight(calf.Animal, dto.WeightKg.Value, calf.Calving.CalvingDate, calf.Notes, editedAt, dto.WeightSyncId);
             }
 
-            calf.UpdatedAt = DateTime.UtcNow;
-            if (calf.Animal != null)
-                calf.Animal.UpdatedAt = DateTime.UtcNow;
+            calf.UpdatedAt = editedAt;
 
             await _repository.UpdateCalfAsync(calf);
             return _mapper.Map<AnimalCalvingCalfDto>(calf);
+        }
+
+        public async Task<SyncPageDto<AnimalCalvingSyncDto>> GetChangesAsync(string? since, int? limit)
+        {
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
+
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _repository.GetChangesAsync(cursor, take + 1);
+            var calves = (await _repository.GetCalvesByCalvingIdsAsync(fetched.Select(c => c.Id).ToList()))
+                .ToLookup(cf => cf.CalvingId);
+
+            return SyncPaging.BuildPage(fetched, take, cursor, c =>
+            {
+                var dto = _mapper.Map<AnimalCalvingSyncDto>(c);
+                dto.Calves = _mapper.Map<List<AnimalCalvingCalfSyncDto>>(calves[c.Id]);
+                return dto;
+            });
         }
 
         public async Task<bool> InactivateAsync(int id)
@@ -139,46 +217,33 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Parto com id '{id}' não encontrado.");
 
             if (!calving.IsActive)
-                throw new ConflictException("O parto já está inativo.");
+                return true;
 
             calving.IsActive = false;
-            calving.UpdatedAt = DateTime.UtcNow;
 
             if (calving.Calves != null)
                 foreach (var calf in calving.Calves.Where(c => c.IsActive))
                 {
                     calf.IsActive = false;
-                    calf.UpdatedAt = DateTime.UtcNow;
 
                     if (calf.Animal != null && calf.Animal.IsActive)
-                    {
                         calf.Animal.IsActive = false;
-                        calf.Animal.UpdatedAt = DateTime.UtcNow;
-                    }
                 }
-
-            await _repository.UpdateAsync(calving);
 
             var lactation = await _lactationRepository.GetByCalvingIdAsync(calving.Id);
             if (lactation != null && lactation.IsActive)
-            {
                 lactation.IsActive = false;
-                lactation.UpdatedAt = DateTime.UtcNow;
-                await _lactationRepository.UpdateAsync(lactation);
-            }
 
             if (calving.AnimalPregnancy != null)
-            {
                 calving.AnimalPregnancy.Status = AnimalPregnancyStatus.Confirmed;
-                calving.AnimalPregnancy.UpdatedAt = DateTime.UtcNow;
-                await _pregnancyRepository.UpdateAsync(calving.AnimalPregnancy);
-            }
+
+            await _repository.UpdateAsync(calving);
 
             return true;
         }
 
         // RN-06: brinco de cria viva deve ser único na base e entre as crias do próprio parto.
-        private async Task ValidateCalfTagsAsync(IEnumerable<AnimalCalvingCalfCreateDto> calves)
+        private async Task<string?> FindCalfTagConflictAsync(IEnumerable<AnimalCalvingCalfCreateDto> calves)
         {
             var tags = calves
                 .Where(c => c.VitalStatus == CalfVitalStatus.Live && !string.IsNullOrWhiteSpace(c.TagNumber))
@@ -189,17 +254,20 @@ namespace MuuBoi.Application.Services
                 .GroupBy(t => t, StringComparer.OrdinalIgnoreCase)
                 .FirstOrDefault(g => g.Count() > 1);
             if (duplicateInBatch != null)
-                throw new ConflictException($"O brinco '{duplicateInBatch.Key}' está repetido entre as crias deste parto.");
+                return $"O brinco '{duplicateInBatch.Key}' está repetido entre as crias deste parto.";
 
             foreach (var tag in tags)
                 if (await _animalRepository.TagNumberExistsAsync(tag))
-                    throw new ConflictException($"Já existe um animal com o brinco '{tag}'.");
+                    return $"Já existe um animal com o brinco '{tag}'.";
+
+            return null;
         }
 
         private static Animal BuildCalfAnimal(AnimalCalvingCalfCreateDto calfDto, DateTime calvingDate, Guid propertyId)
         {
             var animal = new Animal
             {
+                SyncId = calfDto.AnimalSyncId ?? Guid.NewGuid(),
                 Name = calfDto.Name,
                 Gender = calfDto.Sex,
                 Breed = calfDto.Breed,
@@ -218,6 +286,7 @@ namespace MuuBoi.Application.Services
                 {
                     new()
                     {
+                        SyncId = calfDto.WeightSyncId ?? Guid.NewGuid(),
                         Weight = calfDto.WeightKg.Value,
                         RecordedAt = calvingDate,
                         Observations = calfDto.Notes,
@@ -228,20 +297,24 @@ namespace MuuBoi.Application.Services
             return animal;
         }
 
-        private static void ApplyBirthWeight(Animal animal, decimal weight, DateTime calvingDate, string? observations)
+        private static void ApplyBirthWeight(Animal animal, decimal weight, DateTime calvingDate, string? observations, DateTime editedAt, Guid? weightSyncId)
         {
             animal.WeightRecords ??= new List<WeightRecord>();
 
             var birthRecord = animal.WeightRecords.FirstOrDefault(w => w.RecordedAt == calvingDate);
             if (birthRecord != null)
             {
+                if (SyncTimestampResolver.IsOutdated(editedAt, birthRecord))
+                    return;
+
                 birthRecord.Weight = weight;
-                birthRecord.UpdatedAt = DateTime.UtcNow;
+                birthRecord.UpdatedAt = editedAt;
             }
             else
             {
                 animal.WeightRecords.Add(new WeightRecord
                 {
+                    SyncId = weightSyncId ?? Guid.NewGuid(),
                     Weight = weight,
                     RecordedAt = calvingDate,
                     Observations = observations,

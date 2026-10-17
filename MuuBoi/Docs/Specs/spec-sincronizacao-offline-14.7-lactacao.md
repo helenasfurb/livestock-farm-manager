@@ -4,6 +4,7 @@
 **Versão:** 1.0
 **Data:** 11/Out/2026
 **Status:** ✅ **Implementada e validada** (11/Out/2026) — decisões L1–L10, Fases 1–8. Branch `feature/offline-lactations`. Regras de negócio mantidas (R1–R5, R7–R11); respostas a operações em lactação inativa alteradas (L6), mudanças de estado sem `UpdatedAt` (L7) e validação de datas corrigida nos três DTOs (§3 item 9, L9).
+**Nota (16/Out/2026, Spec #14.11):** a lactação aberta pelo **parto** passou a nascer com o `syncId` vindo do app (`lactationSyncId`) e a ser gravada no mesmo `SaveChanges` do parto; a inativação do parto a inativa sem carimbar `UpdatedAt`.
 
 ### Histórico de versões
 

@@ -22,8 +22,15 @@ namespace MuuBoi.Api.Controllers
         public ActionResult<IEnumerable<LookupDto>> GetCalfVitalStatuses()
             => Ok(EnumHelper.ToLookup<CalfVitalStatus>());
 
+        [HttpGet("api/calvings/changes")]
+        public async Task<ActionResult<SyncPageDto<AnimalCalvingSyncDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _service.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpPost("api/pregnancies/{pregnancyId:int}/calvings")]
-        public async Task<ActionResult<AnimalCalvingDto>> Create(int pregnancyId, [FromBody] AnimalCalvingCreateDto dto)
+        public async Task<ActionResult<AnimalCalvingCreatedDto>> Create(int pregnancyId, [FromBody] AnimalCalvingCreateDto dto)
         {
             var created = await _service.CreateAsync(pregnancyId, dto);
             return CreatedAtAction("GetById", "Pregnancies", new { id = pregnancyId }, created);

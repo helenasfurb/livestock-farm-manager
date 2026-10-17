@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Domain.Models;
@@ -33,11 +34,56 @@ namespace MuuBoi.Infrastructure.Repositories
             return rows.Select(r => (r.AnimalId, r.CalvingDate)).ToList();
         }
 
-        public async Task<AnimalCalving> CreateAsync(AnimalCalving calving)
+        public async Task<AnimalCalving?> GetBySyncIdAsync(Guid syncId)
         {
+            return await _context.AnimalCalvings
+                .Include(c => c.AnimalPregnancy)
+                .Include(c => c.Calves!)
+                    .ThenInclude(cf => cf.Animal!)
+                        .ThenInclude(a => a.WeightRecords!.Where(w => w.IsActive))
+                .FirstOrDefaultAsync(c => c.SyncId == syncId);
+        }
+
+        public async Task<AnimalCalving?> CreateAsync(AnimalCalving calving, Lactation lactation, BodyConditionRecord? bodyCondition)
+        {
+            lactation.Calving = calving;
+            _context.Lactations.Add(lactation);
+            if (bodyCondition != null)
+                _context.BodyConditionRecords.Add(bodyCondition);
             _context.AnimalCalvings.Add(calving);
-            await _context.SaveChangesAsync();
-            return calving;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return calving;
+            }
+            catch (DbUpdateException ex) when (ex is DbUpdateConcurrencyException || IsSyncIdUniqueViolation(ex))
+            {
+                _context.ChangeTracker.Clear();
+                return null;
+            }
+        }
+
+        public async Task<IReadOnlyList<AnimalCalving>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<AnimalCalving>(since, take);
+        }
+
+        public async Task<List<AnimalCalvingCalf>> GetCalvesByCalvingIdsAsync(IReadOnlyCollection<int> calvingIds)
+        {
+            if (calvingIds.Count == 0)
+                return new List<AnimalCalvingCalf>();
+
+            return await _context.AnimalCalvingCalves
+                .Where(cf => calvingIds.Contains(cf.CalvingId))
+                .ToListAsync();
+        }
+
+        private static bool IsSyncIdUniqueViolation(DbUpdateException ex)
+        {
+            return ex.InnerException is SqlException sql
+                && (sql.Number == 2601 || sql.Number == 2627)
+                && sql.Message.Contains("_SyncId");
         }
 
         public async Task<AnimalCalving> UpdateAsync(AnimalCalving calving)
@@ -110,8 +156,12 @@ namespace MuuBoi.Infrastructure.Repositories
 
         public async Task<AnimalCalvingCalf> UpdateCalfAsync(AnimalCalvingCalf calf)
         {
-            _context.AnimalCalvingCalves.Update(calf);
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             await _context.SaveChangesAsync();
+            await _context.AnimalCalvings
+                .Where(c => c.Id == calf.CalvingId)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsActive, c => c.IsActive));
+            await transaction.CommitAsync();
             return calf;
         }
     }

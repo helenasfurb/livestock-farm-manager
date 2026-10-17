@@ -265,6 +265,17 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SyncId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -273,8 +284,15 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.HasIndex("AnimalPregnancyId")
                         .HasDatabaseName("IX_AnimalCalvings_AnimalPregnancyId");
 
+                    b.HasIndex("SyncId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_AnimalCalvings_SyncId");
+
                     b.HasIndex("AnimalId", "CalvingDate")
                         .HasDatabaseName("IX_AnimalCalvings_AnimalId_CalvingDate");
+
+                    b.HasIndex("PropertyId", "RowVersion")
+                        .HasDatabaseName("IX_AnimalCalvings_PropertyId_RowVersion");
 
                     b.ToTable("AnimalCalvings");
                 });
@@ -306,8 +324,19 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<int>("Sex")
                         .HasColumnType("int");
+
+                    b.Property<Guid>("SyncId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -327,6 +356,13 @@ namespace MuuBoi.Infrastructure.Migrations
 
                     b.HasIndex("CalvingId")
                         .HasDatabaseName("IX_AnimalCalvingCalves_CalvingId");
+
+                    b.HasIndex("SyncId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_AnimalCalvingCalves_SyncId");
+
+                    b.HasIndex("PropertyId", "RowVersion")
+                        .HasDatabaseName("IX_AnimalCalvingCalves_PropertyId_RowVersion");
 
                     b.ToTable("AnimalCalvingCalves");
                 });

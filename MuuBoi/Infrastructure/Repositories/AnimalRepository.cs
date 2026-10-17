@@ -177,6 +177,18 @@ namespace MuuBoi.Infrastructure.Repositories
             return animal;
         }
 
+        public async Task<Animal> UpdateAnimalAndTouchCalvingAsync(Animal animal, int calvingId)
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            _context.Animals.Update(animal);
+            await _context.SaveChangesAsync();
+            await _context.AnimalCalvings
+                .Where(c => c.Id == calvingId)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsActive, c => c.IsActive));
+            await transaction.CommitAsync();
+            return animal;
+        }
+
         public async Task<bool> TagNumberExistsAsync(string tagNumber, int? excludeAnimalId = null)
         {
             var query = _context.Animals.Where(a => a.TagNumber == tagNumber);
