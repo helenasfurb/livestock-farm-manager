@@ -8,6 +8,8 @@
 **Depende de:** Spec 6.1 (Gestação), Spec #3 (ECC)  
 **Parte de:** Spec #6 (Gestação e Parto)  
 **Ver também:** Spec 6.1 (Gestação), Spec 6.3 (Cria)  
+
+> **Sincronização offline (16/Out/2026):** o parto passou a ser sincronizável pela **Spec #14.11** (`spec-sincronizacao-offline-14.11-parto-crias.md`), sem alterar RN-01–RN-09. O parto e tudo o que ele cria (crias, animais, pesagens, lactação, ECC) e muda (status da gestação) passam a ser gravados **juntos**; a inativação também. O app envia o `syncId` de cada derivado. Mudança visível (P12): parto com ECC de mãe inativa passa a ser recusado por inteiro (antes, o parto era gravado sem o ECC). Repetidos → `2xx`; validações de data e enums → `400`; nova rota `GET /api/calvings/changes`.
 **Referenciado por:** Spec #7 (Dashboards)
 
 ---

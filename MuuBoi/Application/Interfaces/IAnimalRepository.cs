@@ -18,6 +18,7 @@ namespace MuuBoi.Application.Interfaces
         Task<IEnumerable<Animal>> GetBreedingEligibleAnimalsAsync(string? search);
         Task<Animal> CreateAnimalAsync(Animal animal);
         Task<Animal> UpdateAnimalAsync(Animal animal);
+        Task<Animal> UpdateAnimalAndTouchCalvingAsync(Animal animal, int calvingId);
         Task<bool> TagNumberExistsAsync(string tagNumber, int? excludeAnimalId = null);
     }
 }

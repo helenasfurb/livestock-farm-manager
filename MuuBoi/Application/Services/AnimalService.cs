@@ -183,6 +183,7 @@ namespace MuuBoi.Application.Services
             _mapper.Map(dto, animal);
             animal.UpdatedAt = editedAt;
 
+            int? touchedCalvingId = null;
             if (dto.Gender.HasValue && dto.Gender.Value != previousGender)
             {
                 var calf = await _calvingRepository.GetActiveCalfByAnimalIdAsync(id);
@@ -190,10 +191,13 @@ namespace MuuBoi.Application.Services
                 {
                     calf.Sex = dto.Gender.Value;
                     calf.UpdatedAt = editedAt;
+                    touchedCalvingId = calf.CalvingId;
                 }
             }
 
-            var updated = await _animalRepository.UpdateAnimalAsync(animal);
+            var updated = touchedCalvingId.HasValue
+                ? await _animalRepository.UpdateAnimalAndTouchCalvingAsync(animal, touchedCalvingId.Value)
+                : await _animalRepository.UpdateAnimalAsync(animal);
             return _mapper.Map<AnimalDto>(updated);
         }
 

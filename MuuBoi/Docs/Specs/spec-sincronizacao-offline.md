@@ -1,9 +1,9 @@
 # Spec #14: Sincronização Offline — Especificação e Plano de Implementação
 
 **Módulo:** Infraestrutura / Sincronização — transversal a toda a aplicação
-**Versão:** 1.10
-**Data:** 14/Out/2026
-**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2), **Estoque de insumos e movimentações** (Spec #14.3), **Animais e saídas do rebanho** (Spec #14.4), **Pesagens** (Spec #14.5), **ECC** (Spec #14.6), **Lactação e secagem** (Spec #14.7), **Eventos de vacinação e reforços** (Spec #14.8), **Casos de saúde, aplicações e testes** (Spec #14.9) e **Cobertura, diagnóstico e gestação** (Spec #14.10); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
+**Versão:** 1.11
+**Data:** 16/Out/2026
+**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2), **Estoque de insumos e movimentações** (Spec #14.3), **Animais e saídas do rebanho** (Spec #14.4), **Pesagens** (Spec #14.5), **ECC** (Spec #14.6), **Lactação e secagem** (Spec #14.7), **Eventos de vacinação e reforços** (Spec #14.8), **Casos de saúde, aplicações e testes** (Spec #14.9), **Cobertura, diagnóstico e gestação** (Spec #14.10) e **Parto e crias** (Spec #14.11) — **todas as entidades da §8 previstas para o offline estão sincronizáveis** (16/Out/2026). Novas entidades seguem a receita da §7.4, cada uma numa spec filha.
 **Abrangência:** contrato de sincronização do servidor/API (identidade, versionamento, tombstones, idempotência, tenant) **e** o contrato que o app offline precisa seguir para consumi-lo.
 **Relaciona-se com:** Spec 11.1 (Produção de Leite, §8) · Spec #13 (Cadastro Retroativo de Gestação, §6) · todos os specs de entidade · `Docs/catalogo-erros-api.md`
 
@@ -25,6 +25,7 @@
 | 1.8 | 12/Out/2026 | §8: `VaccinationEvent` sincronizável, com `VaccinationEventAnimal` embutido (**Spec #14.8**) — primeira operação com várias referências resolvidas pelo app (vacina + lista de animais) e primeira corrida tratada num índice único que **não** é o do `SyncId` (reforço: "um ativo por evento", tratado no repositório, sem mudar o `AddSyncableAsync`). §5.5: segunda exceção ao "mesmo DTO do detalhe" (`VaccinationEventSyncDto`). Sumário com a 14.8 |
 | 1.9 | 13/Out/2026 | §8: `HealthCase`, `AnimalMedication` (do caso) e `MastitisTest` sincronizáveis (**Spec #14.9**) — primeiros **filhos com identidade própria embutidos** no pull do pai: criar ou inativar um filho "toca" o caso (`UPDATE` direto, sem checar `RowVersion`, na mesma transação) para o caso reaparecer no pull. §5.5: terceira exceção ao "mesmo DTO do detalhe" (`HealthCaseSyncDto`). §13 questão 4 restrita ao uso avulso de medicação. Sumário com a 14.9 |
 | 1.10 | 14/Out/2026 | §8: `BreedingEvent` e `AnimalPregnancy` sincronizáveis (**Spec #14.10**) — primeira aplicação das **Condições 1 e 2** a derivados criados pelo servidor: a cobertura por IA grava a saída de sêmen no mesmo `SaveChanges`; o diagnóstico positivo grava a gestação no mesmo `SaveChanges`, com o `syncId` vindo do app (`pregnancySyncId`). `ClientRequestId` da gestação retroativa (Spec #13) unificado no `SyncId`. **§13 questão 1 resolvida para a cobertura:** a cobertura aceita saldo de sêmen negativo (única mudança de regra, decidida pela usuária). Sumário com a 14.10 |
+| 1.11 | 16/Out/2026 | §8: `AnimalCalving` e `AnimalCalvingCalf` sincronizáveis (**Spec #14.11**) — **fecha a §8**. Maior aplicação das Condições 1 e 2: o parto grava parto, crias, animais das crias, pesagens de nascimento, lactação, ECC e o status da gestação num só `SaveChanges`, com o `syncId` de cada derivado vindo do app; a inativação em cascata também é uma gravação só, sem `UpdatedAt`. Corrida tratada no repositório (limpa o rastreamento e rebusca o `SyncId`). §5.5: quarta exceção ao "mesmo DTO do detalhe" (`AnimalCalvingSyncDto`, crias embutidas; editar a cria — inclusive pelo sexo no cadastro do animal — toca o parto). Sumário com a 14.11 |
 
 ---
 
@@ -62,6 +63,7 @@
 - Spec #14.8 — Eventos de Vacinação e Reforços (`spec-sincronizacao-offline-14.8-vacinacao.md`)
 - Spec #14.9 — Casos de Saúde, Aplicações e Testes (`spec-sincronizacao-offline-14.9-casos-saude.md`)
 - Spec #14.10 — Cobertura, Diagnóstico e Gestação (`spec-sincronizacao-offline-14.10-cobertura-gestacao.md`)
+- Spec #14.11 — Parto e Crias (`spec-sincronizacao-offline-14.11-parto-crias.md`)
 
 ---
 
@@ -289,7 +291,7 @@ GET /api/milk-productions/changes?since=abc
 |---|---|
 | `since` | Ausente ou vazio → carga completa. Não numérico ou negativo → `400`. |
 | `limit` | Ausente, zero ou negativo → 500; acima de 500 → 500. **Ajusta, não dá erro.** |
-| `items` | Registros com `RowVersion > since`, em ordem crescente de `RowVersion`, **inclusive inativos** (tombstones). Mesmo DTO do detalhe — **exceção:** `Animal` usa `AnimalSyncDto` (só dados do próprio animal + saídas), porque o detalhe é composto de outros recursos e custaria ~6 consultas por animal (Spec #14.4, N6); `VaccinationEvent` usa `VaccinationEventSyncDto` (sem status, nomes e linhagem, com `animalIds`), porque o status muda com o tempo e o `childEvent` do pai muda sem o `RowVersion` do pai mudar — o app deriva esses dados localmente (Spec #14.8, V7); `HealthCase` usa `HealthCaseSyncDto` (sem status, data de liberação e nome do animal; com **todas** as aplicações e testes, inclusive inativos), porque os derivados mudam com o tempo e o detalhe só mostra filhos ativos (Spec #14.9, H6). |
+| `items` | Registros com `RowVersion > since`, em ordem crescente de `RowVersion`, **inclusive inativos** (tombstones). Mesmo DTO do detalhe — **exceção:** `Animal` usa `AnimalSyncDto` (só dados do próprio animal + saídas), porque o detalhe é composto de outros recursos e custaria ~6 consultas por animal (Spec #14.4, N6); `VaccinationEvent` usa `VaccinationEventSyncDto` (sem status, nomes e linhagem, com `animalIds`), porque o status muda com o tempo e o `childEvent` do pai muda sem o `RowVersion` do pai mudar — o app deriva esses dados localmente (Spec #14.8, V7); `HealthCase` usa `HealthCaseSyncDto` (sem status, data de liberação e nome do animal; com **todas** as aplicações e testes, inclusive inativos), porque os derivados mudam com o tempo e o detalhe só mostra filhos ativos (Spec #14.9, H6); `AnimalCalving` usa `AnimalCalvingSyncDto` (crias embutidas, inclusive inativas, sem nome/brinco/raça — vêm no pull de animais), porque o detalhe do parto só existe dentro da gestação e só mostra crias ativas (Spec #14.11, P6). |
 | `nextCursor` | `RowVersion` do **último item da página**, como texto. Página vazia → **o mesmo cursor recebido**. |
 | `hasMore` | `true` se há mais páginas; o app pede de novo imediatamente com o `nextCursor`. |
 
@@ -596,7 +598,8 @@ Derivados que o usuário não referencia diretamente (lactação aberta pelo par
 | `AnimalMedication` (uso avulso, `HealthCaseId = null`) | ❌ Fora | **Spec #14.9**, H7: rota legada `/api/animals/{animalId}/medications` com **hard delete** (questão em aberto 4); catálogo `Medication` descontinuado |
 | `BreedingEvent` | ✅ **Sincronizável** (14/Out/2026) | **Spec #14.10** (`spec-sincronizacao-offline-14.10-cobertura-gestacao.md`). Saída de sêmen da IA no mesmo `SaveChanges` (criação, edição e inativação); diagnóstico idempotente com a gestação no mesmo `SaveChanges`; aceita saldo de sêmen negativo; pull em `GET /api/breeding-events/changes` |
 | `AnimalPregnancy` | ✅ **Sincronizável** (14/Out/2026) | **Spec #14.10**. Gestação do diagnóstico com `SyncId` do app (`pregnancySyncId`); retroativa com `syncId` (antigo `ClientRequestId`); perda e inativação idempotentes; pull em `GET /api/pregnancies/changes` |
-| `AnimalCalving`, `AnimalCalvingCalf` | ⏳ | **Spec #14.11** (próxima). Condições 1 e 2 (§7.5): crias como animais, pesagem de nascimento, lactação e ECC |
+| `AnimalCalving` | ✅ **Sincronizável** (16/Out/2026) | **Spec #14.11** (`spec-sincronizacao-offline-14.11-parto-crias.md`). Parto + crias + animais + pesagens + lactação + ECC + status da gestação num só `SaveChanges`, com `syncId` dos derivados vindos do app; inativação em cascata numa gravação só; pull em `GET /api/calvings/changes` com as crias embutidas |
+| `AnimalCalvingCalf` | ✅ **Sincronizável** (16/Out/2026), embutido | **Spec #14.11**. `SyncId` próprio; chega no pull do parto (inclusive inativas); edição com LWW por registro (cria, animal, pesagem) e toque no parto |
 | `Lactation` | ✅ **Sincronizável** (11/Out/2026) | **Spec #14.7** (`spec-sincronizacao-offline-14.7-lactacao.md`). Secar, desfazer secagem e inativar idempotentes; Condição 3 na abertura; lactação inicial com referência na resposta do cadastro (`initialLactation { id, syncId }`); pull em `GET /api/lactations/changes`. A lactação aberta pelo parto fica para a spec do parto |
 | `VaccinationEvent` | ✅ **Sincronizável** (12/Out/2026) | **Spec #14.8** (`spec-sincronizacao-offline-14.8-vacinacao.md`). Criação e reforço idempotentes (Condição 3 no reforço; corrida no índice `UX_VaccinationEvents_ParentEventId_Active` vira `201`/`409`, não `500`); pull com `VaccinationEventSyncDto` em `GET /api/vaccination-events/changes` |
 | `VaccinationEventAnimal` | ✅ **Sincronizável** (12/Out/2026), embutido | **Spec #14.8**. Sem `SyncId` próprio: chega no pull do evento (`animalIds`); a lista não muda depois da criação |

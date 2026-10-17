@@ -392,7 +392,18 @@ HTTP/1.1 409 Conflict
 | `PATCH /api/calvings/{calvingId}/calves/{calfId}` | 404 | Cria com id '{calfId}' não encontrada no parto '{calvingId}'. |
 | `PATCH /api/calvings/{calvingId}/calves/{calfId}` | 409 | Não é possível editar uma cria de um parto inativo. |
 | `DELETE /api/calvings/{id}` | 404 | Parto com id '{id}' não encontrado. |
-| `DELETE /api/calvings/{id}` | 409 | O parto já está inativo. |
+| `POST` | 409 | Não é possível registrar ECC de um animal inativo. *(com `bodyConditionScore` e mãe inativa — **até 16/Out/2026 o parto era gravado sem o ECC** antes deste erro; agora nada é gravado)* |
+| `POST` | 400 | A data do parto é obrigatória. / O sexo da cria é obrigatório. / O status vital da cria é obrigatório. / Valor inválido (sexo, status vital ou ECC fora do enum). *(formato B — antes, sem data respondia `422` com a mensagem da confirmação, cria sem sexo virava macho e enums fora da faixa eram gravados)* |
+| `POST` | 400 | O brinco principal deve ter exatamente 6 dígitos numéricos. *(campo `Calves[i].TagNumber` — mesma regra do cadastro de animal; antes aceitava até 6 caracteres quaisquer)* |
+| `PATCH /api/calvings/{calvingId}/calves/{calfId}` | 400 | Valor inválido (sexo fora do enum). |
+| `GET /api/calvings/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A)* |
+
+> **Rotas com suporte offline** — parto e crias (ver `Docs/Specs/spec-sincronizacao-offline-14.11-parto-crias.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com o parto existente — mesmo que a gestação já esteja "parto realizado", a lactação aberta e os brincos das crias já existam (o `syncId` é rechecado antes dos `409`/`422`).
+> - O app envia o `syncId` do parto, da lactação (`lactationSyncId`), do ECC (`bodyConditionSyncId`) e, em cada cria, da cria (`syncId`), do animal (`animalSyncId`) e da pesagem de nascimento (`weightSyncId`). A resposta traz `{ id, syncId }` de cada derivado.
+> - `PATCH .../calves/{calfId}` com `updatedAt` mais antigo que a cria → `200` com a versão do servidor; o reflexo no sexo do animal e no peso de nascimento também respeita o `updatedAt` de cada um.
+> - `DELETE /api/calvings/{id}` em parto já inativo → `204` *(até 16/Out/2026 era `409` "O parto já está inativo.")*.
+> - `syncId`s vazios → `400`; `animalSyncId`/`weightSyncId` em cria não viva (ou sem peso) e `bodyConditionSyncId` sem ECC → `400`.
 
 ### 4.11 Lactações — `/api/lactations`, `/api/animals/{animalId}/lactations`
 

@@ -328,14 +328,17 @@ public class AnimalServiceTests
         var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));
         animal.Gender = AnimalGender.M;
         animal.Classification = AnimalClassification.Calf;
-        var calf = new AnimalCalvingCalf { Id = 3, AnimalId = 1, Sex = AnimalGender.M, IsActive = true };
+        var calf = new AnimalCalvingCalf { Id = 3, CalvingId = 7, AnimalId = 1, Sex = AnimalGender.M, IsActive = true };
         _animalRepository.Setup(r => r.GetAnimalByIdAsync(1)).ReturnsAsync(animal);
+        _animalRepository.Setup(r => r.UpdateAnimalAndTouchCalvingAsync(It.IsAny<Animal>(), It.IsAny<int>())).ReturnsAsync((Animal a, int _) => a);
         _calvingRepository.Setup(r => r.GetActiveCalfByAnimalIdAsync(1)).ReturnsAsync(calf);
         var editedAt = DateTime.UtcNow.AddHours(-1);
         await _service.UpdateAnimalAsync(1, new AnimalUpdateDto { Gender = AnimalGender.F, UpdatedAt = editedAt });
         Assert.Equal(AnimalGender.F, animal.Gender);
         Assert.Equal(AnimalGender.F, calf.Sex);
         Assert.Equal(editedAt, calf.UpdatedAt);
+        _animalRepository.Verify(r => r.UpdateAnimalAndTouchCalvingAsync(animal, 7), Times.Once);
+        _animalRepository.Verify(r => r.UpdateAnimalAsync(It.IsAny<Animal>()), Times.Never);
     }
 
     [Fact]

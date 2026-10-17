@@ -6,6 +6,7 @@
 **Status:** ✅ **Implementada e validada** (09/Out/2026) — decisões N1–N6 (N7 descartada), Fases 1–7. Branch `feature/offline-animals`. Nenhuma regra de negócio alterada (R1–R9); um bug pré-existente corrigido (§3 item 5) e uma condição nova de corrida tratada (§6.2, Condição 3 da Spec #14 §7.5).
 - **Parte A — Cadastro e edição (`Animal`):** ✅ Fases 1, 2, 3 e 5
 - **Parte B — Saída e reativação (`AnimalExitRecord`):** ✅ Fase 4
+- **Nota (16/Out/2026, Spec #14.11):** quando a edição do animal muda o sexo e há cria vinculada, o reflexo na cria passa a **tocar o parto** na mesma transação (`UpdateAnimalAndTouchCalvingAsync`), para a cria embutida no pull do parto chegar atualizada. A inativação do parto inativa os animais das crias sem carimbar `UpdatedAt`.
 
 ### Histórico de versões
 
