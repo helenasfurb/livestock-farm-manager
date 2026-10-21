@@ -7,6 +7,7 @@ namespace MuuBoi.Application.DTOs
     public class HealthCaseDto
     {
         public int Id { get; set; }
+        public Guid SyncId { get; set; }
         public int AnimalId { get; set; }
         public string? AnimalName { get; set; }
         public string? AnimalTagNumber { get; set; }

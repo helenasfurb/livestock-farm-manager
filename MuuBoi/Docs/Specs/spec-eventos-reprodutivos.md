@@ -6,6 +6,8 @@
 **Fonte:** Ata do Primeiro Encontro de Consultoria — Gestão de Animais; `spec_modulo_reproducao.md`  
 **Status:** Aprovado para implementação  
 **Depende de:** Spec #1 (Animal), Spec #4 (Banco de Sêmen)  
+
+> **Sincronização offline (14/Out/2026):** coberturas e diagnósticos passaram a ser sincronizáveis pela **Spec #14.10** (`spec-sincronizacao-offline-14.10-cobertura-gestacao.md`). Única mudança de regra: a cobertura por IA **não exige mais dose disponível** (saldo de sêmen negativo permitido — decisão B4). Demais mudanças visíveis: `syncId` na criação; `pregnancySyncId` no diagnóstico positivo; diagnóstico repetido com o mesmo resultado e inativação repetida → `2xx`; editar a cobertura por IA move a saída de sêmen junto (sêmen e data); datas/enums ausentes → `400`; nova rota `GET /api/breeding-events/changes`.
 **Referenciado por:** Spec #6 (Gestação e Parto), Spec #7 (Dashboards)
 
 ---

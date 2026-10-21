@@ -1,16 +1,15 @@
-﻿using MuuBoi.Application.Helpers;
-using System.Text.Json.Serialization;
-
-namespace MuuBoi.Application.DTOs
+﻿namespace MuuBoi.Application.DTOs
 {
     public class WeightRecordDto
     {
         public int Id { get; set; }
+        public Guid SyncId { get; set; }
+        public int AnimalId { get; set; }
         public decimal Weight { get; set; }
-
-        [JsonConverter(typeof(DateFormatConverter))]
         public DateTime RecordedAt { get; set; }
-
         public string? Observations { get; set; }
+        public bool IsActive { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
     }
 }

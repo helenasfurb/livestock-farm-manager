@@ -1,15 +1,19 @@
 using System.ComponentModel.DataAnnotations;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Application.DTOs
 {
     public class BreedingEventCreateDto : IValidatableObject
     {
+        public Guid? SyncId { get; set; }
+
         [Required(ErrorMessage = "O tipo de reprodução é obrigatório.")]
-        public ReproductionType ReproductionType { get; set; }
+        [ValidEnum(typeof(ReproductionType))]
+        public ReproductionType? ReproductionType { get; set; }
 
         [Required(ErrorMessage = "A data da cobertura é obrigatória.")]
-        public DateTime BreedingDate { get; set; }
+        public DateTime? BreedingDate { get; set; }
 
         public int? SemenSampleId { get; set; }
 
@@ -20,12 +24,17 @@ namespace MuuBoi.Application.DTOs
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (BreedingDate > DateTime.UtcNow)
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+
+            if (BreedingDate.HasValue && BreedingDate.Value > DateTime.UtcNow)
                 yield return new ValidationResult(
                     "A data da cobertura não pode ser futura.",
                     new[] { nameof(BreedingDate) });
 
-            if (ReproductionType == ReproductionType.ArtificialInsemination)
+            if (ReproductionType == Domain.Enums.ReproductionType.ArtificialInsemination)
             {
                 if (!SemenSampleId.HasValue)
                     yield return new ValidationResult(
@@ -38,7 +47,7 @@ namespace MuuBoi.Application.DTOs
                         new[] { nameof(SireAnimalId) });
             }
 
-            if (ReproductionType == ReproductionType.NaturalMating)
+            if (ReproductionType == Domain.Enums.ReproductionType.NaturalMating)
             {
                 if (!SireAnimalId.HasValue)
                     yield return new ValidationResult(

@@ -12,5 +12,6 @@ namespace MuuBoi.Application.Interfaces
         Task<BreedingEventDto> UpdateAsync(int id, BreedingEventUpdateDto dto);
         Task<BreedingEventDto> UpdateStatusAsync(int id, BreedingEventStatusUpdateDto dto);
         Task DeactivateAsync(int id);
+        Task<SyncPageDto<BreedingEventSyncDto>> GetChangesAsync(string? since, int? limit);
     }
 }

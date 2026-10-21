@@ -7,7 +7,6 @@ namespace MuuBoi.Application.DTOs
         public string? GeneticsCompany { get; set; }
         public EnumValueDto? BullBreed { get; set; }
         public string? BatchNumber { get; set; }
-        public DateTime? BatchDate { get; set; }
         public int AvailableDoses { get; set; }
         public bool IsActive { get; set; }
     }

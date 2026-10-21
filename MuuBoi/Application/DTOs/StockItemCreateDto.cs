@@ -2,8 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MuuBoi.Application.DTOs
 {
-    public class StockItemCreateDto
+    public class StockItemCreateDto : IValidatableObject
     {
+        public Guid? SyncId { get; set; }
+
         [Required(ErrorMessage = "O nome é obrigatório.")]
         [MaxLength(150, ErrorMessage = "O nome deve ter no máximo 150 caracteres.")]
         public string Name { get; set; } = string.Empty;
@@ -31,5 +33,20 @@ namespace MuuBoi.Application.DTOs
 
         [MaxLength(500, ErrorMessage = "As observações iniciais devem ter no máximo 500 caracteres.")]
         public string? InitialNotes { get; set; }
+
+        public Guid? InitialMovementSyncId { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+
+            if (InitialMovementSyncId.HasValue && InitialMovementSyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização da entrada inicial não pode ser vazio.",
+                    new[] { nameof(InitialMovementSyncId) });
+        }
     }
 }

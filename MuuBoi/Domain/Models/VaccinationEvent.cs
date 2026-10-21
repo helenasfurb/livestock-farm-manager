@@ -8,7 +8,7 @@ namespace MuuBoi.Domain.Models
     /// <see cref="VaccinationEventAnimal"/>). Status is derived at read time, never stored.
     /// Invariant: at least one of <see cref="PredictedDate"/> / <see cref="ApplicationDate"/> is set.
     /// </summary>
-    public class VaccinationEvent : BaseEntity, ITenantEntity
+    public class VaccinationEvent : BaseEntity, ITenantEntity, ISyncable
     {
         [Required]
         public int VaccineId { get; set; }
@@ -29,6 +29,9 @@ namespace MuuBoi.Domain.Models
         public string? Notes { get; set; }
 
         public Guid PropertyId { get; set; }
+
+        public Guid SyncId { get; set; }
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         public Vaccine? Vaccine { get; set; }
         public VaccinationEvent? ParentEvent { get; set; }

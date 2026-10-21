@@ -3,7 +3,7 @@ using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Domain.Models
 {
-    public class Lactation : BaseEntity, ITenantEntity
+    public class Lactation : BaseEntity, ITenantEntity, ISyncable
     {
         public int AnimalId { get; set; }
 
@@ -19,6 +19,9 @@ namespace MuuBoi.Domain.Models
         public string? DryOffNotes { get; set; }         // observações da secagem (D16)
 
         public Guid PropertyId { get; set; }
+
+        public Guid SyncId { get; set; }
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         public Animal? Animal { get; set; }
         public AnimalCalving? Calving { get; set; }

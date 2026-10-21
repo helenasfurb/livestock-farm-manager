@@ -9,13 +9,13 @@ namespace MuuBoi.Application.DTOs
     public class LactationSeedDto : IValidatableObject
     {
         [Required(ErrorMessage = "A data de início da lactação é obrigatória.")]
-        public DateTime StartDate { get; set; }
+        public DateTime? StartDate { get; set; }
 
         public DateTime? EndDate { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (StartDate > DateTime.UtcNow)
+            if (StartDate.HasValue && StartDate.Value > DateTime.UtcNow)
                 yield return new ValidationResult(
                     "A data de início não pode ser futura.",
                     new[] { nameof(StartDate) });
@@ -27,7 +27,7 @@ namespace MuuBoi.Application.DTOs
                         "A data da secagem não pode ser futura.",
                         new[] { nameof(EndDate) });
 
-                if (EndDate.Value < StartDate)
+                if (StartDate.HasValue && EndDate.Value < StartDate.Value)
                     yield return new ValidationResult(
                         "A data da secagem não pode ser anterior ao início da lactação.",
                         new[] { nameof(EndDate) });

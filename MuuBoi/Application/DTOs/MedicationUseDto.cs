@@ -7,6 +7,7 @@ namespace MuuBoi.Application.DTOs
     public class MedicationUseDto
     {
         public int Id { get; set; }
+        public Guid SyncId { get; set; }
         public string MedicationName { get; set; } = string.Empty;
 
         [JsonConverter(typeof(DateFormatConverter))]

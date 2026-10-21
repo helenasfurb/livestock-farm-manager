@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Application.DTOs
@@ -14,10 +15,13 @@ namespace MuuBoi.Application.DTOs
 
         public DateTime? PredictedDate { get; set; }
 
+        [ValidEnum(typeof(DoseType))]
         public DoseType? DoseType { get; set; }
 
         [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
+
+        public DateTime? UpdatedAt { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {

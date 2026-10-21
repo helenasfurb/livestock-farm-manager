@@ -8,6 +8,8 @@
 **Depende de:** Spec #2 (Entrada de Animais), Spec #5 (Eventos Reprodutivos), Spec #6 (6.1 Gestação / 6.2 Parto / 6.3 Cria)
 **Relaciona-se com:** Spec #10 (Registro Genealógico) — só alimenta os campos de pai; a modelagem final da genealogia é lá. Sincronização offline → **Spec #14** (contrato de servidor, transversal) — aqui só mapeamos o impacto e sugerimos caminhos.
 
+> **Sincronização offline (14/Out/2026):** a gestação retroativa passou a ser sincronizável pela **Spec #14.10** (`spec-sincronizacao-offline-14.10-cobertura-gestacao.md`). O **`ClientRequestId` (RN-07) foi substituído pelo `SyncId`** — a migração copiou os valores existentes e removeu a coluna; o DTO usa `syncId`. O reenvio também devolve a existente quando a vaca já tem gestação ativa (Condição 3). Perda e inativação repetidas → `2xx`; nova rota `GET /api/pregnancies/changes`.
+
 ---
 
 ## 1. Contexto e Objetivo

@@ -9,8 +9,10 @@ namespace MuuBoi.Application.Interfaces
     {
         Task<IEnumerable<StockMovement>> GetByStockItemIdAsync(int stockItemId, StockMovementFilterDto filter);
         Task<StockMovement?> GetByIdAsync(int id);
+        Task<StockMovement?> GetBySyncIdAsync(Guid syncId);
         Task<StockMovement> CreateAsync(StockMovement movement);
         Task<StockMovement> UpdateAsync(StockMovement movement);
+        Task<IReadOnlyList<StockMovement>> GetChangesAsync(ulong since, int take);
         Task<StockItemLevels> GetLevelsAsync(int stockItemId);
         Task<Dictionary<int, StockItemLevels>> GetLevelsBatchAsync(IEnumerable<int> stockItemIds);
         Task<Dictionary<int, decimal>> GetConsumptionSinceBatchAsync(IEnumerable<int> stockItemIds, DateTime since);

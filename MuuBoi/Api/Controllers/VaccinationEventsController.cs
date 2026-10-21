@@ -31,6 +31,13 @@ namespace MuuBoi.Api.Controllers
             return Ok(events);
         }
 
+        [HttpGet("changes")]
+        public async Task<ActionResult<SyncPageDto<VaccinationEventSyncDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _service.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<VaccinationEventDto>> GetById(int id)
         {

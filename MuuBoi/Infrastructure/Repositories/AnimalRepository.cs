@@ -20,7 +20,7 @@ namespace MuuBoi.Infrastructure.Repositories
         public async Task<IEnumerable<Animal>> GetAllAnimalsAsync(AnimalFilterDto filter)
         {
             var query = ApplyFilters(_context.Animals
-                .Include(a => a.WeightRecords!.OrderByDescending(w => w.RecordedAt).Take(1))
+                .Include(a => a.WeightRecords!.Where(w => w.IsActive).OrderByDescending(w => w.RecordedAt).Take(1))
                 .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1)), filter);
 
             return await query.ToListAsync();
@@ -107,10 +107,24 @@ namespace MuuBoi.Infrastructure.Repositories
         public async Task<Animal?> GetAnimalByIdAsync(int id)
         {
             return await _context.Animals
-                .Include(a => a.WeightRecords!.OrderByDescending(w => w.RecordedAt))
+                .Include(a => a.WeightRecords!.Where(w => w.IsActive).OrderByDescending(w => w.RecordedAt))
                 .Include(a => a.BodyConditionRecords!.OrderByDescending(r => r.RecordedAt).Take(1))
                 .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1))
                 .FirstOrDefaultAsync(a => a.Id == id);
+        }
+
+        public async Task<Animal?> GetBySyncIdAsync(Guid syncId)
+        {
+            return await _context.Animals
+                .Include(a => a.WeightRecords!.Where(w => w.IsActive).OrderByDescending(w => w.RecordedAt))
+                .Include(a => a.BodyConditionRecords!.OrderByDescending(r => r.RecordedAt).Take(1))
+                .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1))
+                .FirstOrDefaultAsync(a => a.SyncId == syncId);
+        }
+
+        public async Task<IReadOnlyList<Animal>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<Animal>(since, take);
         }
 
         public async Task<List<int>> GetExistingAnimalIdsAsync(IReadOnlyCollection<int> ids)
@@ -122,6 +136,16 @@ namespace MuuBoi.Infrastructure.Repositories
                 .Where(a => ids.Contains(a.Id))
                 .Select(a => a.Id)
                 .ToListAsync();
+        }
+
+        public async Task<Dictionary<int, string?>> GetTagNumbersByIdsAsync(IReadOnlyCollection<int> ids)
+        {
+            if (ids == null || ids.Count == 0)
+                return new Dictionary<int, string?>();
+
+            return await _context.Animals
+                .Where(a => ids.Contains(a.Id))
+                .ToDictionaryAsync(a => a.Id, a => a.TagNumber);
         }
 
         public async Task<IEnumerable<Animal>> GetBreedingEligibleAnimalsAsync(string? search)
@@ -143,15 +167,25 @@ namespace MuuBoi.Infrastructure.Repositories
 
         public async Task<Animal> CreateAnimalAsync(Animal animal)
         {
-            _context.Animals.Add(animal);
-            await _context.SaveChangesAsync();
-            return animal;
+            return await _context.AddSyncableAsync(animal);
         }
 
         public async Task<Animal> UpdateAnimalAsync(Animal animal)
         {
             _context.Animals.Update(animal);
             await _context.SaveChangesAsync();
+            return animal;
+        }
+
+        public async Task<Animal> UpdateAnimalAndTouchCalvingAsync(Animal animal, int calvingId)
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            _context.Animals.Update(animal);
+            await _context.SaveChangesAsync();
+            await _context.AnimalCalvings
+                .Where(c => c.Id == calvingId)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsActive, c => c.IsActive));
+            await transaction.CommitAsync();
             return animal;
         }
 

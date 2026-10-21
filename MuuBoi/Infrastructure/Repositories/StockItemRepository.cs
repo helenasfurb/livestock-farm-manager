@@ -42,11 +42,29 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(i => i.Id == id);
         }
 
+        public async Task<StockItem?> GetBySyncIdAsync(Guid syncId)
+        {
+            return await _context.StockItems
+                .Include(i => i.StockCategory)
+                .Include(i => i.UnitOfMeasure)
+                .FirstOrDefaultAsync(i => i.SyncId == syncId);
+        }
+
+        public async Task<Dictionary<int, StockItem>> GetByIdsAsync(IEnumerable<int> ids)
+        {
+            var distinct = ids.Distinct().ToList();
+            if (distinct.Count == 0)
+                return new Dictionary<int, StockItem>();
+
+            return await _context.StockItems
+                .Include(i => i.UnitOfMeasure)
+                .Where(i => distinct.Contains(i.Id))
+                .ToDictionaryAsync(i => i.Id);
+        }
+
         public async Task<StockItem> CreateAsync(StockItem item)
         {
-            _context.StockItems.Add(item);
-            await _context.SaveChangesAsync();
-            return item;
+            return await _context.AddSyncableAsync(item);
         }
 
         public async Task<StockItem> UpdateAsync(StockItem item)
@@ -54,6 +72,11 @@ namespace MuuBoi.Infrastructure.Repositories
             _context.StockItems.Update(item);
             await _context.SaveChangesAsync();
             return item;
+        }
+
+        public async Task<IReadOnlyList<StockItem>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<StockItem>(since, take);
         }
     }
 }

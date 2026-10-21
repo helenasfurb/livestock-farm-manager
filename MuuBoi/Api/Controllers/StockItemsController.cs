@@ -26,6 +26,20 @@ namespace MuuBoi.Api.Controllers
             return Ok(items);
         }
 
+        [HttpGet("changes")]
+        public async Task<ActionResult<SyncPageDto<StockItemDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _service.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
+        [HttpGet("movements/changes")]
+        public async Task<ActionResult<SyncPageDto<StockMovementDto>>> GetMovementChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _movementService.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<StockItemDto>> GetById(int id)
         {
@@ -34,7 +48,7 @@ namespace MuuBoi.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<StockItemDto>> Create([FromBody] StockItemCreateDto dto)
+        public async Task<ActionResult<StockItemCreatedDto>> Create([FromBody] StockItemCreateDto dto)
         {
             var created = await _service.CreateAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);

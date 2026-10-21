@@ -6,6 +6,8 @@ namespace MuuBoi.Application.DTOs
 {
     public class AnimalCreateDto : IValidatableObject
     {
+        public Guid? SyncId { get; set; }
+
         [Required(ErrorMessage = "O brinco principal é obrigatório.")]
         [RegularExpression(@"^\d{6}$", ErrorMessage = "O brinco principal deve ter exatamente 6 dígitos numéricos.")]
         public string TagNumber { get; set; } = string.Empty;
@@ -46,6 +48,8 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(500, ErrorMessage = "As observações do ECC inicial devem ter no máximo 500 caracteres.")]
         public string? InitialBodyConditionNotes { get; set; }
 
+        public Guid? InitialBodyConditionSyncId { get; set; }
+
         public decimal? InitialWeight { get; set; }
 
         public DateTime? InitialWeightDate { get; set; }
@@ -53,11 +57,35 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(500, ErrorMessage = "As observações da pesagem inicial devem ter no máximo 500 caracteres.")]
         public string? InitialWeightObservations { get; set; }
 
+        public Guid? InitialWeightSyncId { get; set; }
+
         // Bloco opcional de última lactação (Spec 11.2 D17) — só para Vaca/Novilha (validado no AnimalService).
         public LactationSeedDto? InitialLactation { get; set; }
 
+        public Guid? InitialLactationSyncId { get; set; }
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+
+            if (InitialWeightSyncId.HasValue && InitialWeightSyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização da pesagem inicial não pode ser vazio.",
+                    new[] { nameof(InitialWeightSyncId) });
+
+            if (InitialBodyConditionSyncId.HasValue && InitialBodyConditionSyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização do ECC inicial não pode ser vazio.",
+                    new[] { nameof(InitialBodyConditionSyncId) });
+
+            if (InitialLactationSyncId.HasValue && InitialLactationSyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização da lactação inicial não pode ser vazio.",
+                    new[] { nameof(InitialLactationSyncId) });
+
             if (Classification.HasValue && Gender.HasValue)
             {
                 var femaleOnly = new[] { AnimalClassification.Heifer, AnimalClassification.Cow };

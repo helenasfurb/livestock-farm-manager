@@ -11,5 +11,6 @@ namespace MuuBoi.Application.Interfaces
         Task<VaccinationEventDto> UpdateAsync(int id, VaccinationEventUpdateDto dto);
         Task<bool> DeactivateAsync(int id);
         Task<IEnumerable<VaccinationHistoryItemDto>> GetAnimalHistoryAsync(int animalId);
+        Task<SyncPageDto<VaccinationEventSyncDto>> GetChangesAsync(string? since, int? limit);
     }
 }

@@ -7,7 +7,11 @@ namespace MuuBoi.Application.Interfaces
     {
         Task<IEnumerable<VaccinationEvent>> GetAllAsync(VaccinationEventFilterDto filter);
         Task<VaccinationEvent?> GetByIdAsync(int id);
+        Task<VaccinationEvent?> GetBySyncIdAsync(Guid syncId);
         Task<VaccinationEvent> CreateAsync(VaccinationEvent vaccinationEvent);
+        Task<VaccinationEvent?> CreateBoosterAsync(VaccinationEvent booster);
+        Task<IReadOnlyList<VaccinationEvent>> GetChangesAsync(ulong since, int take);
+        Task<Dictionary<int, List<int>>> GetAnimalIdsByEventIdsAsync(IReadOnlyCollection<int> eventIds);
         Task<VaccinationEvent> UpdateAsync(VaccinationEvent vaccinationEvent);
 
         /// <summary>The active booster child of a parent event, if any (one child per parent).</summary>

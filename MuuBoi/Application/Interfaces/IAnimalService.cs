@@ -6,10 +6,11 @@ namespace MuuBoi.Application.Interfaces
     {
         Task<IEnumerable<AnimalListItemDto>> GetAllAnimalsAsync(AnimalFilterDto filter);
         Task<AnimalDto> GetAnimalByIdAsync(int id);
-        Task<AnimalDto> CreateAnimalAsync(AnimalCreateDto animalCreateDto);
+        Task<AnimalCreatedDto> CreateAnimalAsync(AnimalCreateDto animalCreateDto);
         Task<AnimalDto> UpdateAnimalAsync(int id, AnimalUpdateDto animalUpdateDto);
         Task<AnimalDto> ExitAnimalAsync(int id, AnimalExitDto dto);
         Task<AnimalDto> ReactivateAnimalAsync(int id);
         Task<IEnumerable<AnimalExitRecordDto>> GetExitRecordsAsync(int animalId);
+        Task<SyncPageDto<AnimalSyncDto>> GetChangesAsync(string? since, int? limit);
     }
 }

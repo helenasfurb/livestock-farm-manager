@@ -1,9 +1,9 @@
 # Spec #14: Sincronização Offline — Especificação e Plano de Implementação
 
 **Módulo:** Infraestrutura / Sincronização — transversal a toda a aplicação
-**Versão:** 1.1
-**Data:** 05/Out/2026
-**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`); **Vacinas** (`Vaccine`) com plano aprovado (Spec #14.1); demais entidades seguem a receita da §7.4, cada uma numa spec filha (§8).
+**Versão:** 1.11
+**Data:** 16/Out/2026
+**Status:** 🟢 **Aprovada.** Implementada para **Produção de Leite** (`MilkProduction`, Parte II), **Vacinas** (Spec #14.1), **Sêmen e movimentações manuais** (Spec #14.2), **Estoque de insumos e movimentações** (Spec #14.3), **Animais e saídas do rebanho** (Spec #14.4), **Pesagens** (Spec #14.5), **ECC** (Spec #14.6), **Lactação e secagem** (Spec #14.7), **Eventos de vacinação e reforços** (Spec #14.8), **Casos de saúde, aplicações e testes** (Spec #14.9), **Cobertura, diagnóstico e gestação** (Spec #14.10) e **Parto e crias** (Spec #14.11) — **todas as entidades da §8 previstas para o offline estão sincronizáveis** (16/Out/2026). Novas entidades seguem a receita da §7.4, cada uma numa spec filha.
 **Abrangência:** contrato de sincronização do servidor/API (identidade, versionamento, tombstones, idempotência, tenant) **e** o contrato que o app offline precisa seguir para consumi-lo.
 **Relaciona-se com:** Spec 11.1 (Produção de Leite, §8) · Spec #13 (Cadastro Retroativo de Gestação, §6) · todos os specs de entidade · `Docs/catalogo-erros-api.md`
 
@@ -16,6 +16,16 @@
 | 0.1 | 05/Set/2026 | Rascunho para discussão. Decisões D1–D6; push **em lote** (`POST /api/sync/changes`) e pull global (`GET /api/sync/changes`). |
 | 1.0 | 03/Out/2026 | Decisões revisadas (A1–A8): **sem rota em lote** — o app envia pelas **rotas REST normais**, em ordem; pull **por recurso** (`GET /api/<recurso>/changes`). Implementação completa da produção de leite (Fases 1–7), com helpers reutilizáveis e 19 testes. |
 | 1.1 | 05/Out/2026 | A implementação de cada nova entidade passa a ficar em uma **spec filha** (`spec-sincronizacao-offline-14.N-<entidade>.md`), para este documento não crescer a cada entidade. Primeira: **Spec #14.1 — catálogo de vacinas**. |
+| 1.2 | 08/Out/2026 | §8: `StockItem` e `StockMovement` sincronizáveis (**Spec #14.3**); §13 questão 1 resolvida para o estoque de insumos. **Correção de premissa:** não existe cliente web — o único cliente é o app, que funciona online e offline pelo mesmo caminho. Menções a "web" trocadas por "outro celular" (conflitos) ou "Swagger/chamada direta" (requisições sem `syncId`/`updatedAt`) em §1, §3.3, §4, §5.2–§5.5, §5.9, §10 e §12. |
+| 1.3 | 09/Out/2026 | §8: `Animal` e `AnimalExitRecord` sincronizáveis (**Spec #14.4**). §5.5: primeira exceção ao "mesmo DTO do detalhe" (pull de animais com `AnimalSyncDto`). §5.7: reenvio do `POST` de animal resolvido. §7.5: **Condição 3** — regra de unicidade checada entre o `SyncId` e o `INSERT` precisa rechecar o `SyncId` antes do `409`. |
+| 1.4 | 10/Out/2026 | §8: `WeightRecord` sincronizável (**Spec #14.5**) — primeira entidade filha de um registro sincronizável criado offline (A5). §13 questão 4 resolvida para a pesagem (exclusão lógica); continua aberta para `AnimalMedication`. Sumário: lista completa das specs filhas |
+| 1.5 | 10/Out/2026 | §8: `BodyConditionRecord` sincronizável (**Spec #14.6**) — primeira migração da Spec #14 com backfill de dados (`PropertyId` pelo animal), que dá ao ECC o mesmo filtro de tenant das demais entidades. Sumário com a 14.6 |
+| 1.6 | 11/Out/2026 | §8: `Lactation` sincronizável (**Spec #14.7**) — primeira aplicação da Condição 3 a uma invariante de estado ("uma lactação aberta por animal") e primeira referência a derivado do cadastro do **animal** na resposta (`initialLactation`). Operações em lactação inativa respondem `2xx` com o estado do servidor (§5.4) e mudanças de estado não alteram `UpdatedAt` (L7). §13 questão 8 (nova). Sumário com a 14.7 |
+| 1.7 | 12/Out/2026 | §13 questão 8 resolvida: mudanças de estado não alteram `UpdatedAt` em nenhuma entidade sincronizável (regra nova na §5.4) |
+| 1.8 | 12/Out/2026 | §8: `VaccinationEvent` sincronizável, com `VaccinationEventAnimal` embutido (**Spec #14.8**) — primeira operação com várias referências resolvidas pelo app (vacina + lista de animais) e primeira corrida tratada num índice único que **não** é o do `SyncId` (reforço: "um ativo por evento", tratado no repositório, sem mudar o `AddSyncableAsync`). §5.5: segunda exceção ao "mesmo DTO do detalhe" (`VaccinationEventSyncDto`). Sumário com a 14.8 |
+| 1.9 | 13/Out/2026 | §8: `HealthCase`, `AnimalMedication` (do caso) e `MastitisTest` sincronizáveis (**Spec #14.9**) — primeiros **filhos com identidade própria embutidos** no pull do pai: criar ou inativar um filho "toca" o caso (`UPDATE` direto, sem checar `RowVersion`, na mesma transação) para o caso reaparecer no pull. §5.5: terceira exceção ao "mesmo DTO do detalhe" (`HealthCaseSyncDto`). §13 questão 4 restrita ao uso avulso de medicação. Sumário com a 14.9 |
+| 1.10 | 14/Out/2026 | §8: `BreedingEvent` e `AnimalPregnancy` sincronizáveis (**Spec #14.10**) — primeira aplicação das **Condições 1 e 2** a derivados criados pelo servidor: a cobertura por IA grava a saída de sêmen no mesmo `SaveChanges`; o diagnóstico positivo grava a gestação no mesmo `SaveChanges`, com o `syncId` vindo do app (`pregnancySyncId`). `ClientRequestId` da gestação retroativa (Spec #13) unificado no `SyncId`. **§13 questão 1 resolvida para a cobertura:** a cobertura aceita saldo de sêmen negativo (única mudança de regra, decidida pela usuária). Sumário com a 14.10 |
+| 1.11 | 16/Out/2026 | §8: `AnimalCalving` e `AnimalCalvingCalf` sincronizáveis (**Spec #14.11**) — **fecha a §8**. Maior aplicação das Condições 1 e 2: o parto grava parto, crias, animais das crias, pesagens de nascimento, lactação, ECC e o status da gestação num só `SaveChanges`, com o `syncId` de cada derivado vindo do app; a inativação em cascata também é uma gravação só, sem `UpdatedAt`. Corrida tratada no repositório (limpa o rastreamento e rebusca o `SyncId`). §5.5: quarta exceção ao "mesmo DTO do detalhe" (`AnimalCalvingSyncDto`, crias embutidas; editar a cria — inclusive pelo sexo no cadastro do animal — toca o parto). Sumário com a 14.11 |
 
 ---
 
@@ -44,6 +54,16 @@
 
 **Specs filhas (implementação por entidade)** — ver §8
 - Spec #14.1 — Catálogo de Vacinas (`spec-sincronizacao-offline-14.1-vacinas.md`)
+- Spec #14.2 — Sêmen e movimentações manuais (`spec-sincronizacao-offline-14.2-semen.md`)
+- Spec #14.3 — Estoque de insumos e movimentações (`spec-sincronizacao-offline-14.3-estoque.md`)
+- Spec #14.4 — Animais e saídas do rebanho (`spec-sincronizacao-offline-14.4-animais.md`)
+- Spec #14.5 — Pesagens (`spec-sincronizacao-offline-14.5-pesagem.md`)
+- Spec #14.6 — Escore de Condição Corporal (`spec-sincronizacao-offline-14.6-ecc.md`)
+- Spec #14.7 — Lactação e Secagem (`spec-sincronizacao-offline-14.7-lactacao.md`)
+- Spec #14.8 — Eventos de Vacinação e Reforços (`spec-sincronizacao-offline-14.8-vacinacao.md`)
+- Spec #14.9 — Casos de Saúde, Aplicações e Testes (`spec-sincronizacao-offline-14.9-casos-saude.md`)
+- Spec #14.10 — Cobertura, Diagnóstico e Gestação (`spec-sincronizacao-offline-14.10-cobertura-gestacao.md`)
+- Spec #14.11 — Parto e Crias (`spec-sincronizacao-offline-14.11-parto-crias.md`)
 
 ---
 
@@ -56,7 +76,7 @@ Até a versão 1.0, a API era **online-only** e **server-authoritative**: toda e
 Isso quebra três premissas:
 
 1. **Identidade** — um registro criado offline não pode esperar o `int` do servidor para existir nem para ser referenciado por dependentes locais.
-2. **Fonte única da verdade** — duas origens (app offline + web) podem editar o mesmo dado; é preciso **reconciliar**.
+2. **Fonte única da verdade** — dois celulares da mesma propriedade (membros/administradores), cada um podendo estar offline, podem editar o mesmo dado; é preciso **reconciliar**. Não há cliente web: o único cliente é o app, que usa o mesmo caminho (grava local e enfileira) online e offline.
 3. **Entrega confiável** — sob instabilidade, requisições são reenviadas; sem **idempotência** geram duplicatas.
 
 Esta spec define o **contrato de servidor** que suporta a sincronização e o que o app precisa fazer para consumi-lo, e documenta a primeira implementação (produção de leite).
@@ -143,7 +163,7 @@ Com `2xx` + estado atual, a lógica do app tem **uma regra só**: remove da fila
 
 - A RFC 9110 define idempotência pelo **efeito no servidor**, não pelo status; responder `2xx` é uma **escolha de projeto** para simplificar o cliente.
 - **Conflitos reais continuam sendo erro.** A regra só vale quando **a mesma operação** já foi aplicada (mesmo `SyncId` na criação; mesmo estado pedido numa mudança de estado). Um animal com o mesmo brinco e **outro** `SyncId` continua `409`.
-- **Efeito colateral aceito:** numa mudança de estado, "já está no estado pedido" pode ter sido causado por outra pessoa (ex.: a web secou a lactação em 08/09 e o celular pede secagem em 10/09). O servidor responde `200` com o estado real e o app atualiza o local com ele.
+- **Efeito colateral aceito:** numa mudança de estado, "já está no estado pedido" pode ter sido causado por outra pessoa (ex.: outro celular secou a lactação em 08/09 e este celular pede secagem em 10/09). O servidor responde `200` com o estado real e o app atualiza o local com ele.
 - **Exceção ao `CLAUDE.md`**, que manda usar `ConflictException` quando a entidade "já está no estado pedido" — vale só para rotas com suporte offline.
 
 ### 3.4 Outras decisões registradas durante a implementação
@@ -166,9 +186,9 @@ Com `2xx` + estado atual, a lógica do app tem **uma regra só**: remove da fila
 |---|---|---|
 | CU-1 | Produtor cadastra animais/eventos **offline** no curral e sincroniza ao voltar ao sinal. | `SyncId` gerado no app (A4) + criação idempotente (§5.2) |
 | CU-2 | Cadastro retroativo de gestação offline e, na sequência, **parto** da mesma gestação, ainda offline. | Envio sequencial + resolução do `Id` no app (A2, A5, §5.8) |
-| CU-3 | Web e app editam o **mesmo animal** enquanto o app está offline. | Last-write-wins pelo momento da edição (§5.3) |
+| CU-3 | Dois celulares da mesma propriedade editam o **mesmo animal**, um deles offline. | Last-write-wins pelo momento da edição (§5.3) |
 | CU-4 | `POST` reenviado porque o `201` não chegou (link instável), mesmo online. | Reenvio é sucesso (A6, §5.7) |
-| CU-5 | App fica dias offline e depois puxa tudo que mudou na web. | Pull incremental por `rowversion` (§5.5) |
+| CU-5 | App fica dias offline e depois puxa tudo que os outros celulares mudaram. | Pull incremental por `rowversion` (§5.5) |
 
 ---
 
@@ -202,24 +222,24 @@ Todo registro sincronizável tem **dois identificadores**:
 
 ### 5.2 Criação (`POST`) — idempotente
 
-- O DTO de criação aceita `syncId` **opcional**: o app sempre envia; a web pode omitir (o servidor gera).
+- O DTO de criação aceita `syncId` **opcional**: o app sempre envia; sem ele (Swagger/chamada direta) o servidor gera.
 - O service checa o `SyncId` **antes de qualquer regra de negócio**. Se já existe → devolve o registro existente com o **mesmo corpo do `201`** (incluindo o `Id`), **sem alterar** — mesmo que o payload seja diferente (alterações chegam pelo `PATCH` que vem depois na fila). Registro inativo é devolvido como está, sem reativar.
 - **Corrida** (original e reenvio chegando ao mesmo tempo): o índice único `UX_{Tabela}_SyncId` barra o segundo `INSERT`; a violação é capturada e o registro existente é devolvido.
 - A resposta inclui `syncId`, para o app ligar `SyncId` ↔ `Id`.
 
 ### 5.3 Edição (`PATCH`) — last-write-wins
 
-O DTO de edição aceita `updatedAt` **opcional**: o momento em que o usuário **editou** no celular. A web omite e o servidor usa "agora".
+O DTO de edição aceita `updatedAt` **opcional**: o momento em que o usuário **editou** no celular. O app sempre envia; sem ele (Swagger/chamada direta) o servidor usa "agora".
 
 **O problema:** "último" segundo qual relógio? Usar a **hora de chegada** dá o vencedor errado:
 
 ```
-Segunda 08:00  Celular (offline) corrige o volume para 120 L
-Terça   10:00  Web corrige o mesmo lançamento para 125 L   ← edição mais recente
-Sexta   18:00  Celular sincroniza a correção de segunda
+Segunda 08:00  Celular A (offline) corrige o volume para 120 L
+Terça   10:00  Celular B (online) corrige o mesmo lançamento para 125 L   ← edição mais recente
+Sexta   18:00  Celular A sincroniza a correção de segunda
 ```
 
-Por hora de chegada, o celular venceria e a correção de terça se perderia. Por isso o servidor compara o **momento da edição**.
+Por hora de chegada, o celular A venceria e a correção de terça se perderia. Por isso o servidor compara o **momento da edição**.
 
 **Regras (helper `SyncTimestampResolver`):**
 
@@ -229,7 +249,7 @@ Por hora de chegada, o celular venceria e a correção de terça se perderia. Po
 | `...-03:00` | `Local` (o .NET converte para o fuso do servidor) | `ToUniversalTime()` |
 | Sem fuso | `Unspecified` | Assume UTC (contrato) |
 | Depois de "agora" | — | Limita a "agora" |
-| Ausente (web) | — | "Agora" |
+| Ausente (Swagger/chamada direta) | — | "Agora" |
 
 - **Comparação:** se `editedAt < (UpdatedAt ?? CreatedAt)` → **não aplica** e devolve `200` com a versão do servidor; o app sobrescreve o local com ela. Caso contrário aplica e grava `UpdatedAt = editedAt`.
 - **Empate aplica** (`<`, não `<=`): é o reenvio da mesma edição. A precisão de `datetime2` (100 ns) é a mesma do .NET, então o valor volta idêntico.
@@ -250,8 +270,9 @@ Por hora de chegada, o celular venceria e a correção de terça se perderia. Po
 ### 5.4 Mudanças de estado e inativação (`DELETE`)
 
 - **Estado já é o pedido** (ex.: inativar algo inativo) → `2xx` com o recurso, **sem gravar nada**: `UpdatedAt` e `RowVersion` não mudam, para o registro não "reaparecer" no pull.
-- **A inativação não passa pelo LWW — sempre vence.** O `DELETE` não leva `updatedAt`. Se o celular inativar offline na segunda e a web editar na terça, a sincronização de sexta inativa o registro (com a edição da web preservada nos campos). Motivos: excluir é intenção explícita, e com soft delete nada se perde (dá para reativar). A alternativa exigiria corpo no `DELETE` e criaria o caso de um registro excluído que "volta".
+- **A inativação não passa pelo LWW — sempre vence.** O `DELETE` não leva `updatedAt`. Se o celular A inativar offline na segunda e o celular B editar na terça, a sincronização de sexta inativa o registro (com a edição do celular B preservada nos campos). Motivos: excluir é intenção explícita, e com soft delete nada se perde (dá para reativar). A alternativa exigiria corpo no `DELETE` e criaria o caso de um registro excluído que "volta".
 - `PATCH` em registro inativo continua aceito (edita sem reativar).
+- **Mudanças de estado não alteram `UpdatedAt`** (inativar, reativar, saída do rebanho, secagem etc.). O `UpdatedAt` é o relógio do LWW das **edições** (§5.3); se a mudança de estado o carimbasse com a hora do servidor, uma edição offline feita **depois** dela no mesmo celular seria descartada no sync. O `RowVersion` continua avançando e leva a mudança ao pull (§13 questão 8).
 
 ### 5.5 Pull incremental: `GET /api/<recurso>/changes?since=&limit=`
 
@@ -270,7 +291,7 @@ GET /api/milk-productions/changes?since=abc
 |---|---|
 | `since` | Ausente ou vazio → carga completa. Não numérico ou negativo → `400`. |
 | `limit` | Ausente, zero ou negativo → 500; acima de 500 → 500. **Ajusta, não dá erro.** |
-| `items` | Registros com `RowVersion > since`, em ordem crescente de `RowVersion`, **inclusive inativos** (tombstones). Mesmo DTO do detalhe. |
+| `items` | Registros com `RowVersion > since`, em ordem crescente de `RowVersion`, **inclusive inativos** (tombstones). Mesmo DTO do detalhe — **exceção:** `Animal` usa `AnimalSyncDto` (só dados do próprio animal + saídas), porque o detalhe é composto de outros recursos e custaria ~6 consultas por animal (Spec #14.4, N6); `VaccinationEvent` usa `VaccinationEventSyncDto` (sem status, nomes e linhagem, com `animalIds`), porque o status muda com o tempo e o `childEvent` do pai muda sem o `RowVersion` do pai mudar — o app deriva esses dados localmente (Spec #14.8, V7); `HealthCase` usa `HealthCaseSyncDto` (sem status, data de liberação e nome do animal; com **todas** as aplicações e testes, inclusive inativos), porque os derivados mudam com o tempo e o detalhe só mostra filhos ativos (Spec #14.9, H6); `AnimalCalving` usa `AnimalCalvingSyncDto` (crias embutidas, inclusive inativas, sem nome/brinco/raça — vêm no pull de animais), porque o detalhe do parto só existe dentro da gestação e só mostra crias ativas (Spec #14.11, P6). |
 | `nextCursor` | `RowVersion` do **último item da página**, como texto. Página vazia → **o mesmo cursor recebido**. |
 | `hasMore` | `true` se há mais páginas; o app pede de novo imediatamente com o `nextCursor`. |
 
@@ -290,7 +311,7 @@ GET /api/milk-productions/changes?since=abc
 | Inativos | Não interessam | Obrigatórios (exclusões) |
 | Tamanho | Proporcional ao período pedido | Proporcional ao que mudou |
 
-Um `?updatedSince=` no `GET` atual também não serve: o `UpdatedAt` é o momento da edição no celular (uma edição de segunda enviada na sexta passaria despercebida), mudaria o formato que a web usa e misturaria dois contratos numa URL.
+Um `?updatedSince=` no `GET` atual também não serve: o `UpdatedAt` é o momento da edição no celular (uma edição de segunda enviada na sexta passaria despercebida), mudaria o formato que as telas do app usam e misturaria dois contratos numa URL.
 
 ### 5.6 Idempotência sem chave por requisição
 
@@ -342,7 +363,7 @@ App                                       Servidor
 
 | Operação reenviada | Resposta hoje |
 |---|---|
-| `POST` animal | `AnimalService.cs:121` — "Já existe um animal com o brinco '...'" |
+| `POST` animal | ✅ **Resolvido (Spec #14.4):** `SyncId` checado antes do brinco; reenvio → `201` com o existente. Antes: "Já existe um animal com o brinco '...'" |
 | `POST` gestação | `AnimalPregnancyService.cs:79` — "O animal já possui uma gestação ativa confirmada." |
 | `POST` parto | `AnimalCalvingService.cs:44` — "Esta gestação já possui um parto ativo registrado." |
 | Diagnóstico da cobertura | `BreedingEventService.cs:185` — "O diagnóstico desta cobertura já foi registrado." |
@@ -385,7 +406,7 @@ A B só compensaria com envio em paralelo ou em lote.
 
 | Campo | Para que serve | Quem preenche | Ordem garantida? |
 |---|---|---|---|
-| `UpdatedAt` | Resolver **conflito** (LWW) | O **celular** (momento da edição) ou o servidor (web) | **Não** |
+| `UpdatedAt` | Resolver **conflito** (LWW) | O **celular** (momento da edição) ou o servidor, quando a requisição vem sem `updatedAt` (Swagger/chamada direta) | **Não** |
 | `RowVersion` | Saber **o que mudou** (cursor do pull) | O **SQL Server**, a cada INSERT/UPDATE | **Sim** |
 
 O `UpdatedAt` não serve como cursor: ele vem do celular (edições offline chegam com data antiga) e, mesmo com horário do servidor, commits simultâneos podem terminar fora de ordem.
@@ -554,6 +575,8 @@ POST /api/pregnancies/42/calvings
 
 Derivados que o usuário não referencia diretamente (lactação aberta pelo parto, movimentação gerada pela cobertura) podem ter `SyncId` gerado pelo servidor e chegam ao app pelo pull.
 
+**Condição 3 — regra de unicidade ou de estado entre o `SyncId` e o `INSERT` (descoberta na Spec #14.4, 09/Out/2026).** Se o original grava depois que o reenvio passou pela checagem do `SyncId`, o reenvio esbarra na regra causada pelo **próprio** original (ex.: "Já existe um animal com o brinco ...") e recebe `409` — erro definitivo para o app, embora a operação tenha dado certo. Solução: antes de lançar a exceção da regra, **buscar o `SyncId` de novo**; se existir, devolver o existente. Se a regra viu o registro, o original já fez commit, então a segunda busca o encontra. Aplicar em gestação ("gestação ativa"), parto ("parto ativo") e qualquer outra regra desse tipo.
+
 ---
 
 ## 8. Entidades no escopo
@@ -561,14 +584,27 @@ Derivados que o usuário não referencia diretamente (lactação aberta pelo par
 | Entidade | Status | Observação |
 |---|---|---|
 | `MilkProduction` | ✅ **Sincronizável** (03/Out/2026) | Parte II |
-| `Vaccine` | 🚧 **Plano aprovado** (05/Out/2026) | **Spec #14.1** (`spec-sincronizacao-offline-14.1-vacinas.md`) |
-| `Medication`, `StockItem`, `SemenSample` | ⏳ | Catálogos — próximos, sem dependências entre si |
-| `Animal`, `AnimalExitRecord` | ⏳ | Pré-requisito dos eventos do animal |
-| `WeightRecord`, `BodyConditionRecord`, `AnimalMedication` | ⏳ | `WeightRecord` hoje faz **hard delete** (questão em aberto 4) |
-| `BreedingEvent`, `AnimalPregnancy`, `AnimalCalving`, `AnimalCalvingCalf` | ⏳ | Condições 1 e 2 (§7.5) |
-| `SemenSampleMovement`, `StockMovement` | ⏳ | Saldo calculado por movimentações (questão em aberto 1) |
-| `Lactation` | ⏳ | Depende de `Animal` |
-| `VaccinationEvent` (+ `VaccinationEventAnimal` embutido), `HealthCase` (+ medicações e testes) | ⏳ | |
+| `Vaccine` | ✅ **Sincronizável** (06/Out/2026, PR #37) | **Spec #14.1** (`spec-sincronizacao-offline-14.1-vacinas.md`) |
+| `SemenSample` | ✅ **Sincronizável** (06/Out/2026) | **Spec #14.2**, Parte A (`spec-sincronizacao-offline-14.2-semen.md`) |
+| `SemenSampleMovement` (manuais) | ✅ **Sincronizável** (06/Out/2026) | **Spec #14.2**, Parte B. Pull inclui as saídas geradas pela cobertura (somente leitura no app); criá-las/inativá-las offline segue com a cobertura |
+| `StockItem` | ✅ **Sincronizável** (08/Out/2026) | **Spec #14.3**, Parte A (`spec-sincronizacao-offline-14.3-estoque.md`). Saldo inicial do cadastro gravado junto e endereçável pelo app (`initialMovementSyncId`) |
+| `StockMovement` | ✅ **Sincronizável** (08/Out/2026) | **Spec #14.3**, Parte B. Pull global; o app calcula saldo e valor sobre as movimentações |
+| `Medication` | ❌ Fora | CRUD será descontinuado (06/Out/2026) |
+| `Animal` | ✅ **Sincronizável** (09/Out/2026) | **Spec #14.4** (`spec-sincronizacao-offline-14.4-animais.md`). Pesagem, ECC e lactação iniciais gravados junto com o animal; pull com `AnimalSyncDto` (sem status derivados) |
+| `AnimalExitRecord` | ✅ **Sincronizável** (09/Out/2026), embutido | **Spec #14.4**, Parte B. Sem `SyncId` próprio: chega no pull do animal (`exitRecords`); saída e reativação idempotentes |
+| `WeightRecord` | ✅ **Sincronizável** (10/Out/2026) | **Spec #14.5** (`spec-sincronizacao-offline-14.5-pesagem.md`). Exclusão física convertida em lógica (questão 4); pesagem inicial do cadastro endereçável (`initialWeightSyncId`); pull global em `GET /api/animals/weight-records/changes` |
+| `BodyConditionRecord` | ✅ **Sincronizável** (10/Out/2026) | **Spec #14.6** (`spec-sincronizacao-offline-14.6-ecc.md`). `PropertyId` com backfill pelo animal (Q4 da 14.4); sem exclusão (RN-04 da `spec-ecc.md`); ECC inicial endereçável (`initialBodyConditionSyncId`); pull global em `GET /api/animals/body-condition-records/changes` |
+| `AnimalMedication` (do caso de saúde) | ✅ **Sincronizável** (13/Out/2026), embutido | **Spec #14.9**. `SyncId` próprio (o app endereça a aplicação no `DELETE`); chega no pull do caso (`medications`, inclusive inativas); criar/inativar toca o caso |
+| `AnimalMedication` (uso avulso, `HealthCaseId = null`) | ❌ Fora | **Spec #14.9**, H7: rota legada `/api/animals/{animalId}/medications` com **hard delete** (questão em aberto 4); catálogo `Medication` descontinuado |
+| `BreedingEvent` | ✅ **Sincronizável** (14/Out/2026) | **Spec #14.10** (`spec-sincronizacao-offline-14.10-cobertura-gestacao.md`). Saída de sêmen da IA no mesmo `SaveChanges` (criação, edição e inativação); diagnóstico idempotente com a gestação no mesmo `SaveChanges`; aceita saldo de sêmen negativo; pull em `GET /api/breeding-events/changes` |
+| `AnimalPregnancy` | ✅ **Sincronizável** (14/Out/2026) | **Spec #14.10**. Gestação do diagnóstico com `SyncId` do app (`pregnancySyncId`); retroativa com `syncId` (antigo `ClientRequestId`); perda e inativação idempotentes; pull em `GET /api/pregnancies/changes` |
+| `AnimalCalving` | ✅ **Sincronizável** (16/Out/2026) | **Spec #14.11** (`spec-sincronizacao-offline-14.11-parto-crias.md`). Parto + crias + animais + pesagens + lactação + ECC + status da gestação num só `SaveChanges`, com `syncId` dos derivados vindos do app; inativação em cascata numa gravação só; pull em `GET /api/calvings/changes` com as crias embutidas |
+| `AnimalCalvingCalf` | ✅ **Sincronizável** (16/Out/2026), embutido | **Spec #14.11**. `SyncId` próprio; chega no pull do parto (inclusive inativas); edição com LWW por registro (cria, animal, pesagem) e toque no parto |
+| `Lactation` | ✅ **Sincronizável** (11/Out/2026) | **Spec #14.7** (`spec-sincronizacao-offline-14.7-lactacao.md`). Secar, desfazer secagem e inativar idempotentes; Condição 3 na abertura; lactação inicial com referência na resposta do cadastro (`initialLactation { id, syncId }`); pull em `GET /api/lactations/changes`. A lactação aberta pelo parto fica para a spec do parto |
+| `VaccinationEvent` | ✅ **Sincronizável** (12/Out/2026) | **Spec #14.8** (`spec-sincronizacao-offline-14.8-vacinacao.md`). Criação e reforço idempotentes (Condição 3 no reforço; corrida no índice `UX_VaccinationEvents_ParentEventId_Active` vira `201`/`409`, não `500`); pull com `VaccinationEventSyncDto` em `GET /api/vaccination-events/changes` |
+| `VaccinationEventAnimal` | ✅ **Sincronizável** (12/Out/2026), embutido | **Spec #14.8**. Sem `SyncId` próprio: chega no pull do evento (`animalIds`); a lista não muda depois da criação |
+| `HealthCase` | ✅ **Sincronizável** (13/Out/2026) | **Spec #14.9** (`spec-sincronizacao-offline-14.9-casos-saude.md`). Criação idempotente; LWW no `PATCH` (inclusive o encerramento); inativações idempotentes; pull com `HealthCaseSyncDto` e filhos embutidos em `GET /api/health-cases/changes` (3 consultas por página) |
+| `MastitisTest` | ✅ **Sincronizável** (13/Out/2026), embutido | **Spec #14.9**. `SyncId` próprio; chega no pull do caso (`tests`, inclusive inativos); criar/inativar toca o caso |
 | `ApplicationUser`, `Property` | ❌ Fora | Autenticação e provisionamento exigem conexão |
 
 **Ordem sugerida:** catálogos → `Animal` → eventos do animal (respeitando dependências). A lista definitiva ainda é questão em aberto (§13).
@@ -671,7 +707,7 @@ Controller sem mudança: o reenvio responde `201` com o mesmo corpo ("mesma chav
 | `POST` com `syncId` | ✅ `201`, `Id` novo |
 | Mesmo `POST` repetido | ✅ `201`, mesmo `Id` |
 | Mesmo `syncId`, payload diferente | ✅ `201`, devolve o existente sem alterar |
-| `POST` sem `syncId` (web) | ✅ `201`, `syncId` gerado |
+| `POST` sem `syncId` (Swagger/chamada direta) | ✅ `201`, `syncId` gerado |
 | `syncId` vazio | ✅ `400` "O identificador de sincronização não pode ser vazio." |
 | 83 envios simultâneos (4 `syncId`) | ✅ Todos `201`; 1 linha por `syncId` |
 
@@ -701,7 +737,7 @@ production.UpdatedAt = editedAt;
 | `updatedAt` UTC mais novo | ✅ Aplicado |
 | Reenvio idêntico | ✅ `200`, mesmo resultado |
 | Edição mais antiga | ✅ `200`, ignorada; devolve a versão do servidor |
-| Web sem `updatedAt` | ✅ Aplicado com "agora" |
+| Sem `updatedAt` (Swagger/chamada direta) | ✅ Aplicado com "agora" |
 | Relógio adiantado 1 dia | ✅ Aplicado; `updatedAt` limitado a "agora" |
 | Reenvio do `POST` via helper genérico | ✅ Mesmo `Id`, 1 linha |
 
@@ -712,7 +748,7 @@ if (!production.IsActive)
     return true;
 ```
 
-Substitui `throw new ConflictException("O lançamento de produção de leite já está inativo.")`. Para a web, inativar duas vezes deixa de dar erro.
+Substitui `throw new ConflictException("O lançamento de produção de leite já está inativo.")`. Inativar duas vezes (reenvio, ou dois toques no app) deixa de dar erro.
 
 | Validação (02/Out/2026) | Resultado |
 |---|---|
@@ -764,7 +800,7 @@ public async Task<SyncPageDto<MilkProductionDto>> GetChangesAsync(string? since,
 | 6 | `UpdateAsync_WithSameClientUpdatedAt_AppliesChanges` | Empate (reenvio) aplica |
 | 7 | `UpdateAsync_WithFutureClientUpdatedAt_ClampsToNow` | Limita a "agora" |
 | 8 | `UpdateAsync_WithOffsetClientUpdatedAt_ConvertsToUtc` | `Local` → UTC (máquina em UTC-03:00, teste significativo) |
-| 9 | `UpdateAsync_WithoutClientUpdatedAt_UsesNow` | Web: "agora" |
+| 9 | `UpdateAsync_WithoutClientUpdatedAt_UsesNow` | Sem `updatedAt`: "agora" |
 | 10 | `UpdateAsync_WhenNeverEdited_ComparesWithCreatedAt` | Compara com `CreatedAt` |
 | 11 | `UpdateAsync_WhenProductionNotFound_ThrowsNotFoundException` | `404` |
 | 12 | `DeactivateAsync_WhenActive_DeactivatesAndReturnsTrue` | Inativa e grava |
@@ -841,7 +877,7 @@ Revisão de A1–A3 (05/Out/2026) diante do cenário do TCC: propriedade pequena
 | **Volume** | Poucas dezenas de operações por dia (ordenhas, pesagens, eventos). Mesmo após dias offline, a fila tem centenas de itens; a 0,5–2 s por requisição em link ruim, esvazia em minutos, em segundo plano. |
 | **Servidor fraco** | Uma requisição por vez é a carga mais leve possível; lote ou paralelismo concentrariam o trabalho em picos. |
 | **Dependências** | A ordem (animal → gestação → parto; vacina → evento) e a resolução do `Id` (§5.8) saem de graça do envio sequencial. |
-| **Regras de negócio** | Validações e regras existentes valem igual para web e app; não há `SyncService` duplicando lógica (§2.2). |
+| **Regras de negócio** | Validações e regras existentes valem igual online e offline (mesmas rotas); não há `SyncService` duplicando lógica (§2.2). |
 | **Erros** | Status HTTP por operação; não existe "falha parcial de lote". |
 | **Custo por entidade** | Confirmado nas vacinas (Spec #14.1): poucas linhas por camada usando os helpers da §7.2. |
 
@@ -855,13 +891,14 @@ O overhead de várias requisições (cabeçalhos, JWT, handshake) é reduzido no
 
 | # | Questão | Situação |
 |---|---|---|
-| 1 | **Estoque de sêmen e de insumos offline:** dois dispositivos consumindo a última dose → saldo negativo no sync. | Direção: movimentações append-only com `SyncId` e saldo calculado (já é o modelo atual); saldo negativo no sync vira `422` com motivo ou alerta. **A definir** ao sincronizar essas entidades. |
+| 1 | **Estoque de sêmen e de insumos offline:** dois dispositivos consumindo a última dose → saldo negativo no sync. | Direção: movimentações append-only com `SyncId` e saldo calculado (já é o modelo atual); saldo negativo no sync vira `422` com motivo ou alerta. **A definir** ao sincronizar essas entidades. **Sêmen, movimentações manuais (06/Out/2026, Spec #14.2 Parte B):** não há regra de saldo nas saídas manuais, então nada muda — as operações somam como online. **Estoque de insumos (08/Out/2026, Spec #14.3):** também não há regra de saldo nas saídas (saldo negativo é permitido — `spec-estoque.md`), então nada muda. ~~Continua aberta só para a cobertura~~ ✅ **Resolvida para a cobertura** (14/Out/2026, Spec #14.10, B4): a cobertura por IA aceita saldo negativo — a inseminação já aconteceu no campo; o `422` "Não há doses disponíveis…" foi removido, online e offline. |
 | 2 | **Lista definitiva de sincronizáveis** (§8), inclusive mídias/fotos (payload grande em link instável). | ⏳ Aberta |
 | 3 | ~~Origem do `UpdatedAt` para LWW~~ | ✅ **Resolvida:** momento da edição no cliente, UTC, limitado a "agora" (§5.3) |
-| 4 | **Hard delete:** `WeightRecordRepository.DeleteWeightRecordAsync` faz `Remove` (exclusão física). Sem tombstone, a exclusão não chega aos celulares pelo pull. | ⏳ Converter para soft delete antes de sincronizar pesagens (ou tabela de tombstones) |
+| 4 | **Hard delete:** `WeightRecordRepository.DeleteWeightRecordAsync` faz `Remove` (exclusão física). Sem tombstone, a exclusão não chega aos celulares pelo pull. | ✅ **Resolvida para a pesagem** (10/Out/2026, Spec #14.5 P1): exclusão lógica e leituras filtrando as ativas. ⏳ `AnimalMedicationRepository.cs:53` também faz `Remove` — **restrita ao uso avulso** (13/Out/2026, Spec #14.9 H7): as aplicações do caso de saúde já usam exclusão lógica e estão no offline; o uso avulso ficou fora (sem dados, catálogo descontinuado) |
 | 5 | **Reautenticação JWT** após dias offline. | ⏳ Refresh token (`POST /api/auth/refresh`) — fase própria; `401` nunca descarta a fila |
 | 6 | ~~Tamanho do lote / paginação~~ | ✅ **Resolvida:** sem lote no push; pull com `limit` padrão e máximo de 500 |
 | 7 | **Compressão de resposta** para a carga inicial do pull | ⏳ Opcional (`Program.cs`) |
+| 8 | **Mudanças de estado carimbam `UpdatedAt` com a hora do servidor** (encontrada na Spec #14.7, §3 item 7): saída/reativação do animal (14.4) e inativação/reativação da amostra de sêmen (14.2) gravam `UpdatedAt = agora`. Uma edição offline do **mesmo** celular feita **depois** da mudança de estado (ex.: registra a saída às 10:00 e corrige o nome às 10:05, sincroniza às 18:00) é descartada pelo LWW, porque a mudança de estado chega primeiro e carimba 18:00 | ✅ **Resolvida** (12/Out/2026): regra da L7 da 14.7 generalizada na §5.4. Aplicada ao animal (saída e reativação), à amostra de sêmen (inativação e reativação) e, pelo mesmo motivo (todas têm `PATCH` com LWW), ao insumo, à movimentação de estoque, à movimentação de sêmen (inclusive a inativação automática pelo evento reprodutivo) e à produção de leite. Testes de cada uma conferem que o `UpdatedAt` não muda |
 
 ## 14. Fora do escopo
 

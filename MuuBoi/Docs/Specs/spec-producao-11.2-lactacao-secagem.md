@@ -8,6 +8,8 @@
 **Depende de:** Spec #6 (Gestação/Parto) — o parto abre a lactação (D10). Spec 11.1 — paradigma de tenant/`BaseEntity` e alinhamento ao backend atual.
 **Parte de:** Spec #11 (Produção). **Antecede:** Spec de Indicadores (média por vaca em lactação, proporção de vacas em lactação, produção do rebanho por período).
 
+> **Sincronização offline (11/Out/2026):** `Lactation` é sincronizável — ver **Spec #14.7** (`spec-sincronizacao-offline-14.7-lactacao.md`). Regras de negócio mantidas (RN-01 a RN-12), com estas mudanças de resposta: (1) estado repetido não é mais erro — secar lactação seca, reabrir lactação aberta e inativar lactação inativa respondem `200`/`204` sem gravar; (2) editar, secar ou reabrir uma lactação **inativa** responde `200` com o estado do servidor, sem gravar (antes `409`); (3) RN-02, RN-04 e RN-12 passam a ser validadas de fato (`startDate`/`endDate` ausentes → `400`; antes gravavam `0001-01-01`); (4) secar, reabrir e inativar não alteram mais o `UpdatedAt`. A abertura aceita `syncId`, a edição aceita `updatedAt` (last-write-wins), o cadastro do animal aceita `initialLactationSyncId` e devolve `initialLactation { id, syncId }`, e há a rota de pull `GET /api/lactations/changes`.
+
 ---
 
 ## 1. Contexto e Objetivo

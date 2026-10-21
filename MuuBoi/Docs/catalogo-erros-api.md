@@ -221,10 +221,24 @@ Os erros de validação de DTO (**400**, formato B) estão agrupados na §5.
 | `GET /{id}`, `PATCH /{id}`, `PATCH /{id}/exit`, `PATCH /{id}/reactivate`, `GET /{id}/exit-records` | 404 | Animal com id '{id}' não encontrado. |
 | `POST /`, `PATCH /{id}` | 409 | Já existe um animal com o brinco '{brinco}' nesta propriedade. |
 | `POST /` | 422 | A lactação inicial só se aplica a vacas e novilhas. |
-| `PATCH /{id}/exit` | 409 | Não é possível registrar saída de um animal já inativo. |
-| `PATCH /{id}/reactivate` | 409 | Não é possível reativar um animal que já está ativo. |
+| `GET /changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
 | `GET /{id}/vaccination-history` | 404 | Animal com id '{id}' não encontrado. |
 | `GET /{id}/health-history` | 404 | Animal com id '{id}' não encontrado. |
+
+> **Rotas com suporte offline** — cadastro, edição, saída e reativação (ver `Docs/Specs/spec-sincronizacao-offline-14.4-animais.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST /` com `syncId` já existente → `201` com o animal existente (sem duplicar pesagem, ECC e lactação iniciais) — mesmo que o brinco já esteja em uso por ele ou que a lactação inicial seja inválida (o `syncId` é checado antes). Inclui o reenvio simultâneo ao original.
+> - `POST /` com **outro** `syncId` e brinco em uso → continua `409` (conflito real).
+> - `POST /` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `POST /` com `initialWeightSyncId` vazio → `400` "O identificador de sincronização da pesagem inicial não pode ser vazio." (formato B, campo `InitialWeightSyncId`). Sem `initialWeight`, o `initialWeightSyncId` é ignorado, sem erro (Spec #14.5, P3).
+> - `POST /` com `initialBodyConditionSyncId` vazio → `400` "O identificador de sincronização do ECC inicial não pode ser vazio." (formato B, campo `InitialBodyConditionSyncId`). Sem `initialBodyConditionScore`, é ignorado, sem erro (Spec #14.6, C3).
+> - `POST /` com `initialLactationSyncId` vazio → `400` "O identificador de sincronização da lactação inicial não pode ser vazio." (formato B, campo `InitialLactationSyncId`). Sem `initialLactation`, é ignorado, sem erro. A resposta do cadastro traz `initialLactation { id, syncId }` (ou `null`), inclusive no reenvio (Spec #14.7, L3).
+> - `POST /` com `initialLactation` sem `startDate` → `400` "A data de início da lactação é obrigatória." (campo `InitialLactation.StartDate`; até 11/Out/2026 gravava `0001-01-01`).
+> - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada, **sem** checar o brinco).
+> - `PATCH /{id}/exit` em animal já inativo → `200` com o animal, sem gravar *(até 09/Out/2026 era `409` "Não é possível registrar saída de um animal já inativo.")*.
+> - `PATCH /{id}/reactivate` em animal já ativo → `200` com o animal, sem gravar *(até 09/Out/2026 era `409` "Não é possível reativar um animal que já está ativo.")*.
+> - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
+>
+> **Correção (09/Out/2026):** a segunda saída de um animal reativado apagava fisicamente a saída anterior do histórico (`GET /{id}/exit-records`). Corrigido na Spec #14.4, Fase 4.
 
 Exemplo:
 
@@ -246,6 +260,21 @@ HTTP/1.1 409 Conflict
 | Todas | 404 | A | Animal com id '{animalId}' não encontrado. |
 | `GET /{weightRecordId}`, `PATCH /{weightRecordId}`, `DELETE /{weightRecordId}` | 404 | A | Pesagem com id '{weightRecordId}' não encontrada. |
 | Todas, com `animalId` ou `weightRecordId` não numérico | 404 | E | — (a rota não corresponde) |
+| `POST /` sem `weight` | 400 | B | O peso é obrigatório. *(campo `Weight`; até 10/Out/2026 era `500`)* |
+| `POST /` com `syncId` vazio | 400 | B | O identificador de sincronização não pode ser vazio. *(campo `SyncId`)* |
+| `GET /api/animals/weight-records/changes?since=` | 400 | A | Cursor de sincronização inválido. *(`since` não numérico ou negativo)* |
+
+> **Rotas com suporte offline** — cadastro, edição, exclusão e pull (ver `Docs/Specs/spec-sincronizacao-offline-14.5-pesagem.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST /` com `syncId` já existente → `201` com a pesagem existente, sem alterar — inclusive por outro `animalId` na rota ou com o animal já inexistente (o `syncId` é checado antes). Inclui o reenvio simultâneo ao original.
+> - `PATCH /{weightRecordId}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada).
+> - `PATCH /{weightRecordId}` em pesagem excluída → `200`, aplicado; a pesagem continua excluída.
+> - `DELETE /{weightRecordId}` em pesagem já excluída → `204`, sem gravar *(até 10/Out/2026 a exclusão era física e a repetição dava `404` "Pesagem com id '...' não encontrada.")*.
+> - `GET /{weightRecordId}` de pesagem excluída → `200` com `isActive: false` (antes, `404`). `GET /` lista só as ativas.
+> - `GET /api/animals/weight-records/changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
+>
+> **Formato (10/Out/2026):** `recordedAt` passou de `dd/MM/yyyy` para ISO completo (`2026-10-10T12:00:00`) em todas as respostas com pesagem, inclusive `weightRecords`/`lastWeightRecord` de `/api/animals` (Spec #14.5, P8).
+>
+> **Correção (10/Out/2026):** `PATCH /{weightRecordId}` sem `weight` ou sem `weightDate` gravava `0` / `0001-01-01` nesses campos. Corrigido na Spec #14.5, Fase 5.
 
 ### 4.5 Medicamentos do animal — `/api/animals/{animalId:int}/medications`
 
@@ -271,6 +300,18 @@ HTTP/1.1 409 Conflict
 | `POST /` | 409 | Não é possível registrar ECC de um animal inativo. |
 | `PATCH /{recordId}` | 404 | Registro de ECC com id '{recordId}' não encontrado. |
 | `POST /`, `PATCH /{recordId}` | 422 | A data da avaliação não pode ser futura. |
+| `POST /` sem `score` / sem `recordedAt` | 400 | O escore de condição corporal é obrigatório. / A data da avaliação é obrigatória. *(formato B; até 10/Out/2026 eram aceitos com escore `0` / data `0001-01-01`)* |
+| `POST /`, `PATCH /{recordId}` com `score` fora de 1–5 | 400 | Valor inválido. Valores aceitos: Magreza Severa (1), …, Obesidade Severa (5). *(formato B, campo `Score`; até 10/Out/2026 era aceito)* |
+| `POST /` com `syncId` vazio | 400 | O identificador de sincronização não pode ser vazio. *(formato B, campo `SyncId`)* |
+| `GET /api/animals/body-condition-records/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
+
+> **Rotas com suporte offline** — cadastro, edição e pull (ver `Docs/Specs/spec-sincronizacao-offline-14.6-ecc.md`). Não há exclusão de ECC. Repetir uma operação já aplicada **não é erro**:
+> - `POST /` com `syncId` já existente → `201` com o ECC existente, sem alterar — inclusive depois da saída do animal ou com o animal inexistente (o `syncId` é checado antes). Inclui o reenvio simultâneo ao original.
+> - `POST /` com **outro** `syncId` em animal inativo → continua `409` (conflito real).
+> - `PATCH /{recordId}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada). `PATCH` em ECC de animal inativo continua aceito.
+> - `GET /api/animals/body-condition-records/changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
+>
+> **Correção (10/Out/2026):** `score` e `recordedAt` ausentes ou fora do enum eram aceitos com `201`/`200` e gravavam dados inválidos. Corrigido na Spec #14.6, Fase 2 (C7).
 
 ### 4.8 Coberturas — `/api/breeding-events`, `/api/animals/{animalId}/breeding-events`
 
@@ -284,7 +325,6 @@ HTTP/1.1 409 Conflict
 | `POST` | 422 | O animal possui uma gestação ativa. Não é possível registrar uma nova cobertura. |
 | `POST`, `PATCH /{id}` | 404 | Amostra de sêmen com id '{id}' não encontrada. |
 | `POST`, `PATCH /{id}` | 409 | A amostra de sêmen selecionada está inativa. |
-| `POST` | 422 | Não há doses disponíveis para a amostra de sêmen selecionada. |
 | `POST`, `PATCH /{id}` | 404 | Touro com id '{id}' não encontrado. |
 | `POST`, `PATCH /{id}` | 409 | O touro selecionado está inativo. |
 | `POST`, `PATCH /{id}` | 422 | O animal informado como touro pai não possui classificação 'Touro'. |
@@ -294,8 +334,21 @@ HTTP/1.1 409 Conflict
 | `PATCH /{id}/status` | 409 | O diagnóstico desta cobertura já foi registrado. |
 | `PATCH /{id}/status` | 422 | A data do diagnóstico não pode ser anterior à data da cobertura. |
 | `DELETE /{id}` | 404 | Cobertura com id '{id}' não encontrada. |
-| `DELETE /{id}` | 409 | A cobertura já está inativa. |
 | `DELETE /{id}` | 409 | Esta cobertura possui uma gestação ativa vinculada. Inative a gestação primeiro. |
+| `POST` | 400 | A data da cobertura é obrigatória. / O tipo de reprodução é obrigatório. / Valor inválido (tipo de reprodução fora do enum). *(formato B — antes, sem data gravava `0001-01-01` e tipo `0` ou `9` era gravado)* |
+| `PATCH /{id}/status` | 400 | O status é obrigatório. / A data do diagnóstico é obrigatória. / Valor inválido (método fora do enum). *(formato B — antes, sem status gravava status `0` e sem data respondia `422` com a mensagem da data da cobertura)* |
+| `PATCH /{id}/status` | 400 | O identificador da gestação só se aplica ao diagnóstico positivo. *(campo `PregnancySyncId`)* |
+| `GET /api/breeding-events/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A)* |
+
+> **Rotas com suporte offline** — coberturas (ver `Docs/Specs/spec-sincronizacao-offline-14.10-cobertura-gestacao.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com a cobertura existente — mesmo que a vaca tenha sido vendida, o sêmen inativado ou a cobertura já esteja "aguardando diagnóstico" (o `syncId` é rechecado antes do `422`).
+> - `PATCH /{id}/status` repetido com o **mesmo** resultado → `200` com o estado atual *(até 14/Out/2026 era `409` "O diagnóstico desta cobertura já foi registrado.")*; resultado **diferente** → `409` (mantido).
+> - `PATCH /{id}` com `updatedAt` mais antigo → `200` com a versão do servidor.
+> - `DELETE /{id}` em cobertura já inativa → `204` *(até 14/Out/2026 era `409` "A cobertura já está inativa.")*.
+> - `syncId` / `pregnancySyncId` vazios → `400` "O identificador de sincronização … não pode ser vazio."
+> - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
+>
+> **Mudança de regra (14/Out/2026):** a cobertura por IA **não** exige mais dose disponível — o `422` "Não há doses disponíveis para a amostra de sêmen selecionada." foi removido (saldo negativo permitido, Spec #14.10 B4).
 
 ### 4.9 Gestações — `/api/pregnancies`, `/api/animals/{animalId}/pregnancies`
 
@@ -314,8 +367,16 @@ HTTP/1.1 409 Conflict
 | `POST` | 409 | A amostra de sêmen informada está inativa. |
 | `POST` | 422 | A data prevista de parto deve ser posterior à data de confirmação. |
 | `PATCH /{id}/status` | 409 | Apenas gestações confirmadas podem ser marcadas como interrompidas. |
-| `DELETE /{id}` | 409 | A gestação já está inativa. |
 | `DELETE /{id}` | 409 | Esta gestação possui um parto ativo vinculado. Inative o parto primeiro. |
+| `POST` | 400 | A data de confirmação é obrigatória. *(formato B — antes, sem a data gravava `0001-01-01`)* |
+| `PATCH /{id}/status` | 400 | A data da perda é obrigatória. / Valor inválido (status fora do enum). *(formato B — antes, sem a data gravava `0001-01-01`)* |
+| `GET /api/pregnancies/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A)* |
+
+> **Rotas com suporte offline** — gestações (ver `Docs/Specs/spec-sincronizacao-offline-14.10-cobertura-gestacao.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` (retroativa) com `syncId` já existente → `201` com a gestação existente — mesmo que a vaca já tenha gestação ativa (o `syncId` é rechecado antes do `409`). O campo **`clientRequestId` (Spec #13) foi substituído por `syncId`** (14/Out/2026).
+> - `PATCH /{id}/status` (perda) em gestação já perdida → `200` com o estado atual, sem gravar.
+> - `DELETE /{id}` em gestação já inativa → `204` *(até 14/Out/2026 era `409` "A gestação já está inativa.")*.
+> - A gestação do diagnóstico positivo é criada pela cobertura (`PATCH /api/breeding-events/{id}/status`, campo `pregnancySyncId`).
 
 ### 4.10 Partos — `/api/pregnancies/{pregnancyId}/calvings`, `/api/calvings`
 
@@ -331,7 +392,18 @@ HTTP/1.1 409 Conflict
 | `PATCH /api/calvings/{calvingId}/calves/{calfId}` | 404 | Cria com id '{calfId}' não encontrada no parto '{calvingId}'. |
 | `PATCH /api/calvings/{calvingId}/calves/{calfId}` | 409 | Não é possível editar uma cria de um parto inativo. |
 | `DELETE /api/calvings/{id}` | 404 | Parto com id '{id}' não encontrado. |
-| `DELETE /api/calvings/{id}` | 409 | O parto já está inativo. |
+| `POST` | 409 | Não é possível registrar ECC de um animal inativo. *(com `bodyConditionScore` e mãe inativa — **até 16/Out/2026 o parto era gravado sem o ECC** antes deste erro; agora nada é gravado)* |
+| `POST` | 400 | A data do parto é obrigatória. / O sexo da cria é obrigatório. / O status vital da cria é obrigatório. / Valor inválido (sexo, status vital ou ECC fora do enum). *(formato B — antes, sem data respondia `422` com a mensagem da confirmação, cria sem sexo virava macho e enums fora da faixa eram gravados)* |
+| `POST` | 400 | O brinco principal deve ter exatamente 6 dígitos numéricos. *(campo `Calves[i].TagNumber` — mesma regra do cadastro de animal; antes aceitava até 6 caracteres quaisquer)* |
+| `PATCH /api/calvings/{calvingId}/calves/{calfId}` | 400 | Valor inválido (sexo fora do enum). |
+| `GET /api/calvings/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A)* |
+
+> **Rotas com suporte offline** — parto e crias (ver `Docs/Specs/spec-sincronizacao-offline-14.11-parto-crias.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com o parto existente — mesmo que a gestação já esteja "parto realizado", a lactação aberta e os brincos das crias já existam (o `syncId` é rechecado antes dos `409`/`422`).
+> - O app envia o `syncId` do parto, da lactação (`lactationSyncId`), do ECC (`bodyConditionSyncId`) e, em cada cria, da cria (`syncId`), do animal (`animalSyncId`) e da pesagem de nascimento (`weightSyncId`). A resposta traz `{ id, syncId }` de cada derivado.
+> - `PATCH .../calves/{calfId}` com `updatedAt` mais antigo que a cria → `200` com a versão do servidor; o reflexo no sexo do animal e no peso de nascimento também respeita o `updatedAt` de cada um.
+> - `DELETE /api/calvings/{id}` em parto já inativo → `204` *(até 16/Out/2026 era `409` "O parto já está inativo.")*.
+> - `syncId`s vazios → `400`; `animalSyncId`/`weightSyncId` em cria não viva (ou sem peso) e `bodyConditionSyncId` sem ECC → `400`.
 
 ### 4.11 Lactações — `/api/lactations`, `/api/animals/{animalId}/lactations`
 
@@ -342,17 +414,25 @@ HTTP/1.1 409 Conflict
 | `POST` | 422 | Somente vacas e novilhas podem ter lactação. |
 | `POST` | 409 | O animal já possui uma lactação em aberto. Seque a atual antes de abrir outra. |
 | `GET /api/lactations/{id}`, `PATCH`, `POST /dry-off`, `DELETE /dry-off`, `DELETE` | 404 | Lactação com id '{id}' não encontrada. |
-| `PATCH /{id}` | 409 | Não é possível editar uma lactação inativa. |
 | `PATCH /{id}` | 422 | A data de início não pode ser posterior à data da secagem. |
-| `POST /{id}/dry-off` | 409 | Não é possível secar uma lactação inativa. |
-| `POST /{id}/dry-off` | 409 | Esta lactação já está seca. |
 | `POST /{id}/dry-off` | 422 | A data da secagem não pode ser anterior ao início da lactação. |
-| `DELETE /{id}/dry-off` | 409 | Não é possível reabrir uma lactação inativa. |
-| `DELETE /{id}/dry-off` | 409 | Esta lactação já está em aberto. |
 | `DELETE /{id}/dry-off` | 409 | O animal já possui outra lactação em aberto. |
-| `DELETE /{id}` | 409 | A lactação já está inativa. |
+| `POST` sem `startDate` / `POST /{id}/dry-off` sem `endDate` | 400 | A data de início da lactação é obrigatória. / A data da secagem é obrigatória. *(formato B; até 11/Out/2026, `startDate` ausente gravava `0001-01-01` e `endDate` ausente dava `422` com a mensagem errada)* |
+| `POST` com `syncId` vazio | 400 | O identificador de sincronização não pode ser vazio. *(formato B, campo `SyncId`)* |
+| `GET /api/lactations/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
 
 > `GET /api/animals/{animalId}/lactations/current` responde **`204 No Content`** (não é erro) quando não há lactação aberta.
+>
+> **Rotas com suporte offline** — abertura, correção, secagem, desfazer secagem, exclusão e pull (ver `Docs/Specs/spec-sincronizacao-offline-14.7-lactacao.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com a lactação existente, sem alterar — inclusive quando ela própria é a "lactação em aberto" do animal, depois da saída do animal ou no reenvio simultâneo (Condição 3).
+> - `POST` com **outro** `syncId` e lactação aberta → continua `409` (conflito real).
+> - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada, **sem** checar a data da secagem).
+> - `POST /{id}/dry-off` em lactação já seca → `200` com a secagem existente, sem gravar *(até 11/Out/2026: `409` "Esta lactação já está seca.")*.
+> - `DELETE /{id}/dry-off` em lactação já aberta → `200`, sem gravar *(antes: `409` "Esta lactação já está em aberto.")*.
+> - `DELETE /{id}` em lactação já inativa → `204`, sem gravar *(antes: `409` "A lactação já está inativa.")*.
+> - `PATCH`, `POST /dry-off` e `DELETE /dry-off` em lactação **inativa** → `200` com a lactação (`isActive: false`), sem gravar *(antes: `409` "Não é possível editar/secar/reabrir uma lactação inativa.")* — a inativação sempre vence (Spec #14 §5.4).
+> - Secar, desfazer secagem e inativar **não alteram `updatedAt`** (só a edição do `startDate` altera).
+> - `GET /api/lactations/changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
 
 ### 4.12 Produção de leite — `/api/milk-productions`
 
@@ -374,14 +454,24 @@ HTTP/1.1 409 Conflict
 | Rota | Status | Mensagem |
 |---|---|---|
 | `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`, `PATCH /{id}/reactivate` | 404 | Amostra de sêmen com id '{id}' não encontrada. |
-| `DELETE /{id}` | 409 | A amostra de sêmen já está inativa. |
-| `PATCH /{id}/reactivate` | 409 | A amostra de sêmen já está ativa. |
+| `GET /changes?since=`, `GET /movements/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
 | Rotas de `/{semenSampleId}/movements` | 404 | Amostra de sêmen com id '{semenSampleId}' não encontrada. |
 | `GET`, `PATCH`, `DELETE /{semenSampleId}/movements/{movementId}` | 404 | Movimentação com id '{movementId}' não encontrada. |
 | `POST /{semenSampleId}/movements` | 409 | Não é possível registrar movimentação para uma amostra de sêmen inativa. |
 | `PATCH /{semenSampleId}/movements/{movementId}` | 409 | Movimentações geradas pelo sistema não podem ser editadas diretamente. |
-| `DELETE /{semenSampleId}/movements/{movementId}` | 409 | Movimentações geradas pelo sistema não podem ser inativadas diretamente. |
-| `DELETE /{semenSampleId}/movements/{movementId}` | 409 | A movimentação já está inativa. |
+| `DELETE /{semenSampleId}/movements/{movementId}` | 409 | Movimentações geradas pelo sistema não podem ser inativadas diretamente. *(vale também se ela já estiver inativa)* |
+
+> **Rotas com suporte offline** — amostra e movimentações manuais (ver `Docs/Specs/spec-sincronizacao-offline-14.2-semen.md`, Partes A e B). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com a amostra existente (sem duplicar a entrada inicial), incluindo `initialMovement` quando o `initialMovementSyncId` é reenviado.
+> - `POST` com `initialMovementSyncId` vazio → `400` "O identificador de sincronização da entrada inicial não pode ser vazio." (formato B, campo `InitialMovementSyncId`).
+> - `POST /{semenSampleId}/movements` com `syncId` já existente → `201` com a movimentação existente — mesmo que a amostra tenha sido inativada depois do primeiro envio.
+> - `PATCH /{semenSampleId}/movements/{movementId}` com `updatedAt` mais antigo → `200` com a versão do servidor.
+> - `DELETE /{semenSampleId}/movements/{movementId}` em movimentação manual já inativa → `204` *(até 06/Out/2026 era `409` "A movimentação já está inativa.")*.
+> - `PATCH` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada).
+> - `DELETE` em amostra já inativa → `200 false` *(até 06/Out/2026 era `409` "A amostra de sêmen já está inativa.")*.
+> - `PATCH /{id}/reactivate` em amostra já ativa → `200 true` *(até 06/Out/2026 era `409` "A amostra de sêmen já está ativa.")*.
+> - `POST` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
 
 ### 4.14 Estoque de insumos — `/api/stock-items`
 
@@ -390,12 +480,25 @@ HTTP/1.1 409 Conflict
 | `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` | 404 | Insumo com id '{id}' não encontrado. |
 | `POST`, `PATCH /{id}` | 404 | Categoria com id '{id}' não encontrada. |
 | `POST`, `PATCH /{id}` | 404 | Unidade de medida com id '{id}' não encontrada. |
-| `DELETE /{id}` | 409 | O insumo já está inativo. |
+| `GET /changes?since=`, `GET /movements/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
 | Rotas de `/{stockItemId}/movements` | 404 | Insumo com id '{stockItemId}' não encontrado. |
 | `GET`, `PATCH`, `DELETE /{stockItemId}/movements/{movementId}` | 404 | Movimentação com id '{movementId}' não encontrada. |
 | `POST /{stockItemId}/movements` | 409 | Não é possível registrar movimentação para um insumo inativo. |
 | `PATCH /{stockItemId}/movements/{movementId}` | 422 | A data da movimentação não pode ser futura. |
-| `DELETE /{stockItemId}/movements/{movementId}` | 409 | A movimentação já está inativa. |
+
+> **Rotas com suporte offline** — insumo e movimentações (ver `Docs/Specs/spec-sincronizacao-offline-14.3-estoque.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com o insumo existente (sem duplicar o saldo inicial), incluindo `initialMovement` quando o `initialMovementSyncId` é reenviado — mesmo que a categoria/unidade enviadas sejam inválidas (o `syncId` é checado antes).
+> - `POST` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `POST` com `initialMovementSyncId` vazio → `400` "O identificador de sincronização da entrada inicial não pode ser vazio." (formato B, campo `InitialMovementSyncId`).
+> - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada).
+> - `DELETE /{id}` em insumo já inativo → `204` *(até 08/Out/2026 era `409` "O insumo já está inativo.")*.
+> - `POST /{stockItemId}/movements` com `syncId` já existente → `201` com a movimentação existente, sem recalcular o custo — mesmo que o insumo tenha sido inativado depois do primeiro envio.
+> - `POST /{stockItemId}/movements` com `syncId` vazio → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `PATCH /{stockItemId}/movements/{movementId}` com `updatedAt` mais antigo → `200` com a versão do servidor.
+> - `DELETE /{stockItemId}/movements/{movementId}` em movimentação já inativa → `204` *(até 08/Out/2026 era `409` "A movimentação já está inativa.")*.
+> - `GET /changes` e `GET /movements/changes` **não** retornam erro para `limit` fora da faixa (ajustado para 500).
+>
+> **Correção (08/Out/2026):** `PATCH /{id}` só com alguns campos (sem `stockCategoryId` e `unitOfMeasureId`) respondia `500` (violação de FK — o AutoMapper gravava `0` na categoria). Corrigido na Spec #14.3, Fase 3.
 
 ### 4.15 Vacinação — `/api/vaccination-events`
 
@@ -408,7 +511,19 @@ HTTP/1.1 409 Conflict
 | `POST /{id}/booster` | 422 | A data prevista do reforço não pode ser anterior à data de aplicação do evento pai. |
 | `POST /{id}/booster` | 422 | A data prevista do reforço não pode ser anterior à data prevista do evento pai. |
 | `POST /{id}/booster` | 409 | Já existe um reforço para este evento. |
-| `DELETE /{id}` | 409 | O evento de vacinação já está inativo. |
+| `POST` | 400 | A vacina é obrigatória. *(formato B, campo `VaccineId` — antes, sem `vaccineId`, respondia `404` "Vacina com id '0' não encontrada.")* |
+| `POST`, `PATCH /{id}` | 400 | Valor inválido. Valores aceitos: Primeira dose (1), Reforço (2). *(formato B, campo `DoseType` — antes, um `doseType` fora do enum era gravado)* |
+| `POST /{id}/booster` | 400 | A data prevista é obrigatória. *(formato B, campo `PredictedDate` — antes, sem `predictedDate`, respondia `422` com a mensagem da data do pai)* |
+| `GET /changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
+
+> **Rotas com suporte offline** — eventos e reforços (ver `Docs/Specs/spec-sincronizacao-offline-14.8-vacinacao.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com o evento existente e a lista **original** de animais — mesmo que a vacina tenha sido excluída depois ou que a lista enviada seja outra (o `syncId` é checado antes da vacina e dos animais).
+> - `POST /{id}/booster` com `syncId` já existente → `201` com o reforço existente, inclusive quando ele próprio é o "reforço já existente" do pai e quando o pai foi inativado depois.
+> - Dois reforços diferentes do mesmo pai ao mesmo tempo → um `201` e os demais `409` "Já existe um reforço para este evento." *(até 12/Out/2026 a corrida respondia `500`)*.
+> - `POST` e `POST /{id}/booster` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada).
+> - `DELETE /{id}` em evento já inativo → `204` *(até 12/Out/2026 era `409` "O evento de vacinação já está inativo.")*.
+> - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
 
 Exemplo:
 
@@ -429,11 +544,26 @@ HTTP/1.1 404 Not Found
 |---|---|---|
 | `POST` | 404 | Animal com id '{animalId}' não encontrado. |
 | `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`, `POST /{id}/medications`, `POST /{id}/tests` | 404 | Caso de saúde com id '{id}' não encontrado. |
-| `DELETE /{id}` | 409 | O caso de saúde já está inativo. |
 | `DELETE /{id}/medications/{medicationId}` | 404 | Aplicação com id '{medicationId}' não encontrada. |
-| `DELETE /{id}/medications/{medicationId}` | 409 | A aplicação já está inativa. |
 | `DELETE /{id}/tests/{testId}` | 404 | Teste com id '{testId}' não encontrado. |
-| `DELETE /{id}/tests/{testId}` | 409 | O teste já está inativo. |
+| `POST` | 400 | O animal é obrigatório. *(formato B, campo `AnimalId` — antes, sem `animalId`, respondia `404` "Animal com id '0' não encontrado.")* |
+| `POST` | 400 | A data de diagnóstico é obrigatória. *(formato B, campo `DiagnosisDate` — antes, sem a data, gravava `0001-01-01`)* |
+| `POST`, `PATCH /{id}` | 400 | Quartos afetados inválidos. *(formato B, campo `AffectedQuarters` — fora de 1–15; antes era gravado)* |
+| `POST /{id}/medications` | 400 | A data de aplicação é obrigatória. *(formato B, campo `ApplicationDate` — antes, sem a data, gravava `0001-01-01`)* |
+| `POST /{id}/tests` | 400 | A data do teste é obrigatória. *(formato B, campo `TestDate` — antes, sem a data, gravava `0001-01-01`)* |
+| `GET /changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
+
+> **Rotas com suporte offline** — caso, aplicações e testes (ver `Docs/Specs/spec-sincronizacao-offline-14.9-casos-saude.md`). Repetir uma operação já aplicada **não é erro**:
+> - `POST` com `syncId` já existente → `201` com o caso existente e os dados **originais** — mesmo que o animal tenha sido reclassificado depois (o `syncId` é checado antes do animal e da regra da mastite).
+> - `POST /{id}/medications` e `POST /{id}/tests` com `syncId` já existente → `201` com a aplicação/teste existente (sem duplicar a carência) — mesmo que o caso tenha sido inativado depois.
+> - `POST`, `POST /{id}/medications` e `POST /{id}/tests` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
+> - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada, inclusive o encerramento).
+> - `DELETE /{id}` em caso já inativo → `204` *(até 13/Out/2026 era `409` "O caso de saúde já está inativo.")*.
+> - `DELETE /{id}/medications/{medicationId}` em aplicação já inativa → `204` *(até 13/Out/2026 era `409` "A aplicação já está inativa.")*.
+> - `DELETE /{id}/tests/{testId}` em teste já inativo → `204` *(até 13/Out/2026 era `409` "O teste já está inativo.")*.
+> - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
+>
+> O uso avulso de medicação (`/api/animals/{animalId}/medications`) **não** tem suporte offline e continua com exclusão física.
 
 ### 4.17 Somente leitura (sem erros de domínio)
 
@@ -449,7 +579,7 @@ Disparados automaticamente antes do controller. A chave de `errors` é o nome do
 
 | DTO | Mensagens |
 |---|---|
-| `AnimalCreateDto` | O brinco principal é obrigatório. · O brinco principal deve ter exatamente 6 dígitos numéricos. · O sexo é obrigatório. · A classificação é obrigatória. · A classificação '{x}' é exclusiva de fêmeas. · A classificação '{x}' é exclusiva de machos. · A data do ECC inicial não pode ser futura. |
+| `AnimalCreateDto` | O identificador de sincronização não pode ser vazio. · O brinco principal é obrigatório. · O brinco principal deve ter exatamente 6 dígitos numéricos. · O sexo é obrigatório. · A classificação é obrigatória. · A classificação '{x}' é exclusiva de fêmeas. · A classificação '{x}' é exclusiva de machos. · A data do ECC inicial não pode ser futura. |
 | `AnimalUpdateDto` | O brinco principal deve ter exatamente 6 dígitos numéricos. · A classificação '{x}' é exclusiva de fêmeas. · A classificação '{x}' é exclusiva de machos. |
 | `AnimalExitDto` | O motivo de saída é obrigatório. · A data de saída é obrigatória. · A data de saída não pode ser futura. |
 | `BodyConditionRecordCreateDto` | O escore de condição corporal é obrigatório. · A data da avaliação é obrigatória. |
@@ -531,7 +661,7 @@ A senha atual errada em `PATCH /me/password` **não** vem nesse formato: é conv
 | 3 | **`int.Parse` em id da rota** → `FormatException` → **`500`** | Pesagens e medicamentos do animal | ✅ **Corrigido** (02/Out/2026): ids tipados como `int` de ponta a ponta, rotas com `{animalId:int}`/`{weightRecordId:int}`; id inválido → `404` |
 | 4 | **`404` sem mensagem** e `null` como sinal de erro (viola o `CLAUDE.md`) | Medicamentos, vacinas, pesagens, medicamentos do animal | ✅ **Corrigido** (02/Out/2026): services lançam `NotFoundException` com mensagem; `Delete` retorna `Task<bool>` |
 | 5 | **"Email já cadastrado." em dois formatos** | `AuthController.Register` (D, `message`) × `UsersController.Create` (A, `error`) | ⏳ Pendente — corrigir muda o corpo lido pelo front-end web no cadastro |
-| 6 | **`409` para "já está no estado pedido"** ("já está inativo", "já está seca", "já está ativo"...) | Vários services | Tratado por entidade no plano offline (A6). ✅ Corrigido em `MilkProduction`; ⏳ demais entidades quando ficarem sincronizáveis |
+| 6 | **`409` para "já está no estado pedido"** ("já está inativo", "já está seca", "já está ativo"...) | Vários services | Tratado por entidade no plano offline (A6). ✅ Corrigido em `MilkProduction`, vacinas, sêmen, estoque e animais (saída/reativação); ⏳ demais entidades quando ficarem sincronizáveis |
 | 7 | **`500` com mensagem de negócio** ("Propriedade não encontrada.") | `AuthController.Login` | Mantido: é de fato uma inconsistência de dados no servidor |
 | 8 | **Concordância** em "Cobertura com id '{id}' não encontrado." e "... podem ser editados." | `BreedingEventService.UpdateAsync` | ✅ **Corrigido** (02/Out/2026) |
 | 9 | **`ExceptionMiddleware` registrado depois da autenticação** — exceções na validação da sessão escapam dele | `Program.cs:177–180` | ⏳ Pendente — exige mudança no `Program.cs` |

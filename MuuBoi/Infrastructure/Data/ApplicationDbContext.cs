@@ -52,17 +52,22 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<Medication>().HasQueryFilter(m => m.PropertyId == _propertyId);
             builder.Entity<WeightRecord>().HasQueryFilter(w => w.PropertyId == _propertyId);
             builder.Entity<AnimalMedication>().HasQueryFilter(am => am.PropertyId == _propertyId);
+            builder.Entity<BodyConditionRecord>().HasQueryFilter(r => r.PropertyId == _propertyId);
 
             builder.Entity<Animal>().HasIndex(a => a.PropertyId).HasDatabaseName("IX_Animals_PropertyId");
+            builder.Entity<Animal>().ConfigureSyncable();
             builder.Entity<Vaccine>().HasIndex(v => v.PropertyId).HasDatabaseName("IX_Vaccines_PropertyId");
             builder.Entity<Vaccine>().ConfigureSyncable();
             builder.Entity<Medication>().HasIndex(m => m.PropertyId).HasDatabaseName("IX_Medications_PropertyId");
             builder.Entity<WeightRecord>().HasIndex(w => w.PropertyId).HasDatabaseName("IX_WeightRecords_PropertyId");
+            builder.Entity<WeightRecord>().ConfigureSyncable();
             builder.Entity<AnimalMedication>().HasIndex(am => am.PropertyId).HasDatabaseName("IX_AnimalMedications_PropertyId");
 
             builder.Entity<BodyConditionRecord>()
                 .HasIndex(r => new { r.AnimalId, r.RecordedAt })
                 .HasDatabaseName("IX_BodyConditionRecords_AnimalId_RecordedAt");
+            builder.Entity<BodyConditionRecord>().HasIndex(r => r.PropertyId).HasDatabaseName("IX_BodyConditionRecords_PropertyId");
+            builder.Entity<BodyConditionRecord>().ConfigureSyncable();
 
             builder.Entity<AnimalExitRecord>()
                 .HasIndex(r => new { r.AnimalId, r.ExitDate })
@@ -73,11 +78,13 @@ namespace MuuBoi.Infrastructure.Data
                 .HasDatabaseName("IX_AnimalExitRecords_ExitDate_ExitReason");
 
             builder.Entity<SemenSample>().HasQueryFilter(s => s.PropertyId == _propertyId);
+            builder.Entity<SemenSample>().ConfigureSyncable();
             builder.Entity<SemenSample>()
                 .HasIndex(s => new { s.PropertyId, s.IsActive })
                 .HasDatabaseName("IX_SemenSamples_PropertyId_IsActive");
 
             builder.Entity<SemenSampleMovement>().HasQueryFilter(m => m.PropertyId == _propertyId);
+            builder.Entity<SemenSampleMovement>().ConfigureSyncable();
             builder.Entity<SemenSampleMovement>()
                 .HasOne(m => m.SemenSample)
                 .WithMany(s => s.Movements)
@@ -159,11 +166,8 @@ namespace MuuBoi.Infrastructure.Data
                 .HasForeignKey(p => p.SemenSampleId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Entity<AnimalPregnancy>()
-                .HasIndex(p => p.ClientRequestId)
-                .IsUnique()
-                .HasFilter("[ClientRequestId] IS NOT NULL")
-                .HasDatabaseName("IX_AnimalPregnancies_ClientRequestId");
+            builder.Entity<BreedingEvent>().ConfigureSyncable();
+            builder.Entity<AnimalPregnancy>().ConfigureSyncable();
 
             builder.Entity<AnimalPregnancy>()
                 .HasIndex(p => new { p.AnimalId, p.Status, p.IsActive })
@@ -217,6 +221,9 @@ namespace MuuBoi.Infrastructure.Data
                 .HasIndex(cf => cf.CalvingId)
                 .HasDatabaseName("IX_AnimalCalvingCalves_CalvingId");
 
+            builder.Entity<AnimalCalving>().ConfigureSyncable();
+            builder.Entity<AnimalCalvingCalf>().ConfigureSyncable();
+
             builder.Entity<MilkProduction>().HasQueryFilter(m => m.PropertyId == _propertyId);
 
             builder.Entity<MilkProduction>()
@@ -237,7 +244,7 @@ namespace MuuBoi.Infrastructure.Data
 
             builder.Entity<Lactation>()
                 .HasOne(l => l.Animal)
-                .WithMany()
+                .WithMany(a => a.Lactations)
                 .HasForeignKey(l => l.AnimalId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -258,6 +265,8 @@ namespace MuuBoi.Infrastructure.Data
             builder.Entity<Lactation>()
                 .HasIndex(l => l.CalvingId)
                 .HasDatabaseName("IX_Lactations_CalvingId");
+
+            builder.Entity<Lactation>().ConfigureSyncable();
 
             builder.Entity<VaccinationEvent>().HasQueryFilter(e => e.PropertyId == _propertyId);
 
@@ -295,6 +304,8 @@ namespace MuuBoi.Infrastructure.Data
                 .IsUnique()
                 .HasFilter("[ParentEventId] IS NOT NULL AND [IsActive] = 1")
                 .HasDatabaseName("UX_VaccinationEvents_ParentEventId_Active");
+
+            builder.Entity<VaccinationEvent>().ConfigureSyncable();
 
             builder.Entity<VaccinationEventAnimal>()
                 .HasKey(x => new { x.VaccinationEventId, x.AnimalId });
@@ -368,8 +379,14 @@ namespace MuuBoi.Infrastructure.Data
                 .HasIndex(m => m.HealthCaseId)
                 .HasDatabaseName("IX_AnimalMedications_HealthCaseId");
 
+            builder.Entity<HealthCase>().ConfigureSyncable();
+            builder.Entity<MastitisTest>().ConfigureSyncable();
+            builder.Entity<AnimalMedication>().ConfigureSyncable();
+
             builder.Entity<StockItem>().HasQueryFilter(i => i.PropertyId == _propertyId);
+            builder.Entity<StockItem>().ConfigureSyncable();
             builder.Entity<StockMovement>().HasQueryFilter(m => m.PropertyId == _propertyId);
+            builder.Entity<StockMovement>().ConfigureSyncable();
 
             builder.Entity<StockItem>()
                 .HasOne(i => i.StockCategory)

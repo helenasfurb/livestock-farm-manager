@@ -33,6 +33,20 @@ namespace MuuBoi.Api.Controllers
             return Ok(samples);
         }
 
+        [HttpGet("changes")]
+        public async Task<ActionResult<SyncPageDto<SemenSampleDto>>> GetChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _service.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
+        [HttpGet("movements/changes")]
+        public async Task<ActionResult<SyncPageDto<SemenSampleMovementDto>>> GetMovementChanges([FromQuery] string? since, [FromQuery] int? limit)
+        {
+            var page = await _movementService.GetChangesAsync(since, limit);
+            return Ok(page);
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<SemenSampleDto>> GetById(int id)
         {
@@ -41,7 +55,7 @@ namespace MuuBoi.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<SemenSampleDto>> Create([FromBody] SemenSampleCreateDto dto)
+        public async Task<ActionResult<SemenSampleCreatedDto>> Create([FromBody] SemenSampleCreateDto dto)
         {
             var created = await _service.CreateAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);

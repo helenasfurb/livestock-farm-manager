@@ -3,7 +3,7 @@ using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Domain.Models
 {
-    public class StockMovement : BaseEntity, ITenantEntity
+    public class StockMovement : BaseEntity, ITenantEntity, ISyncable
     {
         [Required]
         public int StockItemId { get; set; }
@@ -27,6 +27,9 @@ namespace MuuBoi.Domain.Models
         public string? Notes { get; set; }
 
         public Guid PropertyId { get; set; }
+
+        public Guid SyncId { get; set; }
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         public StockItem? StockItem { get; set; }
     }

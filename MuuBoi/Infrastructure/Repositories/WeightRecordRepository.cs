@@ -17,7 +17,7 @@ namespace MuuBoi.Infrastructure.Repositories
         public async Task<IEnumerable<WeightRecord>> GetAllWeightRecordsAsync(int animalId)
         {
             return await _context.WeightRecords
-                .Where(w => w.AnimalId == animalId)
+                .Where(w => w.AnimalId == animalId && w.IsActive)
                 .OrderBy(w => w.RecordedAt)
                 .ToListAsync();
         }
@@ -28,11 +28,14 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(w => w.Id == id && w.AnimalId == animalId);
         }
 
+        public async Task<WeightRecord?> GetWeightRecordBySyncIdAsync(Guid syncId)
+        {
+            return await _context.FindBySyncIdAsync<WeightRecord>(syncId);
+        }
+
         public async Task<WeightRecord> CreateWeightRecordAsync(WeightRecord weightRecord)
         {
-            _context.WeightRecords.Add(weightRecord);
-            await _context.SaveChangesAsync();
-            return weightRecord;
+            return await _context.AddSyncableAsync(weightRecord);
         }
 
         public async Task<WeightRecord?> UpdateWeightRecordAsync(WeightRecord weightRecord)
@@ -47,9 +50,15 @@ namespace MuuBoi.Infrastructure.Repositories
             var weightRecord = await GetWeightRecordByIdAsync(id, animalId);
             if (weightRecord == null) return null;
 
-            _context.WeightRecords.Remove(weightRecord);
+            weightRecord.IsActive = false;
+            weightRecord.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return weightRecord;
+        }
+
+        public async Task<IReadOnlyList<WeightRecord>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<WeightRecord>(since, take);
         }
     }
 }

@@ -8,6 +8,8 @@
 **Depende de:** Nenhum eixo — módulo independente. Reutiliza infra transversal (`BaseEntity`, `ITenantEntity`, tenant no repositório, `ExceptionMiddleware`, helpers estáticos em `Application/Helpers/`, `EnumValueDto`/`DateFormatConverter`).
 **Referência de padrão:** Controle de doses do Banco de Sêmen (`SemenSampleMovement`) — o ledger de estoque segue o mesmo desenho (saldo = Σ entradas − Σ saídas, soft delete, FK `Restrict`, índices de agregação).
 
+> **Sincronização offline (08/Out/2026):** `StockItem` e `StockMovement` são sincronizáveis — ver **Spec #14.3** (`spec-sincronizacao-offline-14.3-estoque.md`). Nenhuma regra de negócio desta spec foi alterada; o cadastro e as movimentações passaram a aceitar `syncId`/`updatedAt`, o saldo inicial passou a ser gravado junto com o insumo (mesma transação) e há rotas de pull (`GET /changes`, `GET /movements/changes`). A "evolução futura aditiva" da §8 foi feita por essa spec.
+
 > **Decisões de escopo desta spec (11/Set):**
 > - **Server-side agora** (`Id int`, `PropertyId`, `BaseEntity`, soft delete, resolvers como **helpers estáticos**). Offline-first fica como **evolução futura aditiva** (§8) — mesmo racional das specs de Vacinação, 11.1 e Tratamentos.
 > - **Categoria e Unidade são tabelas de referência semeadas, sem CRUD** (globais, read-only) — não enums (D3). Editabilidade por produtor é evolução futura (§8, §9).

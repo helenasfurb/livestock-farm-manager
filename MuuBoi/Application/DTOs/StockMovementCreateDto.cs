@@ -6,6 +6,8 @@ namespace MuuBoi.Application.DTOs
 {
     public class StockMovementCreateDto : IValidatableObject
     {
+        public Guid? SyncId { get; set; }
+
         [Required(ErrorMessage = "O tipo de movimentação é obrigatório.")]
         public StockMovementType MovementType { get; set; }
 
@@ -32,6 +34,11 @@ namespace MuuBoi.Application.DTOs
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+
             if (MovementDate.Date > DateTime.UtcNow.Date)
                 yield return new ValidationResult(
                     "A data da movimentação não pode ser futura.",

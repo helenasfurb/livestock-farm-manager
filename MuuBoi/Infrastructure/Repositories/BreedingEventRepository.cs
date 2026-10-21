@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MuuBoi.Application.DTOs;
 using MuuBoi.Application.Interfaces;
@@ -60,6 +61,7 @@ namespace MuuBoi.Infrastructure.Repositories
                 .Include(e => e.Animal)
                 .Include(e => e.SemenSample)
                 .Include(e => e.SireAnimal)
+                .Include(e => e.Pregnancy)
                 .FirstOrDefaultAsync(e => e.Id == id);
         }
 
@@ -137,11 +139,25 @@ namespace MuuBoi.Infrastructure.Repositories
             return rows.Select(r => (r.AnimalId, r.BreedingDate)).ToList();
         }
 
-        public async Task<BreedingEvent> CreateAsync(BreedingEvent breedingEvent)
+        public async Task<BreedingEvent?> GetBySyncIdAsync(Guid syncId)
         {
-            _context.BreedingEvents.Add(breedingEvent);
-            await _context.SaveChangesAsync();
-            return breedingEvent;
+            return await _context.BreedingEvents
+                .Include(e => e.Animal)
+                .Include(e => e.SemenSample)
+                .Include(e => e.SireAnimal)
+                .Include(e => e.Pregnancy)
+                .FirstOrDefaultAsync(e => e.SyncId == syncId);
+        }
+
+        public async Task<BreedingEvent> CreateAsync(BreedingEvent breedingEvent, SemenSampleMovement? semenOutput)
+        {
+            if (semenOutput != null)
+            {
+                semenOutput.BreedingEvent = breedingEvent;
+                _context.SemenSampleMovements.Add(semenOutput);
+            }
+
+            return await _context.AddSyncableAsync(breedingEvent);
         }
 
         public async Task<BreedingEvent> UpdateAsync(BreedingEvent breedingEvent)
@@ -149,6 +165,46 @@ namespace MuuBoi.Infrastructure.Repositories
             _context.BreedingEvents.Update(breedingEvent);
             await _context.SaveChangesAsync();
             return breedingEvent;
+        }
+
+        public async Task<BreedingEvent?> SaveDiagnosisAsync(BreedingEvent breedingEvent, AnimalPregnancy? pregnancy)
+        {
+            if (pregnancy != null)
+            {
+                pregnancy.BreedingEvent = breedingEvent;
+                _context.AnimalPregnancies.Add(pregnancy);
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return breedingEvent;
+            }
+            catch (DbUpdateException ex) when (ex is DbUpdateConcurrencyException || IsPregnancyUniqueViolation(ex))
+            {
+                if (pregnancy != null)
+                    _context.Entry(pregnancy).State = EntityState.Detached;
+                _context.Entry(breedingEvent).State = EntityState.Detached;
+                return null;
+            }
+        }
+
+        public async Task<SemenSampleMovement?> GetSemenOutputAsync(int breedingEventId)
+        {
+            return await _context.SemenSampleMovements
+                .FirstOrDefaultAsync(m => m.BreedingEventId == breedingEventId);
+        }
+
+        public async Task<IReadOnlyList<BreedingEvent>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<BreedingEvent>(since, take);
+        }
+
+        private static bool IsPregnancyUniqueViolation(DbUpdateException ex)
+        {
+            return ex.InnerException is SqlException sql
+                && (sql.Number == 2601 || sql.Number == 2627)
+                && (sql.Message.Contains("UX_AnimalPregnancies_SyncId") || sql.Message.Contains("IX_AnimalPregnancies_BreedingEventId"));
         }
     }
 }

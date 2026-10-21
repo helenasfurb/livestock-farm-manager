@@ -1,5 +1,7 @@
-﻿using AutoMapper;
+﻿using System.ComponentModel.DataAnnotations;
+using AutoMapper;
 using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Domain.Exceptions;
 using MuuBoi.Domain.Models;
@@ -37,10 +39,18 @@ namespace MuuBoi.Application.Services
 
         public async Task<WeightRecordDto> CreateWeightRecordAsync(WeightRecordCreateDto weightRecordCreateDto, int animalId)
         {
+            if (weightRecordCreateDto.SyncId.HasValue)
+            {
+                var existing = await _weightRecordRepository.GetWeightRecordBySyncIdAsync(weightRecordCreateDto.SyncId.Value);
+                if (existing != null)
+                    return _mapper.Map<WeightRecordDto>(existing);
+            }
+
             var animal = await FindAnimalAsync(animalId);
 
             var weightRecord = new WeightRecord
             {
+                SyncId = weightRecordCreateDto.SyncId ?? Guid.NewGuid(),
                 AnimalId = animal.Id,
                 Weight = weightRecordCreateDto.Weight!.Value,
                 RecordedAt = weightRecordCreateDto.WeightDate ?? DateTime.UtcNow,
@@ -54,7 +64,9 @@ namespace MuuBoi.Application.Services
         public async Task<bool> DeleteWeightRecordAsync(int id, int animalId)
         {
             await FindAnimalAsync(animalId);
-            await FindWeightRecordAsync(id, animalId);
+            var record = await FindWeightRecordAsync(id, animalId);
+            if (!record.IsActive)
+                return true;
 
             await _weightRecordRepository.DeleteWeightRecordAsync(id, animalId);
             return true;
@@ -79,12 +91,27 @@ namespace MuuBoi.Application.Services
         public async Task<WeightRecordDto> UpdateWeightRecordAsync(int id, int animalId, WeightRecordUpdateDto weightRecordUpdateDto)
         {
             await FindAnimalAsync(animalId);
-
             var existing = await FindWeightRecordAsync(id, animalId);
 
+            var editedAt = SyncTimestampResolver.ResolveEditedAt(weightRecordUpdateDto.UpdatedAt, DateTime.UtcNow);
+            if (SyncTimestampResolver.IsOutdated(editedAt, existing))
+                return _mapper.Map<WeightRecordDto>(existing);
+
             _mapper.Map(weightRecordUpdateDto, existing);
+            existing.UpdatedAt = editedAt;
             var updated = await _weightRecordRepository.UpdateWeightRecordAsync(existing);
             return _mapper.Map<WeightRecordDto>(updated);
+        }
+
+        public async Task<SyncPageDto<WeightRecordDto>> GetChangesAsync(string? since, int? limit)
+        {
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
+
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _weightRecordRepository.GetChangesAsync(cursor, take + 1);
+
+            return SyncPaging.BuildPage(fetched, take, cursor, w => _mapper.Map<WeightRecordDto>(w));
         }
     }
 }

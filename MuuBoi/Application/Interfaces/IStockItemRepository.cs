@@ -7,7 +7,10 @@ namespace MuuBoi.Application.Interfaces
     {
         Task<IEnumerable<StockItem>> GetAllAsync(StockItemFilterDto filter);
         Task<StockItem?> GetByIdAsync(int id);
+        Task<StockItem?> GetBySyncIdAsync(Guid syncId);
+        Task<Dictionary<int, StockItem>> GetByIdsAsync(IEnumerable<int> ids);
         Task<StockItem> CreateAsync(StockItem item);
         Task<StockItem> UpdateAsync(StockItem item);
+        Task<IReadOnlyList<StockItem>> GetChangesAsync(ulong since, int take);
     }
 }

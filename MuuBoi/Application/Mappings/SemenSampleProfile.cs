@@ -16,6 +16,10 @@ namespace MuuBoi.Application.Mappings
                         : null))
                 .ForMember(dest => dest.AvailableDoses, opt => opt.Ignore());
 
+            CreateMap<SemenSample, SemenSampleCreatedDto>()
+                .IncludeBase<SemenSample, SemenSampleDto>()
+                .ForMember(dest => dest.InitialMovement, opt => opt.Ignore());
+
             CreateMap<SemenSample, SemenSampleListItemDto>()
                 .ForMember(dest => dest.BullBreed,
                     opt => opt.MapFrom(src => src.BullBreed.HasValue
@@ -31,14 +35,18 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.PropertyId, opt => opt.Ignore())
+                .ForMember(dest => dest.SyncId, opt => opt.Ignore())
+                .ForMember(dest => dest.RowVersion, opt => opt.Ignore())
                 .ForMember(dest => dest.Movements, opt => opt.Ignore());
 
             CreateMap<SemenSampleUpdateDto, SemenSample>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.IsActive, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.PropertyId, opt => opt.Ignore())
+                .ForMember(dest => dest.SyncId, opt => opt.Ignore())
+                .ForMember(dest => dest.RowVersion, opt => opt.Ignore())
                 .ForMember(dest => dest.Movements, opt => opt.Ignore())
                 .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
         }

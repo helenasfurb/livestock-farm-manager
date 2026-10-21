@@ -8,6 +8,8 @@
 **Status:** Aprovado para implementação  
 **Depende de:** Spec #1 — Gestão de Animais
 
+> **Sincronização offline (09/Out/2026):** saída e reativação têm suporte offline — ver **Spec #14.4**, Parte B (`spec-sincronizacao-offline-14.4-animais.md`). Saída em animal já inativo e reativação de animal já ativo passaram a responder `200` sem gravar (antes `409`); o registro de saída e a inativação são gravados juntos; os registros de saída chegam ao app embutidos no pull do animal. **Correção:** a segunda saída de um animal reativado não apaga mais a saída anterior do histórico.
+
 ---
 
 ## Changelog

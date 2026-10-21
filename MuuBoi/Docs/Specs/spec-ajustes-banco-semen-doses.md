@@ -17,6 +17,7 @@
 | 3.0 | `BatchNumber` e `BatchDate` movidos de `SemenSampleMovement` para `SemenSample`; histórico de movimentações mantém apenas data de compra, quantidade e tipo |
 | 3.1 | `InitialQuantity` e `InitialNotes` adicionados ao `SemenSampleCreateDto`; ao registrar um sêmen com quantidade inicial, o sistema cria automaticamente o primeiro movimento `Input` |
 | 3.2 | Campo `BullName` removido de `SemenSample` — desnecessário na prática |
+| 3.3 | Campo `BatchDate` (data de partida) removido de `SemenSample` e dos DTOs — a partida é identificada só pelo número (`BatchNumber`). 06/Out/2026, Spec #14.2 |
 
 ---
 
@@ -49,7 +50,7 @@ AvailableDoses = SUM(Quantity | MovementType = Input, IsActive = true)
 | D6 | Movimentos gerados pelo sistema (`BreedingEventId != null`) **não podem ser editados nem inativados diretamente** | O ciclo de vida desses movimentos é controlado pelo `BreedingEvent`. Lança `ConflictException` se tentado. |
 | D7 | `Quantity` é sempre positivo; a direção do estoque é determinada pelo `MovementType` | Quantidades negativas são confusas. `MovementType = Output` com `Quantity = 2` é mais legível que `Quantity = -2`. |
 | D8 | Saldo negativo é permitido — não bloqueia inseminações | O produtor pode aplicar sêmen sem ter registrado todas as entradas. Bloquear causaria fricção desnecessária. |
-| D9 | `BatchNumber` e `BatchDate` pertencem ao cadastro de `SemenSample`, não ao histórico de movimentações | Se colocados no histórico, o produtor precisaria escolher entre múltiplos registros de movimentação para identificar o lote, o que dificulta o rastreamento quando há muitas compras de datas e lotes diferentes para o mesmo catálogo. Com os campos no cadastro, cada `SemenSample` representa um lote específico. |
+| D9 | `BatchNumber` e `BatchDate` pertencem ao cadastro de `SemenSample`, não ao histórico de movimentações | Se colocados no histórico, o produtor precisaria escolher entre múltiplos registros de movimentação para identificar o lote, o que dificulta o rastreamento quando há muitas compras de datas e lotes diferentes para o mesmo catálogo. Com os campos no cadastro, cada `SemenSample` representa um lote específico. **Revisado na v3.3:** `BatchDate` removido; fica só `BatchNumber`. |
 | D10 | O histórico de movimentações registra apenas data, tipo e quantidade | Simplicidade intencional: a procedência do lote está no cadastro do sêmen; o histórico só precisa responder "quando e quanto entrou ou saiu". |
 | D11 | `SemenSampleMovement` implementa `ITenantEntity` (PropertyId) | Consistência com o padrão do projeto; isolamento de tenant em todas as entidades com escopo de propriedade. |
 | D12 | Soft delete em `SemenSampleMovement` | Movimentos inativados não entram no cálculo do saldo. Permite desfazer registros incorretos sem perder o histórico. |
@@ -284,7 +285,7 @@ AvailableDoses = SUM(Quantity | MovementType = Input, IsActive = true)
 | Campo | Tipo | Obrigatório | Notas |
 |-------|------|-------------|-------|
 | `BatchNumber` | `string?` (max 100) | Não | Número de partida / lote. Identifica o batch ao qual este registro pertence. |
-| `BatchDate` | `DateTime?` | Não | Data de partida (fabricação ou emissão do lote). |
+| ~~`BatchDate`~~ | ~~`DateTime?`~~ | — | **Removido na v3.3** (06/Out/2026). |
 
 **Navigation adicionada:**
 ```csharp

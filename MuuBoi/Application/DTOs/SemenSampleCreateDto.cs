@@ -3,8 +3,10 @@ using MuuBoi.Domain.Enums;
 
 namespace MuuBoi.Application.DTOs
 {
-    public class SemenSampleCreateDto
+    public class SemenSampleCreateDto : IValidatableObject
     {
+        public Guid? SyncId { get; set; }
+
         [Required(ErrorMessage = "O nome é obrigatório.")]
         [MaxLength(100, ErrorMessage = "O nome deve ter no máximo 100 caracteres.")]
         public string Name { get; set; } = string.Empty;
@@ -20,8 +22,6 @@ namespace MuuBoi.Application.DTOs
         [MaxLength(100, ErrorMessage = "O número do lote deve ter no máximo 100 caracteres.")]
         public string? BatchNumber { get; set; }
 
-        public DateTime? BatchDate { get; set; }
-
         [MaxLength(500, ErrorMessage = "As observações devem ter no máximo 500 caracteres.")]
         public string? Notes { get; set; }
 
@@ -30,5 +30,20 @@ namespace MuuBoi.Application.DTOs
 
         [MaxLength(500, ErrorMessage = "As observações iniciais devem ter no máximo 500 caracteres.")]
         public string? InitialNotes { get; set; }
+
+        public Guid? InitialMovementSyncId { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (SyncId.HasValue && SyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização não pode ser vazio.",
+                    new[] { nameof(SyncId) });
+
+            if (InitialMovementSyncId.HasValue && InitialMovementSyncId.Value == Guid.Empty)
+                yield return new ValidationResult(
+                    "O identificador de sincronização da entrada inicial não pode ser vazio.",
+                    new[] { nameof(InitialMovementSyncId) });
+        }
     }
 }

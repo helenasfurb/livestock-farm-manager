@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using AutoMapper;
 using MuuBoi.Application.DTOs;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Domain.Enums;
 using MuuBoi.Domain.Exceptions;
@@ -12,7 +14,6 @@ namespace MuuBoi.Application.Services
         private readonly IBreedingEventRepository _repository;
         private readonly IAnimalRepository _animalRepository;
         private readonly ISemenSampleRepository _semenSampleRepository;
-        private readonly ISemenSampleMovementService _movementService;
         private readonly IAnimalPregnancyService _pregnancyService;
         private readonly IAnimalPregnancyRepository _pregnancyRepository;
         private readonly IMapper _mapper;
@@ -21,7 +22,6 @@ namespace MuuBoi.Application.Services
             IBreedingEventRepository repository,
             IAnimalRepository animalRepository,
             ISemenSampleRepository semenSampleRepository,
-            ISemenSampleMovementService movementService,
             IAnimalPregnancyService pregnancyService,
             IAnimalPregnancyRepository pregnancyRepository,
             IMapper mapper)
@@ -29,7 +29,6 @@ namespace MuuBoi.Application.Services
             _repository = repository;
             _animalRepository = animalRepository;
             _semenSampleRepository = semenSampleRepository;
-            _movementService = movementService;
             _pregnancyService = pregnancyService;
             _pregnancyRepository = pregnancyRepository;
             _mapper = mapper;
@@ -65,6 +64,13 @@ namespace MuuBoi.Application.Services
 
         public async Task<BreedingEventDto> CreateAsync(int animalId, BreedingEventCreateDto dto)
         {
+            if (dto.SyncId.HasValue)
+            {
+                var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
+                if (existing != null)
+                    return _mapper.Map<BreedingEventDto>(existing);
+            }
+
             var animal = await _animalRepository.GetAnimalByIdAsync(animalId)
                 ?? throw new NotFoundException($"Animal com id '{animalId}' não encontrado.");
 
@@ -78,10 +84,12 @@ namespace MuuBoi.Application.Services
             var hasActiveEvent = await _repository.HasActiveByAnimalIdAsync(animalId);
 
             if (hasActiveEvent)
-                throw new BusinessRuleException("O animal já possui uma cobertura aguardando diagnóstico. Registre o diagnóstico do serviço anterior antes de criar uma nova.");
+                return await ExistingBySyncIdAsync(dto.SyncId)
+                    ?? throw new BusinessRuleException("O animal já possui uma cobertura aguardando diagnóstico. Registre o diagnóstico do serviço anterior antes de criar uma nova.");
 
             if (await _pregnancyRepository.HasActiveConfirmedByAnimalIdAsync(animalId))
-                throw new BusinessRuleException("O animal possui uma gestação ativa. Não é possível registrar uma nova cobertura.");
+                return await ExistingBySyncIdAsync(dto.SyncId)
+                    ?? throw new BusinessRuleException("O animal possui uma gestação ativa. Não é possível registrar uma nova cobertura.");
 
             if (dto.ReproductionType == ReproductionType.ArtificialInsemination)
             {
@@ -90,10 +98,6 @@ namespace MuuBoi.Application.Services
 
                 if (!semen.IsActive)
                     throw new ConflictException("A amostra de sêmen selecionada está inativa.");
-
-                var availableDoses = await _semenSampleRepository.GetAvailableDosesAsync(semen.Id);
-                if (availableDoses <= 0)
-                    throw new BusinessRuleException("Não há doses disponíveis para a amostra de sêmen selecionada.");
             }
             else
             {
@@ -108,13 +112,24 @@ namespace MuuBoi.Application.Services
             }
 
             var ev = _mapper.Map<BreedingEvent>(dto);
+            ev.SyncId = dto.SyncId ?? Guid.NewGuid();
             ev.AnimalId = animalId;
             ev.ServiceNumber = await _repository.CountActiveByAnimalIdAsync(animalId) + 1;
 
-            var created = await _repository.CreateAsync(ev);
+            var semenOutput = ev.ReproductionType == ReproductionType.ArtificialInsemination
+                ? new SemenSampleMovement
+                {
+                    SyncId = Guid.NewGuid(),
+                    SemenSampleId = ev.SemenSampleId!.Value,
+                    MovementType = SemenMovementType.Output,
+                    MovementDate = ev.BreedingDate,
+                    Quantity = 1,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                }
+                : null;
 
-            if (created.ReproductionType == ReproductionType.ArtificialInsemination)
-                await _movementService.CreateForBreedingEventAsync(created);
+            var created = await _repository.CreateAsync(ev, semenOutput);
 
             created.Animal = animal;
             if (created.SemenSampleId.HasValue)
@@ -125,6 +140,15 @@ namespace MuuBoi.Application.Services
             return _mapper.Map<BreedingEventDto>(created);
         }
 
+        private async Task<BreedingEventDto?> ExistingBySyncIdAsync(Guid? syncId)
+        {
+            if (!syncId.HasValue)
+                return null;
+
+            var existing = await _repository.GetBySyncIdAsync(syncId.Value);
+            return existing == null ? null : _mapper.Map<BreedingEventDto>(existing);
+        }
+
         public async Task<BreedingEventDto> UpdateAsync(int id, BreedingEventUpdateDto dto)
         {
             var ev = await _repository.GetByIdAsync(id)
@@ -132,6 +156,10 @@ namespace MuuBoi.Application.Services
 
             if (ev.Status != ReproductiveEventStatus.AwaitingDiagnosis)
                 throw new ConflictException("Apenas coberturas com diagnóstico pendente podem ser editadas.");
+
+            var editedAt = SyncTimestampResolver.ResolveEditedAt(dto.UpdatedAt, DateTime.UtcNow);
+            if (SyncTimestampResolver.IsOutdated(editedAt, ev))
+                return _mapper.Map<BreedingEventDto>(ev);
 
             if (dto.BreedingDate.HasValue)
                 ev.BreedingDate = dto.BreedingDate.Value;
@@ -164,7 +192,17 @@ namespace MuuBoi.Application.Services
                 ev.SireAnimalId = dto.SireAnimalId.Value;
             }
 
-            ev.UpdatedAt = DateTime.UtcNow;
+            if (ev.ReproductionType == ReproductionType.ArtificialInsemination)
+            {
+                var semenOutput = await _repository.GetSemenOutputAsync(ev.Id);
+                if (semenOutput != null)
+                {
+                    semenOutput.SemenSampleId = ev.SemenSampleId!.Value;
+                    semenOutput.MovementDate = ev.BreedingDate;
+                }
+            }
+
+            ev.UpdatedAt = editedAt;
             var updated = await _repository.UpdateAsync(ev);
 
             updated.Animal = await _animalRepository.GetAnimalByIdAsync(ev.AnimalId);
@@ -181,29 +219,50 @@ namespace MuuBoi.Application.Services
             var ev = await _repository.GetByIdAsync(id)
                 ?? throw new NotFoundException($"Cobertura com id '{id}' não encontrada.");
 
-            if (ev.Status != ReproductiveEventStatus.AwaitingDiagnosis)
-                throw new ConflictException("O diagnóstico desta cobertura já foi registrado.");
+            var status = dto.Status!.Value;
+            var diagnosisDate = dto.DiagnosisDate!.Value;
 
-            if (dto.DiagnosisDate < ev.BreedingDate)
+            if (ev.Status != ReproductiveEventStatus.AwaitingDiagnosis)
+                return SameDiagnosisOrConflict(ev, status);
+
+            if (diagnosisDate < ev.BreedingDate)
                 throw new BusinessRuleException("A data do diagnóstico não pode ser anterior à data da cobertura.");
 
-            ev.Status = dto.Status;
-            ev.DiagnosisDate = dto.DiagnosisDate;
+            ev.Status = status;
+            ev.DiagnosisDate = diagnosisDate;
             ev.DiagnosisMethod = dto.DiagnosisMethod;
-            ev.UpdatedAt = DateTime.UtcNow;
 
-            var updated = await _repository.UpdateAsync(ev);
+            var pregnancy = status == ReproductiveEventStatus.Successful
+                ? _pregnancyService.BuildForBreedingEvent(ev, diagnosisDate, dto.GestationalAge, dto.PregnancySyncId ?? Guid.NewGuid())
+                : null;
 
-            if (updated.Status == ReproductiveEventStatus.Successful)
-                await _pregnancyService.CreateForBreedingEventAsync(updated, dto.DiagnosisDate, dto.GestationalAge);
-
-            updated.Animal = await _animalRepository.GetAnimalByIdAsync(ev.AnimalId);
-            if (updated.SemenSampleId.HasValue)
-                updated.SemenSample = await _semenSampleRepository.GetByIdAsync(updated.SemenSampleId.Value);
-            if (updated.SireAnimalId.HasValue)
-                updated.SireAnimal = await _animalRepository.GetAnimalByIdAsync(updated.SireAnimalId.Value);
+            var updated = await _repository.SaveDiagnosisAsync(ev, pregnancy);
+            if (updated == null)
+            {
+                var current = await _repository.GetByIdAsync(id)
+                    ?? throw new NotFoundException($"Cobertura com id '{id}' não encontrada.");
+                return SameDiagnosisOrConflict(current, status);
+            }
 
             return _mapper.Map<BreedingEventDto>(updated);
+        }
+
+        private BreedingEventDto SameDiagnosisOrConflict(BreedingEvent ev, ReproductiveEventStatus status)
+        {
+            if (ev.Status != status)
+                throw new ConflictException("O diagnóstico desta cobertura já foi registrado.");
+
+            return _mapper.Map<BreedingEventDto>(ev);
+        }
+
+        public async Task<SyncPageDto<BreedingEventSyncDto>> GetChangesAsync(string? since, int? limit)
+        {
+            if (!SyncPaging.TryDecodeCursor(since, out var cursor))
+                throw new ValidationException("Cursor de sincronização inválido.");
+
+            var take = SyncPaging.ResolveLimit(limit);
+            var fetched = await _repository.GetChangesAsync(cursor, take + 1);
+            return SyncPaging.BuildPage(fetched, take, cursor, e => _mapper.Map<BreedingEventSyncDto>(e));
         }
 
         public async Task DeactivateAsync(int id)
@@ -212,17 +271,21 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Cobertura com id '{id}' não encontrada.");
 
             if (!ev.IsActive)
-                throw new ConflictException("A cobertura já está inativa.");
+                return;
 
             if (await _pregnancyRepository.ExistsActiveForBreedingEventAsync(ev.Id))
                 throw new ConflictException("Esta cobertura possui uma gestação ativa vinculada. Inative a gestação primeiro.");
 
             ev.IsActive = false;
-            ev.UpdatedAt = DateTime.UtcNow;
-            await _repository.UpdateAsync(ev);
 
             if (ev.ReproductionType == ReproductionType.ArtificialInsemination)
-                await _movementService.InactivateForBreedingEventAsync(ev.Id);
+            {
+                var semenOutput = await _repository.GetSemenOutputAsync(ev.Id);
+                if (semenOutput != null)
+                    semenOutput.IsActive = false;
+            }
+
+            await _repository.UpdateAsync(ev);
         }
     }
 }

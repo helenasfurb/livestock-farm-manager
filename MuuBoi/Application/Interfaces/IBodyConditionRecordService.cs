@@ -7,5 +7,6 @@ namespace MuuBoi.Application.Interfaces
         Task<IEnumerable<BodyConditionRecordDto>> GetByAnimalIdAsync(int animalId);
         Task<BodyConditionRecordDto> CreateAsync(int animalId, BodyConditionRecordCreateDto dto);
         Task<BodyConditionRecordDto> UpdateAsync(int animalId, int recordId, BodyConditionRecordUpdateDto dto);
+        Task<SyncPageDto<BodyConditionRecordDto>> GetChangesAsync(string? since, int? limit);
     }
 }

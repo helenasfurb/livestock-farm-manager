@@ -47,11 +47,14 @@ namespace MuuBoi.Infrastructure.Repositories
             return await _context.SemenSamples.FirstOrDefaultAsync(s => s.Id == id);
         }
 
+        public async Task<SemenSample?> GetBySyncIdAsync(Guid syncId)
+        {
+            return await _context.FindBySyncIdAsync<SemenSample>(syncId);
+        }
+
         public async Task<SemenSample> CreateAsync(SemenSample semenSample)
         {
-            _context.SemenSamples.Add(semenSample);
-            await _context.SaveChangesAsync();
-            return semenSample;
+            return await _context.AddSyncableAsync(semenSample);
         }
 
         public async Task<SemenSample> UpdateAsync(SemenSample semenSample)
@@ -94,6 +97,22 @@ namespace MuuBoi.Infrastructure.Repositories
                     var outputs = groups.FirstOrDefault(g => g.SemenSampleId == id && g.MovementType == SemenMovementType.Output)?.Total ?? 0;
                     return inputs - outputs;
                 });
+        }
+
+        public async Task<IReadOnlyList<SemenSample>> GetChangesAsync(ulong since, int take)
+        {
+            return await _context.GetChangesSinceAsync<SemenSample>(since, take);
+        }
+
+        public async Task<Dictionary<int, string>> GetNamesByIdsAsync(IEnumerable<int> ids)
+        {
+            var idList = ids.Distinct().ToList();
+            if (idList.Count == 0)
+                return new Dictionary<int, string>();
+
+            return await _context.SemenSamples
+                .Where(s => idList.Contains(s.Id))
+                .ToDictionaryAsync(s => s.Id, s => s.Name);
         }
     }
 }
