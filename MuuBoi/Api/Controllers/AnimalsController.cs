@@ -15,15 +15,18 @@ namespace MuuBoi.Api.Controllers
         private readonly IAnimalService _animalService;
         private readonly IVaccinationEventService _vaccinationEventService;
         private readonly IHealthCaseService _healthCaseService;
+        private readonly IAnimalPhotoService _animalPhotoService;
 
         public AnimalsController(
             IAnimalService animalService,
             IVaccinationEventService vaccinationEventService,
-            IHealthCaseService healthCaseService)
+            IHealthCaseService healthCaseService,
+            IAnimalPhotoService animalPhotoService)
         {
             _animalService = animalService;
             _vaccinationEventService = vaccinationEventService;
             _healthCaseService = healthCaseService;
+            _animalPhotoService = animalPhotoService;
         }
 
         [HttpGet("{id:int}/vaccination-history")]
@@ -114,6 +117,36 @@ namespace MuuBoi.Api.Controllers
         {
             var result = await _animalService.ReactivateAnimalAsync(id);
             return Ok(result);
+        }
+
+        [HttpPut("{id:int}/photo")]
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(3 * 1024 * 1024)]
+        public async Task<ActionResult<AnimalPhotoDto>> UploadPhoto(int id, [FromForm] AnimalPhotoUploadDto dto)
+        {
+            var result = await _animalPhotoService.UploadPhotoAsync(id, dto);
+            return Ok(result);
+        }
+
+        [HttpGet("{id:int}/photo")]
+        public async Task<IActionResult> GetPhoto(int id)
+        {
+            var url = await _animalPhotoService.GetPhotoReadUrlAsync(id, thumbnail: false);
+            return Redirect(url.ToString());
+        }
+
+        [HttpGet("{id:int}/photo/thumbnail")]
+        public async Task<IActionResult> GetThumbnail(int id)
+        {
+            var url = await _animalPhotoService.GetPhotoReadUrlAsync(id, thumbnail: true);
+            return Redirect(url.ToString());
+        }
+
+        [HttpDelete("{id:int}/photo")]
+        public async Task<IActionResult> DeletePhoto(int id, [FromQuery] DateTime? updatedAt)
+        {
+            await _animalPhotoService.DeletePhotoAsync(id, updatedAt);
+            return NoContent();
         }
 
         [HttpGet("{id:int}/exit-records")]

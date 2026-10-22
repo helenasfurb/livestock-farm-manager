@@ -13,6 +13,10 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.ExitReason,
                     opt => opt.MapFrom(src => new EnumValueDto { Value = (int)src.ExitReason, Label = src.ExitReason.GetDescription() }));
 
+            CreateMap<Animal, AnimalPhotoDto>()
+                .ForMember(dest => dest.PhotoUrl, opt => opt.MapFrom(src => AnimalPhotoPaths.PhotoUrl(src.Id, src.PhotoHash)))
+                .ForMember(dest => dest.ThumbnailUrl, opt => opt.MapFrom(src => AnimalPhotoPaths.ThumbnailUrl(src.Id, src.PhotoHash)));
+
             CreateMap<Animal, AnimalDto>()
                 .ForMember(dest => dest.Gender,
                     opt => opt.MapFrom(src => src.Gender.HasValue
@@ -50,7 +54,9 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.LastCalvingDate, opt => opt.Ignore())
                 .ForMember(dest => dest.CalvingIntervalDays, opt => opt.Ignore())
                 .ForMember(dest => dest.NextCalving, opt => opt.Ignore())
-                .ForMember(dest => dest.Parentage, opt => opt.Ignore());
+                .ForMember(dest => dest.Parentage, opt => opt.Ignore())
+                .ForMember(dest => dest.PhotoUrl, opt => opt.MapFrom(src => AnimalPhotoPaths.PhotoUrl(src.Id, src.PhotoHash)))
+                .ForMember(dest => dest.ThumbnailUrl, opt => opt.MapFrom(src => AnimalPhotoPaths.ThumbnailUrl(src.Id, src.PhotoHash)));
 
             CreateMap<Animal, AnimalSyncDto>()
                 .ForMember(dest => dest.Gender,
@@ -76,7 +82,9 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.ExitRecords,
                     opt => opt.MapFrom(src => src.ExitRecords != null
                         ? src.ExitRecords.OrderByDescending(e => e.ExitDate).ThenByDescending(e => e.Id).ToList()
-                        : new List<AnimalExitRecord>()));
+                        : new List<AnimalExitRecord>()))
+                .ForMember(dest => dest.PhotoUrl, opt => opt.MapFrom(src => AnimalPhotoPaths.PhotoUrl(src.Id, src.PhotoHash)))
+                .ForMember(dest => dest.ThumbnailUrl, opt => opt.MapFrom(src => AnimalPhotoPaths.ThumbnailUrl(src.Id, src.PhotoHash)));
 
             CreateMap<Animal, AnimalListItemDto>()
                 .ForMember(dest => dest.Classification,
@@ -93,7 +101,8 @@ namespace MuuBoi.Application.Mappings
                     opt => opt.MapFrom(src => src.WeightRecords != null ? src.WeightRecords.FirstOrDefault() : null))
                 .ForMember(dest => dest.ReproductiveStatus, opt => opt.Ignore())
                 .ForMember(dest => dest.ProductiveStatus, opt => opt.Ignore())
-                .ForMember(dest => dest.DaysInMilk, opt => opt.Ignore());
+                .ForMember(dest => dest.DaysInMilk, opt => opt.Ignore())
+                .ForMember(dest => dest.ThumbnailUrl, opt => opt.MapFrom(src => AnimalPhotoPaths.ThumbnailUrl(src.Id, src.PhotoHash)));
 
             CreateMap<AnimalCreateDto, Animal>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())

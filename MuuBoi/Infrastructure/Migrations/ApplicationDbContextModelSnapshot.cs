@@ -192,6 +192,13 @@ namespace MuuBoi.Infrastructure.Migrations
                     b.Property<int?>("Origin")
                         .HasColumnType("int");
 
+                    b.Property<string>("PhotoHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("PhotoUpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uniqueidentifier");
 

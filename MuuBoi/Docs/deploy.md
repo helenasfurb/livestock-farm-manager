@@ -42,6 +42,8 @@ az containerapp list --resource-group muu-boi --query "[].name" -o tsv
  
 - `ConnectionStrings__DefaultConnection` → aponta para o Azure SQL (`muuboi.database.windows.net` / `db-muu-boi`)
 - `Jwt__Key` → chave de assinatura JWT do ambiente cloud
+- `ConnectionStrings__BlobStorage` → secret `blob-connection` (cadeia de conexão da Storage Account das fotos dos animais)
+- `BlobStorage__ContainerName` → *opcional*; só se o container de produção for diferente do definido no `appsettings.json`
 > ⚠️ **Nunca coloque valores reais de senha ou chave neste arquivo.** Ele pode ser versionado no Git. As credenciais já estão salvas diretamente no Container App e não precisam ser reenviadas a cada deploy.
  
 ## Sobre a automação via GitHub Actions
