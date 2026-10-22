@@ -30,5 +30,8 @@ namespace MuuBoi.Application.DTOs
         public int? CalvingIntervalDays { get; set; }
         public NextCalvingDto? NextCalving { get; set; }
         public AnimalParentageDto? Parentage { get; set; }
+        public string? PhotoHash { get; set; }
+        public string? PhotoUrl { get; set; }
+        public string? ThumbnailUrl { get; set; }
     }
 }

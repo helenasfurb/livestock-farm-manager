@@ -113,6 +113,11 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 
+        public async Task<Animal?> GetAnimalForPhotoAsync(int id)
+        {
+            return await _context.Animals.FirstOrDefaultAsync(a => a.Id == id);
+        }
+
         public async Task<Animal?> GetBySyncIdAsync(Guid syncId)
         {
             return await _context.Animals
@@ -175,6 +180,12 @@ namespace MuuBoi.Infrastructure.Repositories
             _context.Animals.Update(animal);
             await _context.SaveChangesAsync();
             return animal;
+        }
+
+        public async Task<bool> UpdatePhotoAsync(Animal animal)
+        {
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<Animal> UpdateAnimalAndTouchCalvingAsync(Animal animal, int calvingId)

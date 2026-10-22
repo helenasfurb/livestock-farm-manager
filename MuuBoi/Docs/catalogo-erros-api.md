@@ -240,6 +240,20 @@ Os erros de validação de DTO (**400**, formato B) estão agrupados na §5.
 >
 > **Correção (09/Out/2026):** a segunda saída de um animal reativado apagava fisicamente a saída anterior do histórico (`GET /{id}/exit-records`). Corrigido na Spec #14.4, Fase 4.
 
+**Foto do animal** (21/Out/2026, `Docs/Specs/spec-sincronizacao-offline-14.12-foto-animal.md`):
+
+| Rota | Status | Mensagem |
+|---|---|---|
+| `PUT /{id}/photo`, `DELETE /{id}/photo`, `GET /{id}/photo`, `GET /{id}/photo/thumbnail` | 404 | Animal com id '{id}' não encontrado. |
+| `GET /{id}/photo`, `GET /{id}/photo/thumbnail` | 404 | O animal com id '{id}' não possui foto. |
+| `PUT /{id}/photo` | 400 | O hash da foto não confere com o arquivo enviado. *(formato A)* |
+| `PUT /{id}/photo` | 400 | O hash da miniatura não confere com o arquivo enviado. *(formato A)* |
+| `PUT /{id}/photo` | 400 | Formato B: `Photo`/`Thumbnail` — "A foto é obrigatória." / "A miniatura é obrigatória." / "O arquivo deve ter no máximo 2048 KB." (foto) ou "... 200 KB." (miniatura) / "Envie uma imagem JPEG ou WebP." (tipo declarado diferente dos bytes iniciais); `PhotoHash`/`ThumbnailHash` — "O hash da ... é obrigatório." / "O hash da ... deve ser um SHA-256 em hexadecimal (64 caracteres)." |
+| `PUT /{id}/photo` | 400 | Formato B, campo `""`: "Failed to read the request form. Request body too large. The max request body size is 3145728 bytes." *(corpo acima de 3 MB; mensagem do ASP.NET, em inglês)* |
+| `PUT /{id}/photo` | 500 | Dois envios simultâneos para o mesmo animal (concorrência do `RowVersion`, como na §5.3 da Spec #14) ou Blob Storage indisponível/sem configuração. O app reenvia |
+
+> **Repetir não é erro:** `PUT` da mesma foto (mesmo hash) → `200` sem gravar; `PUT` com `takenAt` mais antigo que a foto atual → `200` com a atual; `DELETE` sem foto, repetido ou com `updatedAt` mais antigo → `204` sem gravar. `GET .../photo` responde `302` (não é erro): o destino é o Blob, que responde `403` quando a SAS venceu (10 min) e `404` quando a foto foi trocada ou removida — o app pede a rota da API de novo.
+
 Exemplo:
 
 ```http
