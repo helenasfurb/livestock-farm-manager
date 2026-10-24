@@ -20,6 +20,7 @@ namespace MuuBoi.Infrastructure.Repositories
         {
             var query = _context.AnimalPregnancies
                 .Include(p => p.Animal)
+                .Include(p => p.Calvings!.Where(c => c.IsActive))
                 .AsQueryable();
 
             if (filter.AnimalId.HasValue)
@@ -40,6 +41,7 @@ namespace MuuBoi.Infrastructure.Repositories
         {
             var query = _context.AnimalPregnancies
                 .Include(p => p.Animal)
+                .Include(p => p.Calvings!.Where(c => c.IsActive))
                 .Where(p => p.AnimalId == animalId)
                 .AsQueryable();
 
@@ -108,6 +110,7 @@ namespace MuuBoi.Infrastructure.Repositories
                 .Include(p => p.Animal)
                 .Include(p => p.SireAnimal)
                 .Include(p => p.SemenSample)
+                .Include(p => p.Calvings!.Where(c => c.IsActive))
                 .FirstOrDefaultAsync(p => p.SyncId == syncId);
         }
 
