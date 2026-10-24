@@ -10,6 +10,7 @@ namespace MuuBoi.Application.DTOs
         public DateTime ConfirmationDate { get; set; }
         public DateTime ExpectedCalvingDate { get; set; }
         public int? GestationalAge { get; set; }
+        public int GestationLength { get; set; }
         public DateTime? LossDate { get; set; }
         public EnumValueDto? Status { get; set; }
         public bool IsActive { get; set; }
