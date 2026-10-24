@@ -1,8 +1,8 @@
 # Spec #14.12: Sincronização Offline — Foto do Animal
 
 **Módulo:** Infraestrutura / Sincronização — Animais (Foto)
-**Versão:** 1.0
-**Data:** 21/Out/2026
+**Versão:** 1.1
+**Data:** 24/Out/2026
 **Status:** ✅ **Implementada** (Fases 1–8) na branch `feature/animal-photos`. F1, F4, F5, F14 e F15 escolhidas pela usuária em 19/Out/2026; as demais aprovadas em 21/Out/2026 ao iniciar a implementação, junto com as propostas da §9.
 
 ### Histórico de versões
@@ -12,6 +12,7 @@
 | 0.1 | 19/Out/2026 | Rascunho: uma foto por animal (com miniatura gerada no app), rota própria dentro de animais, armazenamento no Azure Blob Storage, leitura por redirecionamento para URL SAS, LWW próprio da foto, fila de fotos separada no app |
 | 0.2 | 19/Out/2026 | Versão da foto pelo **hash do conteúdo** (SHA-256) no lugar de um `PhotoId` aleatório — sugestão do Pedro: o app compara o hash e só baixa quando muda; reenvio da mesma foto vira `200` sem gravar; nome no Blob pelo hash. O `PUT` passa a exigir o hash da foto e da miniatura, conferido pelo servidor (F15) |
 | 1.0 | 21/Out/2026 | Implementada: Fases 1–8. Questões da §9 fechadas com as propostas. **Achado na Fase 5 e corrigido (aprovado):** sem a connection string do Blob, todas as rotas de animais respondiam `500`; o cliente do Blob passou a ser criado no primeiro uso. `AccountServiceTests` criado (não existia). 24 testes novos (316 no total) |
+| 1.1 | 24/Out/2026 | §10: passo a passo para outro desenvolvedor configurar o Blob Storage na própria máquina (acesso na Azure, connection string por Docker ou user-secrets, testes pelo Swagger) |
 
 **Depende de:** Spec #14 (`spec-sincronizacao-offline.md`) — §5.3 (LWW), §5.4 (mudanças de estado não alteram `UpdatedAt`), §5.5 (pull), §5.8 (`ServerId`), §5.10 (erros) · **Spec #14.4** (animal sincronizável). Esta spec **não** redecide nada da #14.
 **Relaciona-se com:** `spec-animais.md` · Spec #21 `spec-exclusao-conta-perfil.md` (exclusão de conta apaga os dados da propriedade) · `Docs/catalogo-erros-api.md`
@@ -235,3 +236,118 @@ Fechadas em 21/Out/2026 com as propostas:
 2. ✅ SAS válida por 10 minutos.
 3. ✅ Limpeza de órfãos fica como trabalho futuro.
 4. ✅ Miniaturas baixadas só sob demanda.
+
+## 10. Configurar o ambiente de outro desenvolvedor
+
+As fotos ficam no Azure Blob Storage, e a API precisa da **connection string** da Storage Account para falar com ele. Essa connection string **nunca vai para o Git**: o `docker-compose.yml` só tem a referência `${BLOB_CONNECTION}`, e o valor real fica num arquivo `.env` (ignorado pelo Git) ou no user-secrets de cada máquina. Por isso, quem clona o repositório recebe todo o código, mas precisa configurar a connection string localmente.
+
+Sem ela, a API sobe e funciona normalmente — só as rotas de foto respondem `500`.
+
+### 10.1 Quem administra a Azure: dar acesso
+
+1. **Convidar a pessoa para o diretório**, se ela ainda não tiver acesso à assinatura: Portal → **Microsoft Entra ID** → **Usuários** → **Novo usuário** → **Convidar usuário externo** → informar o e-mail. A pessoa recebe um convite por e-mail e precisa aceitá-lo.
+2. **Dar a função na Storage Account:** Storage Account → **Controle de acesso (IAM)** → **Adicionar** → **Adicionar atribuição de função**:
+   - Função: **Leitor e Acesso a Dados** (*Reader and Data Access*) — permite ver as chaves de acesso e os arquivos, sem poder apagar a Storage Account nem mudar a configuração dela. (Alternativa com mais poder: *Colaborador da Conta de Armazenamento*.)
+   - Membros: a pessoa convidada → **Revisar + atribuir**.
+3. **Enviar a connection string** por um canal privado (conversa direta) — nunca em grupo, issue, PR ou commit. Com o acesso do passo 2, a pessoa também pode copiá-la direto do portal (§10.2, passo 2).
+
+> **Ao girar a chave** (Chaves de acesso → **Girar chave**), a connection string antiga para de funcionar em todos os lugares: no user-secrets e no `.env` de cada desenvolvedor e no secret `blob-connection` do Container App. Avisar todos e atualizar os três.
+
+### 10.2 Quem vai desenvolver: configurar a máquina
+
+**1. Atualizar o código**
+
+```bash
+git fetch origin
+git checkout feature/animal-photos
+```
+
+(Depois do merge, a branch `dev`.)
+
+**2. Ter a connection string em mãos**
+
+Recebida por mensagem privada, ou copiada do portal: Storage Account → **Segurança + rede** → **Chaves de acesso** → em **key1**, clicar em **Mostrar** ao lado de **Cadeia de conexão** → copiar.
+
+> ⚠️ Copiar a **Cadeia de conexão**, e não a **Chave**: os dois campos ficam um embaixo do outro. A cadeia certa começa com `DefaultEndpointsProtocol=https;AccountName=` e é bem longa; a chave sozinha (~88 caracteres terminando em `==`) não funciona.
+
+**3. Configurar conforme o jeito de rodar a API**
+
+| Como roda a API | Onde colocar a connection string |
+|---|---|
+| **Docker** (`docker compose up`) | Arquivo `.env` (3a) |
+| **`dotnet run`** ou **Visual Studio** | User-secrets (3b) |
+
+**3a. Docker**
+
+Criar o arquivo **`MuuBoi/.env`**, na mesma pasta do `docker-compose.yml`, com uma única linha (sem aspas):
+
+```
+BLOB_CONNECTION=DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net
+```
+
+Subir **com `--build`** (o pacote `Azure.Storage.Blobs` é novo e a imagem precisa ser refeita):
+
+```bash
+docker compose up --build
+```
+
+O `.env` já está no `.gitignore` e no `.dockerignore`: não vai para o Git nem para dentro da imagem. Para conferir que o compose leu o valor sem exibi-lo: `docker compose config` **não** pode mostrar o aviso `The "BLOB_CONNECTION" variable is not set`.
+
+**3b. `dotnet run` / Visual Studio**
+
+Na pasta `MuuBoi` (onde está o `MuuBoi.csproj`), no terminal **da própria máquina** (não colar a connection string em chats, prompts ou ferramentas que registram histórico):
+
+```bash
+dotnet user-secrets set "ConnectionStrings:BlobStorage" "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net"
+```
+
+Resposta esperada: `Successfully saved ConnectionStrings:BlobStorage to the secret store.` No Visual Studio, dá para conferir ou editar por **botão direito no projeto MuuBoi** → **Gerenciar Segredos do Usuário**.
+
+**4. Banco de dados**
+
+Nada a fazer: a API executa `Database.Migrate()` ao iniciar e aplica a migração `Animal_Photo` sozinha, tanto no SQL Server do compose quanto num banco local.
+
+### 10.3 Onde os arquivos vão parar
+
+| Jeito de rodar | Container no Blob | Por quê |
+|---|---|---|
+| Docker local | `animal-photos-dev` | `BlobStorage__ContainerName` no `docker-compose.yml` |
+| `dotnet run` / Visual Studio | `animal-photos-dev` | `appsettings.Development.json` |
+| Container App (produção) | o do `appsettings.json` | Ambiente `Docker`, sem o arquivo de Development |
+
+Todos os desenvolvedores gravam no mesmo `animal-photos-dev` sem conflito: cada propriedade tem a sua pasta (`{propertyId}/animals/...`), e cada um usa o próprio banco.
+
+### 10.4 Testar pelo Swagger
+
+1. Abrir o Swagger (`http://localhost:5290/swagger` com `dotnet run --launch-profile http`; `http://localhost:8080/swagger` no Docker).
+2. `POST /api/auth/login` (ou `register`) → copiar o `accessToken` → **Authorize** → colar **só o token** (sem `Bearer`).
+3. Preparar dois **JPEG**: foto até **2 MB** e miniatura até **200 KB** (foto de celular costuma passar de 2 MB — no Paint: **Redimensionar** → 1080 px → **Salvar como JPEG**; miniatura com 240 px). Para um teste rápido, uma imagem de até 200 KB serve nos dois campos.
+4. Calcular o hash de cada arquivo **depois** de salvar a versão final, copiando só o valor:
+
+   ```powershell
+   (Get-FileHash -Algorithm SHA256 "C:\caminho\foto.jpg").Hash | Set-Clipboard
+   ```
+
+5. `PUT /api/animals/{id}/photo` → **Try it out** → `Photo`, `Thumbnail`, `PhotoHash`, `ThumbnailHash` (e `TakenAt` opcional, ex.: `2026-10-21T15:00:00Z`) → **Execute** → `200` com `photoHash`, `photoUrl` e `thumbnailUrl`.
+6. Conferir em `GET /api/animals/{id}` (campos de foto preenchidos).
+7. **Ver a imagem:** o `GET /api/animals/{id}/photo` **não funciona dentro do Swagger** (o navegador bloqueia o redirecionamento para o domínio do Blob — CORS; o app Android não tem essa restrição). Rodar no terminal e abrir no navegador o endereço da linha `Location:` (vale 10 minutos):
+
+   ```powershell
+   curl.exe -i "http://localhost:5290/api/animals/{id}/photo" -H "Authorization: Bearer SEU_TOKEN"
+   ```
+
+   Ou no portal: Storage Account → **Contêineres** → `animal-photos-dev` → `{propertyId}` → `animals` → `{syncId}` → `{photoHash}` → `photo` → **Baixar** (renomear para `.jpg`) ou aba **Gerar SAS** → copiar a URL. O [Azure Storage Explorer](https://azure.microsoft.com/products/storage/storage-explorer) (gratuito) facilita navegar pelas pastas.
+
+### 10.5 Problemas comuns
+
+| Sintoma | Causa | Solução |
+|---|---|---|
+| Rotas de foto `500`; o resto da API funciona | Connection string ausente ou inválida | Refazer o passo 3; conferir que é a **Cadeia de conexão**, não a **Chave** |
+| `docker compose` avisa `BLOB_CONNECTION variable is not set` | `.env` ausente ou em outra pasta | Criar `MuuBoi/.env` ao lado do `docker-compose.yml` |
+| Funcionava e parou | A chave foi girada | Pegar a cadeia de conexão nova e atualizar `.env`/user-secrets |
+| `400` "Request body too large" | Foto + miniatura acima de 3 MB | Reduzir a foto (passo 3 da §10.4) |
+| `400` "O arquivo deve ter no máximo 2048 KB / 200 KB" | Foto ou miniatura acima do limite | Reduzir; não usar a foto grande como miniatura |
+| `400` "Envie uma imagem JPEG ou WebP." | PNG (ou outro formato) — inclusive PNG renomeado para `.jpg` | Abrir no Paint e **Salvar como JPEG** |
+| `400` "O hash da foto não confere com o arquivo enviado." | Hash de outro arquivo ou da versão antes de salvar | Recalcular o hash do arquivo exato que vai no envio |
+| `400` "... deve ser um SHA-256 em hexadecimal (64 caracteres)." | Espaço ou quebra de linha ao copiar o hash | Usar o comando com `Set-Clipboard` |
+| `GET .../photo` dá erro no Swagger | CORS do navegador (esperado) | Usar o `curl.exe -i` do passo 7 |

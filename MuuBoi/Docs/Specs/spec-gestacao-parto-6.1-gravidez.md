@@ -10,6 +10,8 @@
 **Ver também:** Spec 6.2 (Parto), Spec 6.3 (Cria)  
 **Referenciado por:** Spec #7 (Dashboards)
 
+> **Nome do animal e dias de gestação (24/Out/2026):** o detalhe da gestação (`GET /api/pregnancies/{id}` e as respostas do cadastro retroativo e da perda) passou a trazer `animalName`, que as listas já tinham. Listas e detalhe ganharam **`gestationLength`**: dias de gestação, calculados a partir da concepção derivada da previsão de parto (`expectedCalvingDate − 280`) — por isso seguem a idade gestacional informada no diagnóstico, quando houver, e não a data da cobertura. Em andamento, conta até hoje (UTC, como o DEL da lactação); com perda, para na data da perda; com parto, para na data do parto. Não é gravado no banco e não vai no `GET /api/pregnancies/changes` (valor que muda com o tempo — o app calcula localmente com a mesma fórmula). Cálculo em `Application/Helpers/GestationResolver.cs`.
+
 ---
 
 ## 1. Contexto e Objetivo
