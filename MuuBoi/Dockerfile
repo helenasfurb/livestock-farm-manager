@@ -23,4 +23,5 @@ ENTRYPOINT ["dotnet", "MuuBoi.dll"]
 # docker run -p 8080:8080 \
 #   -e "ConnectionStrings__DefaultConnection=Server=...;Database=...;" \
 #   -e "Jwt__Key=..." \
+#   -e "ConnectionStrings__BlobStorage=DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net" \
 #   muuboi

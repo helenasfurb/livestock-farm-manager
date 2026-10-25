@@ -6,6 +6,7 @@ namespace MuuBoi.Application.DTOs
         public Guid SyncId { get; set; }
         public int AnimalId { get; set; }
         public string AnimalTagNumber { get; set; } = string.Empty;
+        public string? AnimalName { get; set; }
         public int? BreedingEventId { get; set; }
         public int? SireAnimalId { get; set; }
         public string? SireAnimalTagNumber { get; set; }
@@ -14,6 +15,7 @@ namespace MuuBoi.Application.DTOs
         public DateTime ConfirmationDate { get; set; }
         public DateTime ExpectedCalvingDate { get; set; }
         public int? GestationalAge { get; set; }
+        public int GestationLength { get; set; }
         public DateTime? LossDate { get; set; }
         public EnumValueDto? Status { get; set; }
         public string? Notes { get; set; }

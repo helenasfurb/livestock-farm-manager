@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MuuBoi.Api.Middleware;
 using MuuBoi.Application.Interfaces;
+using MuuBoi.Application.Options;
 using MuuBoi.Application.Services;
 using MuuBoi.Infrastructure.Data;
 using MuuBoi.Infrastructure.Repositories;
@@ -66,6 +67,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IAnimalRepository, AnimalRepository>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
+builder.Services.AddScoped<IAnimalPhotoService, AnimalPhotoService>();
 
 builder.Services.AddScoped<IWeightRecordRepository, WeightRecordRepository>();
 builder.Services.AddScoped<IWeightRecordService, WeightRecordService>();
@@ -129,6 +131,9 @@ builder.Services.AddSingleton<ISessionValidator, SessionValidator>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantProvider, TenantProvider>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+builder.Services.Configure<BlobStorageOptions>(builder.Configuration.GetSection("BlobStorage"));
+builder.Services.AddSingleton<IFileStorageService, AzureBlobStorageService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 

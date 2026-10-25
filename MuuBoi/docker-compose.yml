@@ -9,6 +9,8 @@ services:
     environment:
       - ConnectionStrings__DefaultConnection=Server=db;Database=MuuBoiDb;User=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
       - Jwt__Key=MuuBoi_ChaveSuperSecreta_MinimoDe32Caracteres_2024!
+      - ConnectionStrings__BlobStorage=${BLOB_CONNECTION}
+      - BlobStorage__ContainerName=animal-photos-dev
     depends_on:
       - db
 
