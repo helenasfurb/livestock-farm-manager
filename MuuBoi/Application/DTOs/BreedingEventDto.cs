@@ -8,6 +8,7 @@ namespace MuuBoi.Application.DTOs
         public Guid? PregnancySyncId { get; set; }
         public int AnimalId { get; set; }
         public string AnimalTagNumber { get; set; } = string.Empty;
+        public string? AnimalName { get; set; }
         public EnumValueDto? ReproductionType { get; set; }
         public DateTime BreedingDate { get; set; }
         public int? SemenSampleId { get; set; }

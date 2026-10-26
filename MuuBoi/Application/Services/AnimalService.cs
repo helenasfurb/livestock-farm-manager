@@ -321,7 +321,7 @@ namespace MuuBoi.Application.Services
 
             var recentCalvings = await _calvingRepository.GetRecentActiveByAnimalIdAsync(animal.Id, 2);
             var activePregnancy = await _pregnancyRepository.GetActiveConfirmedByAnimalIdAsync(animal.Id);
-            var lastAwaitingBreedingDate = await _breedingEventRepository.GetLastActiveAwaitingDiagnosisDateAsync(animal.Id);
+            var awaitingBreeding = await _breedingEventRepository.GetLastActiveAwaitingDiagnosisAsync(animal.Id);
 
             var lastCalving = recentCalvings.Count > 0 ? recentCalvings[0] : null;
             var previousCalving = recentCalvings.Count > 1 ? recentCalvings[1] : null;
@@ -329,7 +329,7 @@ namespace MuuBoi.Application.Services
             var status = ReproductiveStatusResolver.Resolve(
                 activePregnancy != null,
                 lastCalving?.CalvingDate,
-                lastAwaitingBreedingDate,
+                awaitingBreeding?.BreedingDate,
                 DateTime.UtcNow);
 
             dto.ReproductiveStatus = new EnumValueDto { Value = (int)status, Label = status.GetDescription() };
@@ -343,6 +343,8 @@ namespace MuuBoi.Application.Services
                     PregnancyId = activePregnancy.Id,
                     ExpectedCalvingDate = activePregnancy.ExpectedCalvingDate
                 };
+            dto.ActivePregnancyId = activePregnancy?.Id;
+            dto.ActiveBreedingEventId = awaitingBreeding?.Id;
         }
 
         private async Task ApplyParentageAsync(AnimalDto dto, Animal animal)

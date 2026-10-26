@@ -16,7 +16,7 @@ namespace MuuBoi.Application.Interfaces
         Task<SemenSampleMovement?> GetSemenOutputAsync(int breedingEventId);
         Task<IReadOnlyList<BreedingEvent>> GetChangesAsync(ulong since, int take);
         Task<bool> HasActiveByAnimalIdAsync(int animalId);
-        Task<DateTime?> GetLastActiveAwaitingDiagnosisDateAsync(int animalId);
+        Task<BreedingEvent?> GetLastActiveAwaitingDiagnosisAsync(int animalId);
         Task<(int Successful, int Unsuccessful, int Awaiting)> GetStatusCountsAsync(DateTime from, DateTime to);
         Task<(int Successful, int Unsuccessful, int Awaiting)> GetFirstServiceStatusCountsAsync(DateTime from, DateTime to);
         Task<List<(int AnimalId, DateTime BreedingDate)>> GetSuccessfulBreedingsAsync(DateTime from, DateTime to);

@@ -29,6 +29,8 @@ namespace MuuBoi.Application.DTOs
         public DateTime? LastCalvingDate { get; set; }
         public int? CalvingIntervalDays { get; set; }
         public NextCalvingDto? NextCalving { get; set; }
+        public int? ActivePregnancyId { get; set; }
+        public int? ActiveBreedingEventId { get; set; }
         public AnimalParentageDto? Parentage { get; set; }
         public string? PhotoHash { get; set; }
         public string? PhotoUrl { get; set; }
