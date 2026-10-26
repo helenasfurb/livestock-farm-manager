@@ -8,6 +8,8 @@ namespace MuuBoi.Application.Services
 {
     public class DashboardService : IDashboardService
     {
+        private const string WithoutBreedLabel = "Sem raça registrada";
+
         private readonly IDashboardRepository _repo;
         private readonly IMilkProductionRepository _milkProductionRepository;
         private readonly ILactationRepository _lactationRepository;
@@ -93,18 +95,34 @@ namespace MuuBoi.Application.Services
                     })
                     .OrderBy(d => d.Gender)
                     .ToList(),
-                BreedDistribution = list
-                    .Where(f => f.Breed.HasValue)
-                    .GroupBy(f => f.Breed!.Value)
-                    .Select(g => new BreedDistributionDto
-                    {
-                        Breed = g.Key,
-                        BreedName = g.Key.GetDescription(),
-                        Count = g.Count()
-                    })
-                    .OrderByDescending(d => d.Count)
-                    .ToList()
+                BreedDistribution = BuildBreedDistribution(list)
             };
+        }
+
+        private static List<BreedDistributionDto> BuildBreedDistribution(IList<AnimalCompositionFact> facts)
+        {
+            var distribution = facts
+                .Where(f => f.Breed.HasValue)
+                .GroupBy(f => f.Breed!.Value)
+                .Select(g => new BreedDistributionDto
+                {
+                    Breed = g.Key,
+                    BreedName = g.Key.GetDescription(),
+                    Count = g.Count()
+                })
+                .OrderByDescending(d => d.Count)
+                .ToList();
+
+            var withoutBreed = facts.Count(f => !f.Breed.HasValue);
+            if (withoutBreed > 0)
+                distribution.Add(new BreedDistributionDto
+                {
+                    Breed = null,
+                    BreedName = WithoutBreedLabel,
+                    Count = withoutBreed
+                });
+
+            return distribution;
         }
 
         private static IEnumerable<VaccinePerMonthDto> BuildVaccinesPerMonth(

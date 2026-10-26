@@ -222,6 +222,7 @@ Os erros de validação de DTO (**400**, formato B) estão agrupados na §5.
 | `POST /`, `PATCH /{id}` | 409 | Já existe um animal com o brinco '{brinco}' nesta propriedade. |
 | `POST /` | 422 | A lactação inicial só se aplica a vacas e novilhas. |
 | `GET /changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
+| `GET /?withoutBreed=true&breed=` | 400 | Informe a raça ou 'sem raça registrada', não os dois. *(formato B, campos `Breed` e `WithoutBreed`)* |
 | `GET /{id}/vaccination-history` | 404 | Animal com id '{id}' não encontrado. |
 | `GET /{id}/health-history` | 404 | Animal com id '{id}' não encontrado. |
 
