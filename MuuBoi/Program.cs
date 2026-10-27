@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MuuBoi.Api.Middleware;
+using MuuBoi.Application.Helpers;
 using MuuBoi.Application.Interfaces;
 using MuuBoi.Application.Options;
 using MuuBoi.Application.Services;
@@ -12,16 +14,22 @@ using MuuBoi.Infrastructure.Services;
 using MuuBoi.Domain.Models;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddIdentityCore<ApplicationUser>()
+builder.Services.AddIdentityCore<ApplicationUser>(options =>
+    {
+        options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultEmailProvider;
+        options.Tokens.EmailConfirmationTokenProvider = TokenOptions.DefaultEmailProvider;
+    })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddErrorDescriber<PortugueseIdentityErrorDescriber>();
 
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT Key não configurada.");
@@ -64,6 +72,24 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, ct) =>
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { error = "Muitas tentativas. Tente novamente mais tarde." }, ct);
+
+    options.AddPolicy(AuthRateLimitPolicies.AccountCodes, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            $"{ResolveClientIp(httpContext)}:{httpContext.Request.Path}",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0
+            }));
+});
 
 builder.Services.AddScoped<IAnimalRepository, AnimalRepository>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
@@ -124,6 +150,8 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IPasswordRecoveryService, PasswordRecoveryService>();
+builder.Services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ISessionValidator, SessionValidator>();
@@ -134,6 +162,9 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services.Configure<BlobStorageOptions>(builder.Configuration.GetSection("BlobStorage"));
 builder.Services.AddSingleton<IFileStorageService, AzureBlobStorageService>();
+
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.AddSingleton<IEmailService, EmailService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 
@@ -181,6 +212,7 @@ if (!app.Environment.IsEnvironment("Docker"))
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.UseMiddleware<ExceptionMiddleware>();
 
@@ -194,3 +226,12 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+static string ResolveClientIp(HttpContext context)
+{
+    var forwarded = context.Request.Headers["X-Forwarded-For"].ToString();
+    if (!string.IsNullOrEmpty(forwarded))
+        return forwarded.Split(',').Last().Trim();
+
+    return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+}

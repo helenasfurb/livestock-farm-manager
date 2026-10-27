@@ -7,6 +7,8 @@
 **Status:** Implementada
 **Depende de:** Spec de Gestão de Membros (`UserRole`, `[Authorize(Roles = "Admin")]`, revogação via `IsActive`). Fluxo de autenticação existente (`AuthController`, `TenantProvider`, JWT com `property_id`).
 
+> **Recuperação de senha e confirmação de e-mail (26/Out/2026):** a **Spec #23** (`spec-recuperacao-senha.md`) reaproveita o corte de acesso desta spec: redefinir a senha por código troca o `SecurityStamp` e chama `ISessionValidator.Invalidate`, como a troca de senha daqui — os outros aparelhos recebem `401` na requisição seguinte. Também passa a exigir e-mail confirmado no login (`403` `EmailNotConfirmed`) e traduz as mensagens de senha do Identity, que aparecem na troca de senha (`PATCH /me/password`). O e-mail continua não editável.
+
 > **Decisões de escopo desta spec:**
 > - **Só o `Admin` exclui a própria conta**, e a exclusão **apaga a propriedade inteira**: todos os membros, rebanho, reprodução, produção, sanidade, estoque e catálogos da propriedade. `Member` não tem essa ação (`403`).
 > - **Exclusão é física (hard delete)**, exceção declarada à regra de soft delete do projeto: o objetivo é justamente eliminar os dados (LGPD).
