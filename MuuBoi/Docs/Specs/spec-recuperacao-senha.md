@@ -347,6 +347,19 @@ No Container App, variáveis de ambiente (as sensíveis como *secret*):
 | `Email__Password` | **senha de app** do Gmail (secret) — exige verificação em duas etapas ativa na conta; não é a senha normal |
 | `Email__FromName` | `MuuBoi` |
 
+#### Ambientes de desenvolvimento (28/Out/2026)
+
+A senha de app nunca vai para o Git. Cada forma de rodar a API lê de um lugar:
+
+| Como roda | Onde fica a senha de app |
+|---|---|
+| `dotnet run` | `dotnet user-secrets set "Email:Password" "<senha>" --project MuuBoi.csproj` (mais `Email:FromEmail` e `Email:Username`) |
+| Docker (`docker compose up`) | Linha `EMAIL_PASSWORD=<senha>` no `MuuBoi/.env`, o mesmo arquivo da `BLOB_CONNECTION` (sem aspas, sem espaços). O `docker-compose.yml` já passa o remetente (`contatomuuboi@gmail.com`) e lê a senha com `${EMAIL_PASSWORD}` |
+
+O container **não** enxerga os user-secrets da máquina. Sem o `EMAIL_PASSWORD` no `.env`, o `docker compose` avisa `The "EMAIL_PASSWORD" variable is not set`, todo envio falha (`Failed to send email` no log) e, com a confirmação de e-mail, contas novas não conseguem entrar. Para conferir sem exibir o valor: `docker compose config` não pode mostrar esse aviso.
+
+Cada desenvolvedor pode usar uma **senha de app própria** (gerada em `myaccount.google.com/apppasswords` na conta `contatomuuboi@gmail.com`, com o nome da pessoa), para revogar só a dele quando precisar. A senha é passada por canal privado, nunca por Git ou grupo.
+
 ### 7.8 Fase 9 — Testes
 
 - `PasswordRecoveryServiceTests` (novo; `UserManager`, `IEmailService`, `ISessionValidator` mockados): resposta genérica (inexistente, inativo, falha de envio), código válido, inválido, limite por conta, sessões invalidadas, conta não confirmada passa a confirmada (C8).
