@@ -3,6 +3,7 @@
 **Data:** 02/Out/2026
 **Escopo:** todos os erros que a API retorna **hoje** (estado do código em `main` + Fase 1 do offline), levantados a partir de `Application/Services`, `Api/Controllers`, `Api/Middleware/ExceptionMiddleware.cs`, `Application/DTOs` e `Program.cs`.
 **Uso:** referência para o front-end web e para o app offline decidirem o que fazer com cada resposta.
+**Atualização (26/Out/2026, Spec #23 — `spec-recuperacao-senha.md`):** rotas de recuperação de senha e confirmação de e-mail (§4.1), `register` sem JWT, `403` `EmailNotConfirmed` no login, `429` por limite de tentativas (§1, §8) e mensagens do Identity em português (§6).
 
 > Os exemplos de JSON são ilustrativos: `traceId`, ids e datas variam a cada requisição.
 
@@ -14,12 +15,13 @@
 |---|---|---|---|
 | `400 Bad Request` | Dado de entrada inválido | Validação automática dos DTOs; JSON malformado; Identity (senha fraca) | **B** (ProblemDetails de validação) ou **D** (`message` + `errors`) |
 | `401 Unauthorized` | Sem token, token inválido/expirado, sessão invalidada ou credenciais erradas | Autenticação JWT; `AuthController` | **E** (vazio), **C** ou **D** |
-| `403 Forbidden` | Sem permissão (não é Admin) ou usuário desativado no login | `[Authorize(Roles = "Admin")]`; `AuthController.Login` | **E** (vazio) ou **D** |
+| `403 Forbidden` | Sem permissão (não é Admin), usuário desativado no login ou e-mail ainda não confirmado no login | `[Authorize(Roles = "Admin")]`; `AuthController.Login` | **E** (vazio) ou **D** (com `code` no caso do e-mail) |
 | `404 Not Found` | Recurso não existe (ou é de outra propriedade) | `NotFoundException`; `return NotFound()`; rota inexistente | **A**, **C** ou **E** |
 | `405 Method Not Allowed` | Verbo HTTP errado para a rota | ASP.NET Core | **E** (vazio) |
 | `409 Conflict` | Conflito de estado (duplicado, já inativo, já existe) | `ConflictException`; `AuthController.Register` | **A** ou **D** |
 | `415 Unsupported Media Type` | Corpo sem `Content-Type: application/json` | ASP.NET Core | **C** |
 | `422 Unprocessable Entity` | Regra de negócio violada | `BusinessRuleException` | **A** |
+| `429 Too Many Requests` | Mais de 5 requisições em 15 min do mesmo IP na mesma rota | `AddRateLimiter` (política `AccountCodes`) em `register`, `forgot-password`, `reset-password`, `confirm-email`, `resend-confirmation` | **A** |
 | `500 Internal Server Error` | Erro inesperado | `ExceptionMiddleware` (qualquer exceção não tratada); `AuthController.Login` | **A** ou **D** |
 
 **Tenant:** como todos os repositórios filtram por `PropertyId`, um recurso que existe mas pertence a **outra propriedade** responde **`404`** — a API nunca revela que ele existe.
@@ -130,7 +132,7 @@ Content-Type: application/problem+json
 
 ### Formato D — `{ "message": ... }` (Auth/Users)
 
-Usado diretamente no `AuthController` e em parte do `UsersController`. Quando vem do Identity, inclui `errors` (lista de textos).
+Usado diretamente no `AuthController` e em parte do `UsersController`. Quando vem do Identity, inclui `errors` (lista de textos). No `403` de e-mail não confirmado, inclui `code` para o cliente distinguir do "Usuário desativado." sem comparar textos.
 
 ```http
 HTTP/1.1 401 Unauthorized
@@ -144,10 +146,16 @@ HTTP/1.1 400 Bad Request
 {
   "message": "Erro ao criar usuário.",
   "errors": [
-    "Passwords must have at least one non alphanumeric character.",
-    "Passwords must have at least one uppercase ('A'-'Z')."
+    "A senha deve ter pelo menos um caractere especial (por exemplo, ! @ # $).",
+    "A senha deve ter pelo menos uma letra maiúscula (A–Z)."
   ]
 }
+```
+
+```http
+HTTP/1.1 403 Forbidden
+
+{ "message": "Confirme seu e-mail para entrar. Enviamos um código para você.", "code": "EmailNotConfirmed" }
 ```
 
 ### Formato E — sem corpo
@@ -189,9 +197,19 @@ Os erros de validação de DTO (**400**, formato B) estão agrupados na §5.
 |---|---|---|---|
 | `POST /register` | 409 | D | Email já cadastrado. |
 | `POST /register` | 400 | D | Erro ao criar usuário. + `errors` do Identity (§6) |
+| `POST /register` | 429 | A | Muitas tentativas. Tente novamente mais tarde. |
 | `POST /login` | 401 | D | Credenciais inválidas. *(email não existe **ou** senha errada — mesma mensagem de propósito)* |
 | `POST /login` | 403 | D | Usuário desativado. |
+| `POST /login` | 403 | D | Confirme seu e-mail para entrar. Enviamos um código para você. + `"code": "EmailNotConfirmed"` *(só depois de a senha conferir; um código novo é enviado, no máximo um a cada 60 s)* |
 | `POST /login` | 500 | D | Propriedade não encontrada. |
+| `POST /forgot-password` | 429 | A | Muitas tentativas. Tente novamente mais tarde. *(fora isso, sempre `200` com a mesma mensagem, exista ou não a conta)* |
+| `POST /reset-password` | 400 | D | Código inválido ou expirado. *(código errado, vencido ou já usado, e-mail inexistente, conta inativa ou 5 erros na conta em 15 min — mesma mensagem de propósito)* |
+| `POST /reset-password` | 400 | D | Erro ao redefinir a senha. + `errors` do Identity (§6) *(só com o código certo)* |
+| `POST /reset-password` | 429 | A | Muitas tentativas. Tente novamente mais tarde. |
+| `POST /confirm-email` | 400 | D | Código inválido ou expirado. *(mesmos casos do `reset-password`)* |
+| `POST /confirm-email` | 500 | D | Propriedade não encontrada. |
+| `POST /confirm-email` | 429 | A | Muitas tentativas. Tente novamente mais tarde. |
+| `POST /resend-confirmation` | 429 | A | Muitas tentativas. Tente novamente mais tarde. *(fora isso, sempre `200` com a mesma mensagem)* |
 | `GET /me` | 401 | C | — |
 | `PATCH /me` | 401 | C | — |
 | `PATCH /me/password` | 401 | C | — |
@@ -214,6 +232,8 @@ Os erros de validação de DTO (**400**, formato B) estão agrupados na §5.
 | `PATCH /{id}/revoke` | 422 | A | Não é possível revogar o acesso do último administrador ativo da propriedade. |
 | `PATCH /{id}/reactivate` | 409 | A | Este membro já está ativo. |
 
+> **Membro novo (26/Out/2026, Spec #23):** `POST /` não envia e-mail; as respostas de membro trazem `emailConfirmed`. No 1º login com a senha temporária, o membro recebe `403` `EmailNotConfirmed` (§4.1).
+
 ### 4.3 Animais — `/api/animals`
 
 | Rota | Status | Mensagem |
@@ -222,6 +242,7 @@ Os erros de validação de DTO (**400**, formato B) estão agrupados na §5.
 | `POST /`, `PATCH /{id}` | 409 | Já existe um animal com o brinco '{brinco}' nesta propriedade. |
 | `POST /` | 422 | A lactação inicial só se aplica a vacas e novilhas. |
 | `GET /changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
+| `GET /?withoutBreed=true&breed=` | 400 | Informe a raça ou 'sem raça registrada', não os dois. *(formato B, campos `Breed` e `WithoutBreed`)* |
 | `GET /{id}/vaccination-history` | 404 | Animal com id '{id}' não encontrado. |
 | `GET /{id}/health-history` | 404 | Animal com id '{id}' não encontrado. |
 
@@ -626,6 +647,9 @@ Disparados automaticamente antes do controller. A chave de `errors` é o nome do
 | `MedicationUseCreateDto` | O medicamento é obrigatório. · A data de aplicação é obrigatória. · A data de aplicação não pode ser futura. · A carência não pode ser negativa. |
 | `MastitisTestCreateDto` | O resultado é obrigatório. · A data do teste é obrigatória. · Informe o tipo de teste. · A data do teste não pode ser futura. |
 | `UpdateProfileDto` | O nome não pode ficar em branco. · Telefone inválido. |
+| `ForgotPasswordDto` · `ResendConfirmationDto` | O e-mail é obrigatório. · O e-mail informado é inválido. |
+| `ResetPasswordDto` | O e-mail é obrigatório. · O e-mail informado é inválido. · O código é obrigatório. · O código deve ter 6 dígitos. · A nova senha é obrigatória. · A nova senha deve ter no mínimo 6 caracteres. |
+| `ConfirmEmailDto` | O e-mail é obrigatório. · O e-mail informado é inválido. · O código é obrigatório. · O código deve ter 6 dígitos. |
 
 ### 5.2 Mensagens que eram em inglês *(corrigidas em 02/Out/2026)*
 
@@ -652,15 +676,15 @@ Os 98 atributos `[MaxLength]`, `[MinLength]`, `[Required]` e `[EmailAddress]` qu
 
 ## 6. Erros do ASP.NET Identity (senha e usuário)
 
-Retornados em `errors` (formato D) por `POST /api/auth/register`, `POST /api/users` e `PATCH /api/auth/me/password`. O projeto usa `AddIdentityCore` **sem customizar** `PasswordOptions` nem o `IdentityErrorDescriber`, então valem as regras e mensagens padrão (em inglês):
+Retornados em `errors` (formato D) por `POST /api/auth/register`, `POST /api/users`, `PATCH /api/auth/me/password` e `POST /api/auth/reset-password`. As regras de senha são as padrão do Identity (`PasswordOptions` sem customização); as mensagens estão **em português desde 26/Out/2026** (`PortugueseIdentityErrorDescriber`, Spec #23 R10). Os **códigos** dos erros continuam os do Identity.
 
 | Regra | Mensagem |
 |---|---|
-| Mínimo 6 caracteres | Passwords must be at least 6 characters. |
-| Ao menos um caractere especial | Passwords must have at least one non alphanumeric character. |
-| Ao menos um dígito | Passwords must have at least one digit ('0'-'9'). |
-| Ao menos uma minúscula | Passwords must have at least one lowercase ('a'-'z'). |
-| Ao menos uma maiúscula | Passwords must have at least one uppercase ('A'-'Z'). |
+| Mínimo 6 caracteres | A senha deve ter no mínimo 6 caracteres. |
+| Ao menos um caractere especial | A senha deve ter pelo menos um caractere especial (por exemplo, ! @ # $). |
+| Ao menos um dígito | A senha deve ter pelo menos um número (0–9). |
+| Ao menos uma minúscula | A senha deve ter pelo menos uma letra minúscula (a–z). |
+| Ao menos uma maiúscula | A senha deve ter pelo menos uma letra maiúscula (A–Z). |
 
 A senha atual errada em `PATCH /me/password` **não** vem nesse formato: é convertida para `422` "Senha atual incorreta." (formato A).
 
@@ -671,7 +695,7 @@ A senha atual errada em `PATCH /me/password` **não** vem nesse formato: é conv
 | # | Inconsistência | Onde | Situação |
 |---|---|---|---|
 | 1 | **Cinco formatos de corpo** de erro (§2) | Toda a API | ⏳ Pendente — unificar quebra o front-end web |
-| 2 | **Mensagens em inglês** misturadas com português | Services, DTOs (§5.2, §5.3), Identity (§6), ASP.NET Core | ✅ **Corrigido** nos services e nos 98 atributos de DTO (02/Out/2026). ⏳ Pendentes (exigem `Program.cs`): Identity (§6) e mensagens do próprio ASP.NET Core |
+| 2 | **Mensagens em inglês** misturadas com português | Services, DTOs (§5.2, §5.3), Identity (§6), ASP.NET Core | ✅ **Corrigido** nos services e nos 98 atributos de DTO (02/Out/2026) e no Identity (§6, 26/Out/2026). ⏳ Pendente (exige `Program.cs`): mensagens do próprio ASP.NET Core |
 | 3 | **`int.Parse` em id da rota** → `FormatException` → **`500`** | Pesagens e medicamentos do animal | ✅ **Corrigido** (02/Out/2026): ids tipados como `int` de ponta a ponta, rotas com `{animalId:int}`/`{weightRecordId:int}`; id inválido → `404` |
 | 4 | **`404` sem mensagem** e `null` como sinal de erro (viola o `CLAUDE.md`) | Medicamentos, vacinas, pesagens, medicamentos do animal | ✅ **Corrigido** (02/Out/2026): services lançam `NotFoundException` com mensagem; `Delete` retorna `Task<bool>` |
 | 5 | **"Email já cadastrado." em dois formatos** | `AuthController.Register` (D, `message`) × `UsersController.Create` (A, `error`) | ⏳ Pendente — corrigir muda o corpo lido pelo front-end web no cadastro |
@@ -689,10 +713,11 @@ A senha atual errada em `PATCH /me/password` **não** vem nesse formato: é conv
 | `2xx` | Sucesso | Remove da fila e grava o retorno |
 | `400` | Mostrar `errors` por campo (B) ou `errors` lista (D) | Erro definitivo → `Failed` |
 | `401` | Redirecionar para login | Renovar token e repetir o item |
-| `403` | Mostrar "sem permissão" | Erro definitivo → `Failed` |
+| `403` | Mostrar "sem permissão". No login, com `code = "EmailNotConfirmed"`, abrir a tela de confirmação de e-mail | Erro definitivo → `Failed` |
 | `404` | Mostrar `error` ou mensagem genérica | Erro definitivo → `Failed` |
 | `409` | Mostrar `error` | Erro definitivo → `Failed` |
 | `422` | Mostrar `error` | Erro definitivo → `Failed` |
+| `429` | Mostrar `error` e desabilitar o envio por alguns minutos | Não se aplica — as rotas com limite (conta/autenticação) ficam fora da fila offline |
 | `5xx` / sem resposta | Mensagem genérica, permitir tentar de novo | Manter na fila, `Result.retry()`, com limite de tentativas |
 
 **Extração da mensagem (ordem sugerida):** `error` → `message` (+ `errors` se lista) → `errors` (objeto, juntar as mensagens) → mensagem genérica pelo status.

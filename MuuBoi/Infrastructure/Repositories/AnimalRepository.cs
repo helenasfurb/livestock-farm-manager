@@ -101,6 +101,9 @@ namespace MuuBoi.Infrastructure.Repositories
             if (filter.Breed.HasValue)
                 query = query.Where(a => a.Breed == filter.Breed.Value);
 
+            if (filter.WithoutBreed == true)
+                query = query.Where(a => a.Breed == null);
+
             return query;
         }
 

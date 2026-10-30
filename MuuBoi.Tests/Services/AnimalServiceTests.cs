@@ -453,4 +453,44 @@ public class AnimalServiceTests
         Assert.Empty(result[1].ExitRecords);
         _exitRecordRepository.Verify(r => r.GetByAnimalIdsAsync(It.Is<IReadOnlyCollection<int>>(ids => ids.SequenceEqual(new[] { 1, 2 }))), Times.Once);
     }
+
+    private void SetupAnimalDetail(Animal animal)
+    {
+        _animalRepository.Setup(r => r.GetAnimalByIdAsync(animal.Id)).ReturnsAsync(animal);
+        _calvingRepository.Setup(r => r.GetRecentActiveByAnimalIdAsync(animal.Id, 2)).ReturnsAsync(new List<AnimalCalving>());
+        _lactationRepository.Setup(r => r.GetByAnimalIdAsync(animal.Id)).ReturnsAsync(new List<Lactation>());
+        _healthCaseService.Setup(s => s.GetSanitaryStatusMapAsync(It.IsAny<IReadOnlyCollection<int>>()))
+            .ReturnsAsync(new Dictionary<int, AnimalSanitaryStatusDto>());
+    }
+
+    [Fact]
+    public async Task GetAnimalByIdAsync_WithActiveConfirmedPregnancy_ReturnsActivePregnancyId()
+    {
+        SetupAnimalDetail(BuildAnimal(DateTime.UtcNow.AddDays(-400)));
+        _pregnancyRepository.Setup(r => r.GetActiveConfirmedByAnimalIdAsync(1))
+            .ReturnsAsync(new AnimalPregnancy { Id = 42, AnimalId = 1, ExpectedCalvingDate = DateTime.UtcNow.AddDays(100) });
+        var result = await _service.GetAnimalByIdAsync(1);
+        Assert.Equal(42, result.ActivePregnancyId);
+        Assert.Null(result.ActiveBreedingEventId);
+    }
+
+    [Fact]
+    public async Task GetAnimalByIdAsync_WithAwaitingDiagnosisBreeding_ReturnsActiveBreedingEventId()
+    {
+        SetupAnimalDetail(BuildAnimal(DateTime.UtcNow.AddDays(-400)));
+        _breedingEventRepository.Setup(r => r.GetLastActiveAwaitingDiagnosisAsync(1))
+            .ReturnsAsync(new BreedingEvent { Id = 7, AnimalId = 1, BreedingDate = DateTime.UtcNow.AddDays(-10), Status = ReproductiveEventStatus.AwaitingDiagnosis });
+        var result = await _service.GetAnimalByIdAsync(1);
+        Assert.Equal(7, result.ActiveBreedingEventId);
+        Assert.Null(result.ActivePregnancyId);
+    }
+
+    [Fact]
+    public async Task GetAnimalByIdAsync_WithoutReproductiveEvents_ReturnsNullReferences()
+    {
+        SetupAnimalDetail(BuildAnimal(DateTime.UtcNow.AddDays(-400)));
+        var result = await _service.GetAnimalByIdAsync(1);
+        Assert.Null(result.ActivePregnancyId);
+        Assert.Null(result.ActiveBreedingEventId);
+    }
 }

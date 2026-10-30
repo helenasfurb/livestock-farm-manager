@@ -8,6 +8,8 @@
 **Depende de:** Spec #1 (Animal), Spec #4 (Banco de Sêmen)  
 
 > **Sincronização offline (14/Out/2026):** coberturas e diagnósticos passaram a ser sincronizáveis pela **Spec #14.10** (`spec-sincronizacao-offline-14.10-cobertura-gestacao.md`). Única mudança de regra: a cobertura por IA **não exige mais dose disponível** (saldo de sêmen negativo permitido — decisão B4). Demais mudanças visíveis: `syncId` na criação; `pregnancySyncId` no diagnóstico positivo; diagnóstico repetido com o mesmo resultado e inativação repetida → `2xx`; editar a cobertura por IA move a saída de sêmen junto (sêmen e data); datas/enums ausentes → `400`; nova rota `GET /api/breeding-events/changes`.
+
+> **Ajuste (26/Out/2026):** `BreedingEventDto` (detalhe, e resposta de criação/edição/diagnóstico) passa a retornar `AnimalName`, alinhando ao `BreedingEventListItemDto`, que já o trazia. Nulo quando o animal não tem nome.
 **Referenciado por:** Spec #6 (Gestação e Parto), Spec #7 (Dashboards)
 
 ---
@@ -447,6 +449,7 @@ public class BreedingEventDto
     public int Id { get; set; }
     public int AnimalId { get; set; }
     public string AnimalTagNumber { get; set; } = string.Empty;
+    public string? AnimalName { get; set; }
     public ReproductionType ReproductionType { get; set; }
     public string ReproductionTypeLabel { get; set; } = string.Empty;
     public DateTime BreedingDate { get; set; }

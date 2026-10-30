@@ -7,5 +7,6 @@ namespace MuuBoi.Application.DTOs
         public string Email { get; set; } = string.Empty;
         public EnumValueDto Role { get; set; } = new();
         public bool IsActive { get; set; }
+        public bool EmailConfirmed { get; set; }
     }
 }

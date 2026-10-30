@@ -7,6 +7,8 @@
 **Status:** Especificada (não implementada)
 **Depende de:** Fluxo de autenticação existente (`AuthController`, `TenantProvider`, JWT com `property_id`). Reaproveita a entidade **`ApplicationUser`** (Identity) e o campo **`IsActive`** já existentes.
 
+> **Confirmação de e-mail do membro (26/Out/2026, Spec #23 — `spec-recuperacao-senha.md`, C6):** a criação do membro (`POST /api/users`) continua igual e **não envia e-mail**. No **1º login** com a senha temporária, o membro recebe `403` `{ "code": "EmailNotConfirmed" }` e um código por e-mail; confirma em `POST /api/auth/confirm-email` e já entra. `UserListItemDto` e `UserResponseDto` ganharam `emailConfirmed`, para o Admin ver quem está "Aguardando confirmação". Se o membro esquecer a senha temporária antes de confirmar, a redefinição de senha por código também confirma o e-mail (C8). Membros criados antes de 26/Out foram marcados como confirmados pela migração `Spec23_ConfirmExistingEmails`.
+
 > **Decisões de escopo desta spec:**
 > - **Papéis mínimos**: apenas **dois** (`Admin`, `Member`), como um único campo em `ApplicationUser`. **Não** se usa a infraestrutura de Roles do ASP.NET Identity (tabelas `AspNetRoles`/`AspNetUserRoles`) — menos tabelas e menos consultas, coerente com o ambiente restrito.
 > - **A única capacidade que o papel governa é o gerenciamento de membros** (criar, editar, revogar, reativar). Todo o resto do sistema continua acessível a qualquer usuário autenticado da propriedade.
