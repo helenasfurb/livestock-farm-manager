@@ -541,6 +541,6 @@ if (!movement.IsActive)
 
 | # | Questão | Situação |
 |---|---|---|
-| Q1 | **Movimentação de outro insumo pela rota** (§3 item 10): `GET`/`PATCH`/`DELETE /{stockItemId}/movements/{movementId}` não confere se a movimentação pertence ao insumo da rota | ⏳ Bug pré-existente, fora desta spec. Corrigir junto com o Q1 da 14.2 numa tarefa própria: `404` "Movimentação com id '{movementId}' não encontrada." quando `movement.StockItemId != stockItemId` |
+| Q1 | **Movimentação de outro insumo pela rota** (§3 item 10): `GET`/`PATCH`/`DELETE /{stockItemId}/movements/{movementId}` não confere se a movimentação pertence ao insumo da rota | ✅ **Corrigido** (01/Nov/2026, `StockMovementService.FindMovementAsync`, junto com o Q1 da 14.2): `404` "Movimentação com id '{movementId}' não encontrada." quando `movement.StockItemId != stockItemId` |
 | Q2 | **Data do saldo inicial offline** (E5) | ⏳ Mantida como hoje. Reavaliar se o usuário quiser a data real do cadastro no histórico |
 | Q3 | **`SyncRefDto` comum** para `initialMovement` de sêmen e estoque (E1) | ⏳ Limpeza opcional depois do merge das duas specs |

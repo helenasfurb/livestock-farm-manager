@@ -77,6 +77,13 @@ namespace MuuBoi.Api.Controllers
             return NoContent();
         }
 
+        [HttpPatch("{id:int}/reactivate")]
+        public async Task<ActionResult<HealthCaseDto>> Reactivate(int id)
+        {
+            var reactivated = await _service.ReactivateAsync(id);
+            return Ok(reactivated);
+        }
+
         [HttpPost("{id:int}/medications")]
         public async Task<ActionResult<MedicationUseDto>> AddMedication(int id, [FromBody] MedicationUseCreateDto dto)
         {

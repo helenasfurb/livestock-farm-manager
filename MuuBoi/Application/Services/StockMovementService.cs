@@ -42,8 +42,7 @@ namespace MuuBoi.Application.Services
             var item = await _itemRepository.GetByIdAsync(stockItemId)
                 ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
 
-            var movement = await _repository.GetByIdAsync(movementId)
-                ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            var movement = await FindMovementAsync(stockItemId, movementId);
             movement.StockItem = item;
 
             return _mapper.Map<StockMovementDto>(movement);
@@ -81,8 +80,7 @@ namespace MuuBoi.Application.Services
             var item = await _itemRepository.GetByIdAsync(stockItemId)
                 ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
 
-            var movement = await _repository.GetByIdAsync(movementId)
-                ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            var movement = await FindMovementAsync(stockItemId, movementId);
             movement.StockItem = item;
 
             if (dto.MovementDate.HasValue && dto.MovementDate.Value.Date > DateTime.UtcNow.Date)
@@ -115,8 +113,7 @@ namespace MuuBoi.Application.Services
             _ = await _itemRepository.GetByIdAsync(stockItemId)
                 ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
 
-            var movement = await _repository.GetByIdAsync(movementId)
-                ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            var movement = await FindMovementAsync(stockItemId, movementId);
 
             if (!movement.IsActive)
                 return;
@@ -160,6 +157,14 @@ namespace MuuBoi.Application.Services
                 movement.UnitCostSnapshot = averageUnitCost;
             else
                 movement.TotalValue = averageUnitCost * movement.Quantity;
+        }
+
+        private async Task<StockMovement> FindMovementAsync(int stockItemId, int movementId)
+        {
+            var movement = await _repository.GetByIdAsync(movementId);
+            if (movement == null || movement.StockItemId != stockItemId)
+                throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            return movement;
         }
     }
 }

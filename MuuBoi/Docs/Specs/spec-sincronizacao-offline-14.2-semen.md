@@ -701,5 +701,5 @@ Os testes 5, 6, 11, 12, 15 e 16 fixam regras que já existem e hoje não têm co
 
 | # | Questão | Situação |
 |---|---|---|
-| Q1 | **Movimentação de outra amostra pela rota** (§5.3 item 8): `GET`/`PATCH`/`DELETE /{semenSampleId}/movements/{movementId}` não confere se a movimentação pertence à amostra da rota | ⏳ Bug pré-existente, deixado fora desta parte para não alterar regras. Correção sugerida numa tarefa própria: `404` "Movimentação com id '{movementId}' não encontrada." quando `movement.SemenSampleId != semenSampleId` |
+| Q1 | **Movimentação de outra amostra pela rota** (§5.3 item 8): `GET`/`PATCH`/`DELETE /{semenSampleId}/movements/{movementId}` não confere se a movimentação pertence à amostra da rota | ✅ **Corrigido** (01/Nov/2026, `SemenSampleMovementService.FindMovementAsync`): `404` "Movimentação com id '{movementId}' não encontrada." quando `movement.SemenSampleId != semenSampleId` |
 | Q2 | **`InactivateForBreedingEventAsync` regrava** se a saída já estiver inativa (o `RowVersion` avança sem mudança real) | ⏳ Inofensivo hoje, porque a cobertura barra a inativação repetida com `409` antes. Tratar na spec offline da cobertura |
