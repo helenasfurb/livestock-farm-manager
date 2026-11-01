@@ -297,6 +297,8 @@ HTTP/1.1 409 Conflict
 | Todas, com `animalId` ou `weightRecordId` não numérico | 404 | E | — (a rota não corresponde) |
 | `POST /` sem `weight` | 400 | B | O peso é obrigatório. *(campo `Weight`; até 10/Out/2026 era `500`)* |
 | `POST /` com `syncId` vazio | 400 | B | O identificador de sincronização não pode ser vazio. *(campo `SyncId`)* |
+| `POST /`, `PATCH /{weightRecordId}` com `weight` ≤ 0 (ou acima de 9999,99) | 400 | B | O peso deve ser maior que zero. *(campo `Weight`; desde 01/Nov/2026)* |
+| `POST /`, `PATCH /{weightRecordId}` com `weightDate` depois de hoje (data UTC) | 400 | B | A data da pesagem não pode ser futura. *(campo `WeightDate`; desde 01/Nov/2026)* |
 | `GET /api/animals/weight-records/changes?since=` | 400 | A | Cursor de sincronização inválido. *(`since` não numérico ou negativo)* |
 
 > **Rotas com suporte offline** — cadastro, edição, exclusão e pull (ver `Docs/Specs/spec-sincronizacao-offline-14.5-pesagem.md`). Repetir uma operação já aplicada **não é erro**:
@@ -313,12 +315,7 @@ HTTP/1.1 409 Conflict
 
 ### 4.5 Medicamentos do animal — `/api/animals/{animalId:int}/medications`
 
-| Rota | Status | Formato | Mensagem |
-|---|---|---|---|
-| Todas | 404 | A | Animal com id '{animalId}' não encontrado. |
-| `POST /`, `PATCH /{id}` | 404 | A | Medicamento com id '{medicationId}' não encontrado. |
-| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` | 404 | A | Registro de medicação com id '{id}' não encontrado. |
-| Todas, com `animalId` não numérico | 404 | E | — (a rota não corresponde) |
+> **Removida (01/Nov/2026):** toda aplicação de medicação pertence a um caso de saúde. Use `POST /api/health-cases/{id}/medications` e `DELETE /api/health-cases/{id}/medications/{medicationId}` (§4.16). A rota antiga agora responde `404`.
 
 ### 4.6 Catálogos: medicamentos e vacinas — `/api/medications`, `/api/vaccines`
 
@@ -578,7 +575,7 @@ HTTP/1.1 404 Not Found
 | Rota | Status | Mensagem |
 |---|---|---|
 | `POST` | 404 | Animal com id '{animalId}' não encontrado. |
-| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`, `POST /{id}/medications`, `POST /{id}/tests` | 404 | Caso de saúde com id '{id}' não encontrado. |
+| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`, `PATCH /{id}/reactivate`, `POST /{id}/medications`, `POST /{id}/tests` | 404 | Caso de saúde com id '{id}' não encontrado. |
 | `DELETE /{id}/medications/{medicationId}` | 404 | Aplicação com id '{medicationId}' não encontrada. |
 | `DELETE /{id}/tests/{testId}` | 404 | Teste com id '{testId}' não encontrado. |
 | `POST` | 400 | O animal é obrigatório. *(formato B, campo `AnimalId` — antes, sem `animalId`, respondia `404` "Animal com id '0' não encontrado.")* |
@@ -594,11 +591,10 @@ HTTP/1.1 404 Not Found
 > - `POST`, `POST /{id}/medications` e `POST /{id}/tests` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
 > - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada, inclusive o encerramento).
 > - `DELETE /{id}` em caso já inativo → `204` *(até 13/Out/2026 era `409` "O caso de saúde já está inativo.")*.
+> - `PATCH /{id}/reactivate` em caso já ativo → `200` com o caso, sem alterar *(rota criada em 01/Nov/2026; não muda o `updatedAt`, o caso volta no pull com `isActive: true`)*.
 > - `DELETE /{id}/medications/{medicationId}` em aplicação já inativa → `204` *(até 13/Out/2026 era `409` "A aplicação já está inativa.")*.
 > - `DELETE /{id}/tests/{testId}` em teste já inativo → `204` *(até 13/Out/2026 era `409` "O teste já está inativo.")*.
 > - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
->
-> O uso avulso de medicação (`/api/animals/{animalId}/medications`) **não** tem suporte offline e continua com exclusão física.
 
 ### 4.17 Somente leitura (sem erros de domínio)
 

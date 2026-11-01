@@ -104,9 +104,6 @@ builder.Services.AddScoped<IVaccineService, VaccineService>();
 builder.Services.AddScoped<IMedicationRepository, MedicationRepository>();
 builder.Services.AddScoped<IMedicationService, MedicationService>();
 
-builder.Services.AddScoped<IAnimalMedicationRepository, AnimalMedicationRepository>();
-builder.Services.AddScoped<IAnimalMedicationService, AnimalMedicationService>();
-
 builder.Services.AddScoped<IBodyConditionRecordRepository, BodyConditionRecordRepository>();
 builder.Services.AddScoped<IBodyConditionRecordService, BodyConditionRecordService>();
 
@@ -218,8 +215,9 @@ app.UseMiddleware<ExceptionMiddleware>();
 
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
+if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
     await DatabaseSeeder.SeedAsync(scope.ServiceProvider);

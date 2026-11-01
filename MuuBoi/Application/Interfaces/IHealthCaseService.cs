@@ -9,6 +9,7 @@ namespace MuuBoi.Application.Interfaces
         Task<HealthCaseDto> CreateAsync(HealthCaseCreateDto dto);
         Task<HealthCaseDto> UpdateAsync(int id, HealthCaseUpdateDto dto);
         Task<bool> DeactivateAsync(int id);
+        Task<HealthCaseDto> ReactivateAsync(int id);
 
         Task<MedicationUseDto> AddMedicationAsync(int healthCaseId, MedicationUseCreateDto dto);
         Task<bool> DeactivateMedicationAsync(int healthCaseId, int medicationId);

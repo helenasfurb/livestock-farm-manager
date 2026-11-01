@@ -189,6 +189,35 @@ public class StockMovementServiceTests
     }
 
     [Fact]
+    public async Task GetByIdAsync_WhenMovementBelongsToAnotherItem_ThrowsNotFoundException()
+    {
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1));
+        movement.StockItemId = 2;
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.GetByIdAsync(1, 1));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenMovementBelongsToAnotherItem_ThrowsNotFoundException()
+    {
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1));
+        movement.StockItemId = 2;
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.UpdateAsync(1, 1, new StockMovementUpdateDto { Quantity = 20 }));
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<StockMovement>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_WhenMovementBelongsToAnotherItem_ThrowsNotFoundException()
+    {
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1));
+        movement.StockItemId = 2;
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.DeactivateAsync(1, 1));
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<StockMovement>()), Times.Never);
+    }
+
+    [Fact]
     public async Task DeactivateAsync_WhenActive_Deactivates()
     {
         var updatedAt = DateTime.UtcNow.AddHours(-1);

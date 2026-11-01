@@ -330,6 +330,37 @@ public class HealthCaseServiceTests
     }
 
     [Fact]
+    public async Task ReactivateAsync_WhenInactive_ReactivatesWithoutChangingUpdatedAt()
+    {
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var healthCase = BuildCase(DateTime.UtcNow.AddDays(-1), updatedAt, isActive: false);
+        _repository.Setup(r => r.GetByIdAsync(11)).ReturnsAsync(healthCase);
+        var result = await _service.ReactivateAsync(11);
+        Assert.True(result.IsActive);
+        Assert.True(healthCase.IsActive);
+        Assert.Equal(updatedAt, healthCase.UpdatedAt);
+        _repository.Verify(r => r.UpdateAsync(healthCase), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenAlreadyActive_ReturnsCaseWithoutUpdating()
+    {
+        var healthCase = BuildCase(DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddHours(-1));
+        _repository.Setup(r => r.GetByIdAsync(11)).ReturnsAsync(healthCase);
+        var result = await _service.ReactivateAsync(11);
+        Assert.True(result.IsActive);
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<HealthCase>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenNotFound_ThrowsNotFoundException()
+    {
+        _repository.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((HealthCase?)null);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ReactivateAsync(99));
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<HealthCase>()), Times.Never);
+    }
+
+    [Fact]
     public async Task DeactivateMedicationAsync_WhenAlreadyInactive_ReturnsTrueWithoutUpdating()
     {
         _repository.Setup(r => r.GetMedicationAsync(7, 10)).ReturnsAsync(BuildMedication(7, isActive: false));

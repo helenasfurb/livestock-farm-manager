@@ -7,6 +7,7 @@ namespace MuuBoi.Application.DTOs
         public Guid? SyncId { get; set; }
 
         [Required(ErrorMessage = "O peso é obrigatório.")]
+        [Range(0.01, 9999.99, ErrorMessage = "O peso deve ser maior que zero.")]
         public decimal? Weight { get; set; }
 
         public DateTime? WeightDate { get; set; }
@@ -20,6 +21,11 @@ namespace MuuBoi.Application.DTOs
                 yield return new ValidationResult(
                     "O identificador de sincronização não pode ser vazio.",
                     new[] { nameof(SyncId) });
+
+            if (WeightDate.HasValue && WeightDate.Value.Date > DateTime.UtcNow.Date)
+                yield return new ValidationResult(
+                    "A data da pesagem não pode ser futura.",
+                    new[] { nameof(WeightDate) });
         }
     }
 }
