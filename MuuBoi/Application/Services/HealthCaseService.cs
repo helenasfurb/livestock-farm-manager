@@ -120,6 +120,20 @@ namespace MuuBoi.Application.Services
             return true;
         }
 
+        public async Task<HealthCaseDto> ReactivateAsync(int id)
+        {
+            var healthCase = await _repository.GetByIdAsync(id)
+                ?? throw new NotFoundException($"Caso de saúde com id '{id}' não encontrado.");
+
+            if (!healthCase.IsActive)
+            {
+                healthCase.IsActive = true;
+                await _repository.UpdateAsync(healthCase);
+            }
+
+            return BuildDetail(healthCase, DateTime.UtcNow);
+        }
+
         public async Task<MedicationUseDto> AddMedicationAsync(int healthCaseId, MedicationUseCreateDto dto)
         {
             if (dto.SyncId.HasValue)

@@ -205,6 +205,8 @@ namespace MuuBoi.Infrastructure.Repositories
             var meds = await _context.AnimalMedications
                 .Where(m => m.IsActive
                             && m.WithdrawalPeriodDays != null
+                            && m.HealthCase != null
+                            && m.HealthCase.IsActive
                             && animalIds.Contains(m.AnimalId))
                 .Select(m => new { m.AnimalId, m.ApplicationDate, Days = m.WithdrawalPeriodDays!.Value })
                 .ToListAsync();

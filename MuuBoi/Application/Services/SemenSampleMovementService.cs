@@ -39,8 +39,7 @@ namespace MuuBoi.Application.Services
             _ = await _semenSampleRepository.GetByIdAsync(semenSampleId)
                 ?? throw new NotFoundException($"Amostra de sêmen com id '{semenSampleId}' não encontrada.");
 
-            var movement = await _repository.GetByIdAsync(movementId)
-                ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            var movement = await FindMovementAsync(semenSampleId, movementId);
 
             return _mapper.Map<SemenSampleMovementDto>(movement);
         }
@@ -75,8 +74,7 @@ namespace MuuBoi.Application.Services
             _ = await _semenSampleRepository.GetByIdAsync(semenSampleId)
                 ?? throw new NotFoundException($"Amostra de sêmen com id '{semenSampleId}' não encontrada.");
 
-            var movement = await _repository.GetByIdAsync(movementId)
-                ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            var movement = await FindMovementAsync(semenSampleId, movementId);
 
             if (movement.BreedingEventId.HasValue)
                 throw new ConflictException("Movimentações geradas pelo sistema não podem ser editadas diretamente.");
@@ -106,8 +104,7 @@ namespace MuuBoi.Application.Services
             _ = await _semenSampleRepository.GetByIdAsync(semenSampleId)
                 ?? throw new NotFoundException($"Amostra de sêmen com id '{semenSampleId}' não encontrada.");
 
-            var movement = await _repository.GetByIdAsync(movementId)
-                ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            var movement = await FindMovementAsync(semenSampleId, movementId);
 
             if (movement.BreedingEventId.HasValue)
                 throw new ConflictException("Movimentações geradas pelo sistema não podem ser inativadas diretamente.");
@@ -134,6 +131,14 @@ namespace MuuBoi.Application.Services
                 item.SemenSampleName = names.GetValueOrDefault(item.SemenSampleId, string.Empty);
 
             return page;
+        }
+
+        private async Task<SemenSampleMovement> FindMovementAsync(int semenSampleId, int movementId)
+        {
+            var movement = await _repository.GetByIdAsync(movementId);
+            if (movement == null || movement.SemenSampleId != semenSampleId)
+                throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            return movement;
         }
     }
 }

@@ -58,7 +58,7 @@
 | R6 | `ResolvedAt` (encerramento) é gravado pelo `PATCH`; não há como reabrir (`null` = não altera) | `PATCH` | Mantido |
 | R7 | Aplicações e testes **não têm edição**: só criação e inativação | Filhos | Mantido |
 | R8 | Caso inativo aceita `PATCH` e novos filhos (não há checagem de `IsActive`) | `PATCH`, filhos | Mantido (Spec #14 §5.4) |
-| R9 | Inativar o caso **não** inativa os filhos; as aplicações do caso inativo continuam contando na carência do animal (`GetSanitaryFactsMapAsync` não filtra o caso) | `DELETE` caso | Mantido — ver Q3 |
+| R9 | Inativar o caso **não** inativa os filhos, mas as aplicações de um caso inativo **não** contam na carência do animal (`GetSanitaryFactsMapAsync` filtra `HealthCase.IsActive` — corrigido em 01/Nov/2026, ver Q3) | `DELETE` caso | Alterado — ver Q3 |
 | R10 | Status do caso, data de liberação e status sanitário do animal são **derivados**, nunca gravados | Leituras | Mantido; fora do pull (H6) |
 
 **Ordem entre `SyncId` e regras:** `SyncId` antes de R1, R2 e R4 (caso). O reenvio de uma criação já gravada responde `201` com o existente, mesmo que depois o animal tenha sido reclassificado ou o caso inativado.
@@ -276,5 +276,5 @@ Nenhum teste atual de `HealthCaseServiceTests` esperava o `409` de "já inativo"
 |---|---|---|
 | Q1 | **Uso avulso de medicação** (rota legada com exclusão física) | ⏳ Fora (H7); remover ou converter numa tarefa própria |
 | Q2 | **Editar aplicação/teste** e **reabrir caso** | ⏳ Fora — regras novas (R6, R7) |
-| Q3 | **Aplicações de caso inativo contam na carência** (R9) — intencional (segurança do leite) ou bug? | ⏳ Mantido como está; investigar numa tarefa própria (12/Out/2026) |
+| Q3 | **Aplicações de caso inativo contam na carência** (R9) — intencional (segurança do leite) ou bug? | ✅ **Decidido: bug** (01/Nov/2026). Caso excluído é erro de cadastro; o usuário não via o caso no histórico nem tinha como remover a aplicação, e o animal ficava "Em carência". `GetSanitaryFactsMapAsync` passou a contar só aplicações de caso ativo (o que também ignora aplicações sem caso). Corrige os casos já inativados sem script de dados |
 | Q4 | Mensagem do `404` quando `animalId` vem ausente ("Animal com id '0'…") | Resolvida pela H8, se aprovada |
