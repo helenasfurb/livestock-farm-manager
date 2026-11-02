@@ -199,4 +199,32 @@ public class VaccineServiceTests
         Assert.True(result.HasMore);
         Assert.Equal("11", result.NextCursor);
     }
+
+    [Fact]
+    public async Task ReactivateVaccineAsync_WhenInactive_ReactivatesWithoutChangingUpdatedAt()
+    {
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var vaccine = BuildVaccine(DateTime.UtcNow.AddDays(-1), updatedAt, isActive: false);
+        _repository.Setup(r => r.GetVaccineByIdAsync(1)).ReturnsAsync(vaccine);
+        var result = await _service.ReactivateVaccineAsync(1);
+        Assert.True(vaccine.IsActive);
+        Assert.Equal("Raiva", result.Name);
+        Assert.Equal(updatedAt, vaccine.UpdatedAt);
+        _repository.Verify(r => r.UpdateVaccineAsync(vaccine), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivateVaccineAsync_WhenAlreadyActive_ReturnsWithoutUpdating()
+    {
+        _repository.Setup(r => r.GetVaccineByIdAsync(1)).ReturnsAsync(BuildVaccine(DateTime.UtcNow.AddDays(-1)));
+        await _service.ReactivateVaccineAsync(1);
+        _repository.Verify(r => r.UpdateVaccineAsync(It.IsAny<Vaccine>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateVaccineAsync_WhenVaccineNotFound_ThrowsNotFoundException()
+    {
+        _repository.Setup(r => r.GetVaccineByIdAsync(99)).ReturnsAsync((Vaccine?)null);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ReactivateVaccineAsync(99));
+    }
 }

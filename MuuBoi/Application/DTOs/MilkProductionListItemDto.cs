@@ -6,5 +6,6 @@ namespace MuuBoi.Application.DTOs
         public EnumValueDto? Milking { get; set; }
         public decimal Volume { get; set; }
         public string? Notes { get; set; }
+        public bool IsActive { get; set; }
     }
 }

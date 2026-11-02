@@ -322,7 +322,9 @@ HTTP/1.1 409 Conflict
 | Rota | Status | Formato | Mensagem |
 |---|---|---|---|
 | `GET /api/medications/{id}`, `PATCH`, `DELETE` | 404 | A | Medicamento com id '{id}' não encontrado. |
-| `GET /api/vaccines/{id}`, `PATCH`, `DELETE` | 404 | A | Vacina com id '{id}' não encontrada. |
+| `GET /api/vaccines/{id}`, `PATCH`, `DELETE`, `PATCH /{id}/reactivate` | 404 | A | Vacina com id '{id}' não encontrada. |
+
+> `PATCH /api/vaccines/{id}/reactivate` *(criada em 02/Nov/2026)* responde `200` com a vacina; em vacina já ativa, `200` sem gravar. Não muda o `updatedAt`.
 
 ### 4.7 ECC (condição corporal) — `/api/animals/{animalId}/body-condition-records`
 
@@ -445,7 +447,10 @@ HTTP/1.1 409 Conflict
 | `POST` | 409 | Não é possível cadastrar lactação para um animal inativo. |
 | `POST` | 422 | Somente vacas e novilhas podem ter lactação. |
 | `POST` | 409 | O animal já possui uma lactação em aberto. Seque a atual antes de abrir outra. |
-| `GET /api/lactations/{id}`, `PATCH`, `POST /dry-off`, `DELETE /dry-off`, `DELETE` | 404 | Lactação com id '{id}' não encontrada. |
+| `GET /api/lactations/{id}`, `PATCH`, `POST /dry-off`, `DELETE /dry-off`, `DELETE`, `PATCH /reactivate` | 404 | Lactação com id '{id}' não encontrada. |
+| `PATCH /{id}/reactivate` | 409 | Não é possível reativar a lactação de um animal inativo. |
+| `PATCH /{id}/reactivate` | 409 | Esta lactação pertence a um parto excluído e não pode ser reativada. |
+| `PATCH /{id}/reactivate` | 409 | O período desta lactação coincide com outra lactação ativa do animal. *(lactação aberta conta como sem data de término)* |
 | `PATCH /{id}` | 422 | A data de início não pode ser posterior à data da secagem. |
 | `POST /{id}/dry-off` | 422 | A data da secagem não pode ser anterior ao início da lactação. |
 | `DELETE /{id}/dry-off` | 409 | O animal já possui outra lactação em aberto. |
@@ -463,14 +468,15 @@ HTTP/1.1 409 Conflict
 > - `DELETE /{id}/dry-off` em lactação já aberta → `200`, sem gravar *(antes: `409` "Esta lactação já está em aberto.")*.
 > - `DELETE /{id}` em lactação já inativa → `204`, sem gravar *(antes: `409` "A lactação já está inativa.")*.
 > - `PATCH`, `POST /dry-off` e `DELETE /dry-off` em lactação **inativa** → `200` com a lactação (`isActive: false`), sem gravar *(antes: `409` "Não é possível editar/secar/reabrir uma lactação inativa.")* — a inativação sempre vence (Spec #14 §5.4).
-> - Secar, desfazer secagem e inativar **não alteram `updatedAt`** (só a edição do `startDate` altera).
+> - `PATCH /{id}/reactivate` *(criada em 02/Nov/2026)* em lactação já ativa → `200` com a lactação, sem gravar.
+> - Secar, desfazer secagem, inativar e reativar **não alteram `updatedAt`** (só a edição do `startDate` altera).
 > - `GET /api/lactations/changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
 
 ### 4.12 Produção de leite — `/api/milk-productions`
 
 | Rota | Status | Mensagem |
 |---|---|---|
-| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` | 404 | Lançamento de produção de leite com id '{id}' não encontrado. |
+| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`, `PATCH /{id}/reactivate` | 404 | Lançamento de produção de leite com id '{id}' não encontrado. |
 | `GET /changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
 
 > `GET /changes` **não** retorna erro para `limit` fora da faixa: ausente, zero ou negativo vira 500; acima de 500 é limitado a 500.
@@ -479,6 +485,7 @@ HTTP/1.1 409 Conflict
 > - `POST` com `syncId` já existente → `201` com o registro existente.
 > - `PATCH` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada).
 > - `DELETE` em registro já inativo → `204` *(até 02/Out/2026 era `409` "O lançamento de produção de leite já está inativo.")*.
+> - `PATCH /{id}/reactivate` *(criada em 02/Nov/2026)* em registro já ativo → `200` com o registro, sem gravar. Não muda o `updatedAt`.
 > - `POST` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
 
 ### 4.13 Sêmen — `/api/semen-samples`
@@ -509,13 +516,14 @@ HTTP/1.1 409 Conflict
 
 | Rota | Status | Mensagem |
 |---|---|---|
-| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` | 404 | Insumo com id '{id}' não encontrado. |
+| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`, `PATCH /{id}/reactivate` | 404 | Insumo com id '{id}' não encontrado. |
 | `POST`, `PATCH /{id}` | 404 | Categoria com id '{id}' não encontrada. |
 | `POST`, `PATCH /{id}` | 404 | Unidade de medida com id '{id}' não encontrada. |
 | `GET /changes?since=`, `GET /movements/changes?since=` | 400 | Cursor de sincronização inválido. *(formato A — `since` não numérico ou negativo)* |
 | Rotas de `/{stockItemId}/movements` | 404 | Insumo com id '{stockItemId}' não encontrado. |
-| `GET`, `PATCH`, `DELETE /{stockItemId}/movements/{movementId}` | 404 | Movimentação com id '{movementId}' não encontrada. |
+| `GET`, `PATCH`, `DELETE`, `PATCH .../reactivate` em `/{stockItemId}/movements/{movementId}` | 404 | Movimentação com id '{movementId}' não encontrada. |
 | `POST /{stockItemId}/movements` | 409 | Não é possível registrar movimentação para um insumo inativo. |
+| `PATCH /{stockItemId}/movements/{movementId}/reactivate` | 409 | Não é possível reativar movimentação de um insumo inativo. |
 | `PATCH /{stockItemId}/movements/{movementId}` | 422 | A data da movimentação não pode ser futura. |
 
 > **Rotas com suporte offline** — insumo e movimentações (ver `Docs/Specs/spec-sincronizacao-offline-14.3-estoque.md`). Repetir uma operação já aplicada **não é erro**:
@@ -528,6 +536,7 @@ HTTP/1.1 409 Conflict
 > - `POST /{stockItemId}/movements` com `syncId` vazio → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
 > - `PATCH /{stockItemId}/movements/{movementId}` com `updatedAt` mais antigo → `200` com a versão do servidor.
 > - `DELETE /{stockItemId}/movements/{movementId}` em movimentação já inativa → `204` *(até 08/Out/2026 era `409` "A movimentação já está inativa.")*.
+> - `PATCH /{id}/reactivate` e `PATCH /{stockItemId}/movements/{movementId}/reactivate` *(criadas em 02/Nov/2026)* em registro já ativo → `200` com o registro, sem gravar. Não mudam o `updatedAt`. Reativar o insumo não mexe nas movimentações, então o saldo volta a ser o de antes da exclusão.
 > - `GET /changes` e `GET /movements/changes` **não** retornam erro para `limit` fora da faixa (ajustado para 500).
 >
 > **Correção (08/Out/2026):** `PATCH /{id}` só com alguns campos (sem `stockCategoryId` e `unitOfMeasureId`) respondia `500` (violação de FK — o AutoMapper gravava `0` na categoria). Corrigido na Spec #14.3, Fase 3.
@@ -536,7 +545,8 @@ HTTP/1.1 409 Conflict
 
 | Rota | Status | Mensagem |
 |---|---|---|
-| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` | 404 | Evento de vacinação com id '{id}' não encontrado. |
+| `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`, `PATCH /{id}/reactivate` | 404 | Evento de vacinação com id '{id}' não encontrado. |
+| `PATCH /{id}/reactivate` | 409 | Já existe um reforço para este evento. *(o evento é um reforço e o evento pai já tem outro reforço ativo)* |
 | `POST` | 404 | Vacina com id '{id}' não encontrada. |
 | `POST` | 404 | Animais não encontrados: {id1}, {id2}. |
 | `POST /{id}/booster` | 404 | Evento de vacinação com id '{id}' não encontrado. |
@@ -555,6 +565,7 @@ HTTP/1.1 409 Conflict
 > - `POST` e `POST /{id}/booster` com `syncId` vazio (`00000000-...`) → `400` "O identificador de sincronização não pode ser vazio." (formato B, campo `SyncId`).
 > - `PATCH /{id}` com `updatedAt` mais antigo que a versão do servidor → `200` com a versão do servidor (edição ignorada).
 > - `DELETE /{id}` em evento já inativo → `204` *(até 12/Out/2026 era `409` "O evento de vacinação já está inativo.")*.
+> - `PATCH /{id}/reactivate` *(criada em 02/Nov/2026)* em evento já ativo → `200` com o evento, sem gravar. Não muda o `updatedAt`.
 > - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
 
 Exemplo:
@@ -577,7 +588,8 @@ HTTP/1.1 404 Not Found
 | `POST` | 404 | Animal com id '{animalId}' não encontrado. |
 | `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`, `PATCH /{id}/reactivate`, `POST /{id}/medications`, `POST /{id}/tests` | 404 | Caso de saúde com id '{id}' não encontrado. |
 | `DELETE /{id}/medications/{medicationId}` | 404 | Aplicação com id '{medicationId}' não encontrada. |
-| `DELETE /{id}/tests/{testId}` | 404 | Teste com id '{testId}' não encontrado. |
+| `DELETE /{id}/tests/{testId}`, `PATCH /{id}/tests/{testId}/reactivate` | 404 | Teste com id '{testId}' não encontrado. |
+| `PATCH /{id}/tests/{testId}/reactivate` | 409 | Reative o caso de saúde antes de reativar o teste. |
 | `POST` | 400 | O animal é obrigatório. *(formato B, campo `AnimalId` — antes, sem `animalId`, respondia `404` "Animal com id '0' não encontrado.")* |
 | `POST` | 400 | A data de diagnóstico é obrigatória. *(formato B, campo `DiagnosisDate` — antes, sem a data, gravava `0001-01-01`)* |
 | `POST`, `PATCH /{id}` | 400 | Quartos afetados inválidos. *(formato B, campo `AffectedQuarters` — fora de 1–15; antes era gravado)* |
@@ -594,6 +606,7 @@ HTTP/1.1 404 Not Found
 > - `PATCH /{id}/reactivate` em caso já ativo → `200` com o caso, sem alterar *(rota criada em 01/Nov/2026; não muda o `updatedAt`, o caso volta no pull com `isActive: true`)*.
 > - `DELETE /{id}/medications/{medicationId}` em aplicação já inativa → `204` *(até 13/Out/2026 era `409` "A aplicação já está inativa.")*.
 > - `DELETE /{id}/tests/{testId}` em teste já inativo → `204` *(até 13/Out/2026 era `409` "O teste já está inativo.")*.
+> - `PATCH /{id}/tests/{testId}/reactivate` *(criada em 02/Nov/2026)* em teste já ativo → `200` com o teste, sem gravar.
 > - `GET /changes` **não** retorna erro para `limit` fora da faixa (ajustado para 500).
 
 ### 4.17 Somente leitura (sem erros de domínio)

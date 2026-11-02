@@ -23,5 +23,6 @@ namespace MuuBoi.Application.DTOs
         public DateTime? MilkLiberationDate { get; set; }       // derived = case liberation
 
         public IEnumerable<EnumValueDto> AffectedQuarters { get; set; } = new List<EnumValueDto>();
+        public bool IsActive { get; set; }
     }
 }

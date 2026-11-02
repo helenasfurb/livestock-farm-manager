@@ -248,4 +248,52 @@ public class MilkProductionServiceTests
         await _service.GetChangesAsync(null, 100000);
         _repository.Verify(r => r.GetChangesAsync(0UL, SyncPaging.MaxLimit + 1), Times.Once);
     }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenInactive_ReactivatesWithoutChangingUpdatedAt()
+    {
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var production = BuildProduction(DateTime.UtcNow.AddDays(-1), updatedAt, isActive: false);
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(production);
+        var result = await _service.ReactivateAsync(1);
+        Assert.True(production.IsActive);
+        Assert.Equal(100m, result.Volume);
+        Assert.Equal(updatedAt, production.UpdatedAt);
+        _repository.Verify(r => r.UpdateAsync(production), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenAlreadyActive_ReturnsWithoutUpdating()
+    {
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(BuildProduction(DateTime.UtcNow.AddDays(-1)));
+        await _service.ReactivateAsync(1);
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<MilkProduction>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenProductionNotFound_ThrowsNotFoundException()
+    {
+        _repository.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((MilkProduction?)null);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ReactivateAsync(99));
+    }
+
+    [Fact]
+    public async Task GetByDateAsync_WithIsActiveFalse_FiltersInactiveProductions()
+    {
+        var date = DateTime.UtcNow.Date;
+        _repository.Setup(r => r.GetAllAsync(It.IsAny<MilkProductionFilterDto>()))
+            .ReturnsAsync(new[] { BuildProduction(date, isActive: false) });
+        var result = await _service.GetByDateAsync(date, false);
+        Assert.False(Assert.Single(result).IsActive);
+        _repository.Verify(r => r.GetAllAsync(It.Is<MilkProductionFilterDto>(f => f.IsActive == false && f.DateFrom == date)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetByDateAsync_WithoutIsActive_LeavesDefaultToRepository()
+    {
+        var date = DateTime.UtcNow.Date;
+        _repository.Setup(r => r.GetAllAsync(It.IsAny<MilkProductionFilterDto>())).ReturnsAsync(new List<MilkProduction>());
+        await _service.GetByDateAsync(date, null);
+        _repository.Verify(r => r.GetAllAsync(It.Is<MilkProductionFilterDto>(f => f.IsActive == null)), Times.Once);
+    }
 }

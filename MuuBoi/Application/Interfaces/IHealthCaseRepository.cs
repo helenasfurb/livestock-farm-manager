@@ -21,6 +21,7 @@ namespace MuuBoi.Application.Interfaces
 
         Task<MastitisTest> AddTestAsync(MastitisTest test);
         Task<MastitisTest?> GetTestAsync(int testId, int healthCaseId);
+        Task<IEnumerable<MastitisTest>> GetTestsByHealthCaseIdAsync(int healthCaseId, bool isActive);
         Task<MastitisTest?> GetTestBySyncIdAsync(Guid syncId);
 
         Task<IReadOnlyList<HealthCase>> GetChangesAsync(ulong since, int take);

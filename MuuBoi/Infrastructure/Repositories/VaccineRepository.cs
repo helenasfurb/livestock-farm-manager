@@ -22,8 +22,7 @@ namespace MuuBoi.Infrastructure.Repositories
             if (!string.IsNullOrWhiteSpace(filter.Name))
                 query = query.Where(v => v.Name.Contains(filter.Name));
 
-            if (filter.IsActive.HasValue)
-                query = query.Where(v => v.IsActive == filter.IsActive.Value);
+            query = query.Where(v => v.IsActive == (filter.IsActive ?? true));
 
             return await query.OrderBy(v => v.Name).ToListAsync();
         }

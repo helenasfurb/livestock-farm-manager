@@ -31,9 +31,9 @@ namespace MuuBoi.Api.Controllers
         }
 
         [HttpGet("by-date")]
-        public async Task<ActionResult<IEnumerable<MilkProductionListItemDto>>> GetByDate([FromQuery] DateTime date)
+        public async Task<ActionResult<IEnumerable<MilkProductionListItemDto>>> GetByDate([FromQuery] DateTime date, [FromQuery] bool? isActive)
         {
-            var records = await _service.GetByDateAsync(date);
+            var records = await _service.GetByDateAsync(date, isActive);
             return Ok(records);
         }
 
@@ -70,6 +70,13 @@ namespace MuuBoi.Api.Controllers
         {
             await _service.DeactivateAsync(id);
             return NoContent();
+        }
+
+        [HttpPatch("{id:int}/reactivate")]
+        public async Task<ActionResult<MilkProductionDto>> Reactivate(int id)
+        {
+            var reactivated = await _service.ReactivateAsync(id);
+            return Ok(reactivated);
         }
     }
 }

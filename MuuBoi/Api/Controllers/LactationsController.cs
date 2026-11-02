@@ -30,9 +30,9 @@ namespace MuuBoi.Api.Controllers
         }
 
         [HttpGet("api/animals/{animalId:int}/lactations")]
-        public async Task<ActionResult<IEnumerable<LactationListItemDto>>> GetByAnimal(int animalId)
+        public async Task<ActionResult<IEnumerable<LactationListItemDto>>> GetByAnimal(int animalId, [FromQuery] bool? isActive)
         {
-            var lactations = await _service.GetByAnimalIdAsync(animalId);
+            var lactations = await _service.GetByAnimalIdAsync(animalId, isActive);
             return Ok(lactations);
         }
 
@@ -83,6 +83,13 @@ namespace MuuBoi.Api.Controllers
         {
             await _service.DeactivateAsync(id);
             return NoContent();
+        }
+
+        [HttpPatch("api/lactations/{id:int}/reactivate")]
+        public async Task<ActionResult<LactationDto>> Reactivate(int id)
+        {
+            var reactivated = await _service.ReactivateAsync(id);
+            return Ok(reactivated);
         }
     }
 }

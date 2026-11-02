@@ -22,10 +22,19 @@ namespace MuuBoi.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Lactation>> GetFilteredByAnimalIdAsync(int animalId, bool isActive)
+        {
+            return await _context.Lactations
+                .Where(l => l.AnimalId == animalId && l.IsActive == isActive)
+                .OrderByDescending(l => l.StartDate)
+                .ToListAsync();
+        }
+
         public async Task<Lactation?> GetByIdAsync(int id)
         {
             return await _context.Lactations
                 .Include(l => l.Animal)
+                .Include(l => l.Calving)
                 .FirstOrDefaultAsync(l => l.Id == id);
         }
 

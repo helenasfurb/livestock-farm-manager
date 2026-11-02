@@ -68,6 +68,13 @@ namespace MuuBoi.Api.Controllers
             return NoContent();
         }
 
+        [HttpPatch("{id:int}/reactivate")]
+        public async Task<ActionResult<StockItemDto>> Reactivate(int id)
+        {
+            var reactivated = await _service.ReactivateAsync(id);
+            return Ok(reactivated);
+        }
+
         [HttpGet("{stockItemId:int}/movements")]
         public async Task<ActionResult<IEnumerable<StockMovementListItemDto>>> GetMovements(
             int stockItemId,
@@ -111,6 +118,13 @@ namespace MuuBoi.Api.Controllers
         {
             await _movementService.DeactivateAsync(stockItemId, movementId);
             return NoContent();
+        }
+
+        [HttpPatch("{stockItemId:int}/movements/{movementId:int}/reactivate")]
+        public async Task<ActionResult<StockMovementDto>> ReactivateMovement(int stockItemId, int movementId)
+        {
+            var reactivated = await _movementService.ReactivateAsync(stockItemId, movementId);
+            return Ok(reactivated);
         }
     }
 }

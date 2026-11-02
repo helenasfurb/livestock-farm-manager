@@ -312,4 +312,88 @@ public class LactationServiceTests
         Assert.Null(result[2].AnimalPropertyTagNumber);
         Assert.True(result[0].IsLactating);
     }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenInactive_ReactivatesWithoutChangingUpdatedAt()
+    {
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var lactation = BuildLactation(DateTime.UtcNow.AddDays(-2), updatedAt, isActive: false);
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(lactation);
+        var result = await _service.ReactivateAsync(1);
+        Assert.True(lactation.IsActive);
+        Assert.True(result.IsActive);
+        Assert.Equal(updatedAt, lactation.UpdatedAt);
+        _repository.Verify(r => r.UpdateAsync(lactation), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenAlreadyActive_ReturnsWithoutUpdating()
+    {
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(BuildLactation(DateTime.UtcNow.AddDays(-2)));
+        var result = await _service.ReactivateAsync(1);
+        Assert.True(result.IsActive);
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<Lactation>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenAnimalInactive_ThrowsConflictException()
+    {
+        var lactation = BuildLactation(DateTime.UtcNow.AddDays(-2), isActive: false);
+        lactation.Animal = BuildAnimal(isActive: false);
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(lactation);
+        await Assert.ThrowsAsync<ConflictException>(() => _service.ReactivateAsync(1));
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<Lactation>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenCalvingInactive_ThrowsConflictException()
+    {
+        var lactation = BuildLactation(DateTime.UtcNow.AddDays(-2), isActive: false);
+        lactation.Calving = new AnimalCalving { Id = 5, IsActive = false };
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(lactation);
+        await Assert.ThrowsAsync<ConflictException>(() => _service.ReactivateAsync(1));
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<Lactation>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenOverlapsActiveLactation_ThrowsConflictException()
+    {
+        var now = DateTime.UtcNow;
+        var lactation = BuildLactation(now.AddDays(-60), isActive: false);
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(lactation);
+        _repository.Setup(r => r.GetByAnimalIdAsync(1)).ReturnsAsync(new[] { BuildLactation(now.AddDays(-10), id: 2) });
+        await Assert.ThrowsAsync<ConflictException>(() => _service.ReactivateAsync(1));
+        Assert.False(lactation.IsActive);
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<Lactation>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenClosedBeforeActiveLactation_Reactivates()
+    {
+        var now = DateTime.UtcNow;
+        var lactation = BuildLactation(now.AddDays(-400), isActive: false, endDate: now.AddDays(-200));
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(lactation);
+        _repository.Setup(r => r.GetByAnimalIdAsync(1)).ReturnsAsync(new[] { BuildLactation(now.AddDays(-60), id: 2) });
+        await _service.ReactivateAsync(1);
+        Assert.True(lactation.IsActive);
+        _repository.Verify(r => r.UpdateAsync(lactation), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetByAnimalIdAsync_WithoutIsActive_ListsActiveLactations()
+    {
+        _repository.Setup(r => r.GetFilteredByAnimalIdAsync(1, true)).ReturnsAsync(new[] { BuildLactation(DateTime.UtcNow.AddDays(-2)) });
+        var result = await _service.GetByAnimalIdAsync(1, null);
+        Assert.True(Assert.Single(result).IsActive);
+        _repository.Verify(r => r.GetFilteredByAnimalIdAsync(1, true), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetByAnimalIdAsync_WithIsActiveFalse_ListsInactiveLactations()
+    {
+        _repository.Setup(r => r.GetFilteredByAnimalIdAsync(1, false)).ReturnsAsync(new[] { BuildLactation(DateTime.UtcNow.AddDays(-2), isActive: false) });
+        var result = await _service.GetByAnimalIdAsync(1, false);
+        Assert.False(Assert.Single(result).IsActive);
+        _repository.Verify(r => r.GetFilteredByAnimalIdAsync(1, false), Times.Once);
+    }
 }

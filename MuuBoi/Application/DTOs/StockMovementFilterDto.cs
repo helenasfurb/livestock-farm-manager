@@ -8,5 +8,6 @@ namespace MuuBoi.Application.DTOs
         public StockMovementReason? MovementReason { get; set; }
         public DateTime? DateFrom { get; set; }
         public DateTime? DateTo { get; set; }
+        public bool? IsActive { get; set; }
     }
 }
