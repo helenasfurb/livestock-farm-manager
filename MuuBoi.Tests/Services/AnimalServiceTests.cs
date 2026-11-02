@@ -323,6 +323,43 @@ public class AnimalServiceTests
     }
 
     [Fact]
+    public async Task UpdateAnimalAsync_WithSirePurposeOnNonBull_ThrowsBusinessRuleException()
+    {
+        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));
+        _animalRepository.Setup(r => r.GetAnimalByIdAsync(1)).ReturnsAsync(animal);
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _service.UpdateAnimalAsync(1, new AnimalUpdateDto { Purpose = AnimalPurpose.Sire, UpdatedAt = DateTime.UtcNow.AddHours(-1) }));
+        Assert.Null(animal.Purpose);
+        _animalRepository.Verify(r => r.UpdateAnimalAsync(It.IsAny<Animal>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAnimalAsync_WhenSireIsReclassified_ThrowsBusinessRuleException()
+    {
+        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));
+        animal.Gender = AnimalGender.M;
+        animal.Classification = AnimalClassification.Bull;
+        animal.Purpose = AnimalPurpose.Sire;
+        _animalRepository.Setup(r => r.GetAnimalByIdAsync(1)).ReturnsAsync(animal);
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _service.UpdateAnimalAsync(1, new AnimalUpdateDto { Classification = AnimalClassification.Steer, UpdatedAt = DateTime.UtcNow.AddHours(-1) }));
+        Assert.Equal(AnimalClassification.Bull, animal.Classification);
+        _animalRepository.Verify(r => r.UpdateAnimalAsync(It.IsAny<Animal>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAnimalAsync_WithSirePurposeOnBull_AppliesChanges()
+    {
+        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));
+        animal.Gender = AnimalGender.M;
+        animal.Classification = AnimalClassification.Bull;
+        _animalRepository.Setup(r => r.GetAnimalByIdAsync(1)).ReturnsAsync(animal);
+        await _service.UpdateAnimalAsync(1, new AnimalUpdateDto { Purpose = AnimalPurpose.Sire, UpdatedAt = DateTime.UtcNow.AddHours(-1) });
+        Assert.Equal(AnimalPurpose.Sire, animal.Purpose);
+        _animalRepository.Verify(r => r.UpdateAnimalAsync(animal), Times.Once);
+    }
+
+    [Fact]
     public async Task UpdateAnimalAsync_WhenGenderChanges_UpdatesLinkedCalfSex()
     {
         var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));

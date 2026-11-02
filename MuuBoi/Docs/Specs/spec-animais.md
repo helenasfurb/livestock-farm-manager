@@ -323,8 +323,11 @@ public enum AnimalPurpose
     [Description("Vaca de Descarte")]
     CullCow = 3,
 
-    [Description("Novilha para Venda")]
-    HeiferForSale = 4
+    [Description("Venda")]
+    ForSale = 4,
+
+    [Description("Reprodutor")]
+    Sire = 5
 }
 ```
 
