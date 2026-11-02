@@ -274,4 +274,46 @@ public class StockMovementServiceTests
         Assert.Equal("kg", result[0].UnitAbbreviation);
         Assert.Equal(string.Empty, result[1].StockItemName);
     }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenInactive_ReactivatesWithoutChangingUpdatedAt()
+    {
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1), updatedAt, isActive: false);
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
+        var result = await _service.ReactivateAsync(1, 1);
+        Assert.True(movement.IsActive);
+        Assert.Equal(1, result.Id);
+        Assert.Equal(updatedAt, movement.UpdatedAt);
+        _repository.Verify(r => r.UpdateAsync(movement), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenAlreadyActive_ReturnsWithoutUpdating()
+    {
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(BuildMovement(DateTime.UtcNow.AddDays(-1)));
+        await _service.ReactivateAsync(1, 1);
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<StockMovement>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenItemInactive_ThrowsConflictException()
+    {
+        _itemRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(BuildItem(isActive: false));
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1), isActive: false);
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
+        await Assert.ThrowsAsync<ConflictException>(() => _service.ReactivateAsync(1, 1));
+        Assert.False(movement.IsActive);
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<StockMovement>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenMovementBelongsToAnotherItem_ThrowsNotFoundException()
+    {
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1), isActive: false);
+        movement.StockItemId = 2;
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ReactivateAsync(1, 1));
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<StockMovement>()), Times.Never);
+    }
 }

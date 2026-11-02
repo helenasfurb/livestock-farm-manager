@@ -58,5 +58,12 @@ namespace MuuBoi.Api.Controllers
             await _vaccineService.DeleteVaccineAsync(id);
             return NoContent();
         }
+
+        [HttpPatch("{id:int}/reactivate")]
+        public async Task<ActionResult<VaccineDto>> Reactivate(int id)
+        {
+            var reactivated = await _vaccineService.ReactivateVaccineAsync(id);
+            return Ok(reactivated);
+        }
     }
 }

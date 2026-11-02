@@ -122,6 +122,27 @@ namespace MuuBoi.Application.Services
             await _repository.UpdateAsync(movement);
         }
 
+        public async Task<StockMovementDto> ReactivateAsync(int stockItemId, int movementId)
+        {
+            var item = await _itemRepository.GetByIdAsync(stockItemId)
+                ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
+
+            var movement = await FindMovementAsync(stockItemId, movementId);
+            movement.StockItem = item;
+
+            if (movement.IsActive)
+                return _mapper.Map<StockMovementDto>(movement);
+
+            if (!item.IsActive)
+                throw new ConflictException("Não é possível reativar movimentação de um insumo inativo.");
+
+            movement.IsActive = true;
+            var updated = await _repository.UpdateAsync(movement);
+            updated.StockItem = item;
+
+            return _mapper.Map<StockMovementDto>(updated);
+        }
+
         public async Task<SyncPageDto<StockMovementDto>> GetChangesAsync(string? since, int? limit)
         {
             if (!SyncPaging.TryDecodeCursor(since, out var cursor))

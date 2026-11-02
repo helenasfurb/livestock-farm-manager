@@ -11,5 +11,6 @@ namespace MuuBoi.Application.DTOs
         public EnumValueDto? Status { get; set; }
         public string? Notes { get; set; }
         public int AnimalCount { get; set; }
+        public bool IsActive { get; set; }
     }
 }

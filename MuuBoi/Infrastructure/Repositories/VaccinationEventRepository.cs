@@ -24,8 +24,7 @@ namespace MuuBoi.Infrastructure.Repositories
                 .AsSplitQuery()
                 .AsQueryable();
 
-            if (filter.IsActive.HasValue)
-                query = query.Where(e => e.IsActive == filter.IsActive.Value);
+            query = query.Where(e => e.IsActive == (filter.IsActive ?? true));
 
             if (filter.VaccineId.HasValue)
                 query = query.Where(e => e.VaccineId == filter.VaccineId.Value);
