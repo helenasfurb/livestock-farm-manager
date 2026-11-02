@@ -12,11 +12,15 @@ namespace MuuBoi.Application.Mappings
             CreateMap<AnimalPregnancy, AnimalPregnancyDto>()
                 .ForMember(dest => dest.AnimalTagNumber,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : string.Empty))
+                .ForMember(dest => dest.AnimalPropertyTagNumber,
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.PropertyTagNumber : null))
                 .ForMember(dest => dest.AnimalName,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.Name : null))
                 .ForMember(dest => dest.GestationLength, opt => opt.Ignore())
                 .ForMember(dest => dest.SireAnimalTagNumber,
                     opt => opt.MapFrom(src => src.SireAnimal != null ? src.SireAnimal.TagNumber : null))
+                .ForMember(dest => dest.SireAnimalPropertyTagNumber,
+                    opt => opt.MapFrom(src => src.SireAnimal != null ? src.SireAnimal.PropertyTagNumber : null))
                 .ForMember(dest => dest.SemenSampleName,
                     opt => opt.MapFrom(src => src.SemenSample != null ? src.SemenSample.Name : null))
                 .ForMember(dest => dest.Status,
@@ -41,6 +45,8 @@ namespace MuuBoi.Application.Mappings
             CreateMap<AnimalPregnancy, AnimalPregnancyListItemDto>()
                 .ForMember(dest => dest.AnimalTagNumber,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : string.Empty))
+                .ForMember(dest => dest.AnimalPropertyTagNumber,
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.PropertyTagNumber : null))
                 .ForMember(dest => dest.AnimalName,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.Name : null))
                 .ForMember(dest => dest.GestationLength, opt => opt.Ignore())

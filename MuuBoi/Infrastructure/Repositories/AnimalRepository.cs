@@ -72,6 +72,7 @@ namespace MuuBoi.Infrastructure.Repositories
                     AnimalId = a.Id,
                     Name = a.Name,
                     TagNumber = a.TagNumber,
+                    PropertyTagNumber = a.PropertyTagNumber,
                     HasActiveConfirmedPregnancy = a.Pregnancies!.Any(p =>
                         p.IsActive && p.Status == AnimalPregnancyStatus.Confirmed),
                     LastCalvingDate = a.Calvings!
@@ -146,14 +147,15 @@ namespace MuuBoi.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Dictionary<int, string?>> GetTagNumbersByIdsAsync(IReadOnlyCollection<int> ids)
+        public async Task<Dictionary<int, (string? TagNumber, string? PropertyTagNumber)>> GetTagsByIdsAsync(IReadOnlyCollection<int> ids)
         {
             if (ids == null || ids.Count == 0)
-                return new Dictionary<int, string?>();
+                return new Dictionary<int, (string? TagNumber, string? PropertyTagNumber)>();
 
             return await _context.Animals
                 .Where(a => ids.Contains(a.Id))
-                .ToDictionaryAsync(a => a.Id, a => a.TagNumber);
+                .Select(a => new { a.Id, a.TagNumber, a.PropertyTagNumber })
+                .ToDictionaryAsync(a => a.Id, a => (a.TagNumber, a.PropertyTagNumber));
         }
 
         public async Task<IEnumerable<Animal>> GetBreedingEligibleAnimalsAsync(string? search)

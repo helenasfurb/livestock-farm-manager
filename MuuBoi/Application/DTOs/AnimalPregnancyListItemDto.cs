@@ -5,6 +5,7 @@ namespace MuuBoi.Application.DTOs
         public int Id { get; set; }
         public int AnimalId { get; set; }
         public string AnimalTagNumber { get; set; } = string.Empty;
+        public string? AnimalPropertyTagNumber { get; set; }
         public string? AnimalName { get; set; }
         public int? BreedingEventId { get; set; }
         public DateTime ConfirmationDate { get; set; }

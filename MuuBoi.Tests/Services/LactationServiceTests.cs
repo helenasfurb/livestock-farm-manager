@@ -280,7 +280,7 @@ public class LactationServiceTests
             BuildLactation(createdAt, rowVersion: 12)
         };
         _repository.Setup(r => r.GetChangesAsync(5UL, 3)).ReturnsAsync(fetched);
-        _animalRepository.Setup(r => r.GetTagNumbersByIdsAsync(It.IsAny<IReadOnlyCollection<int>>())).ReturnsAsync(new Dictionary<int, string?>());
+        _animalRepository.Setup(r => r.GetTagsByIdsAsync(It.IsAny<IReadOnlyCollection<int>>())).ReturnsAsync(new Dictionary<int, (string? TagNumber, string? PropertyTagNumber)>());
         var result = await _service.GetChangesAsync("5", 2);
         Assert.Equal(2, result.Items.Count());
         Assert.True(result.HasMore);
@@ -288,18 +288,28 @@ public class LactationServiceTests
     }
 
     [Fact]
-    public async Task GetChangesAsync_FillsAnimalTagNumberForPageItems()
+    public async Task GetChangesAsync_FillsAnimalTagsForPageItems()
     {
         var createdAt = DateTime.UtcNow.AddDays(-1);
         var other = BuildLactation(createdAt, rowVersion: 11, id: 2);
         other.AnimalId = 2;
-        var fetched = new List<Lactation> { BuildLactation(createdAt, rowVersion: 10), other };
+        var third = BuildLactation(createdAt, rowVersion: 12, id: 3);
+        third.AnimalId = 3;
+        var fetched = new List<Lactation> { BuildLactation(createdAt, rowVersion: 10), other, third };
         _repository.Setup(r => r.GetChangesAsync(0UL, SyncPaging.DefaultLimit + 1)).ReturnsAsync(fetched);
-        _animalRepository.Setup(r => r.GetTagNumbersByIdsAsync(It.IsAny<IReadOnlyCollection<int>>()))
-            .ReturnsAsync(new Dictionary<int, string?> { [1] = "123456" });
+        _animalRepository.Setup(r => r.GetTagsByIdsAsync(It.IsAny<IReadOnlyCollection<int>>()))
+            .ReturnsAsync(new Dictionary<int, (string? TagNumber, string? PropertyTagNumber)>
+            {
+                [1] = ("123456", "V-12"),
+                [3] = ("654321", null)
+            });
         var result = (await _service.GetChangesAsync(null, null)).Items.ToList();
         Assert.Equal("123456", result[0].AnimalTagNumber);
+        Assert.Equal("V-12", result[0].AnimalPropertyTagNumber);
         Assert.Null(result[1].AnimalTagNumber);
+        Assert.Null(result[1].AnimalPropertyTagNumber);
+        Assert.Equal("654321", result[2].AnimalTagNumber);
+        Assert.Null(result[2].AnimalPropertyTagNumber);
         Assert.True(result[0].IsLactating);
     }
 }

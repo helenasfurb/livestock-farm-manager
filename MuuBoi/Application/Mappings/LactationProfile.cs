@@ -12,6 +12,8 @@ namespace MuuBoi.Application.Mappings
             CreateMap<Lactation, LactationDto>()
                 .ForMember(dest => dest.AnimalTagNumber,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : null))
+                .ForMember(dest => dest.AnimalPropertyTagNumber,
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.PropertyTagNumber : null))
                 .ForMember(dest => dest.Origin,
                     opt => opt.MapFrom(src => new EnumValueDto
                     {

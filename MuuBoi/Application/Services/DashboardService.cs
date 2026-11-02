@@ -238,6 +238,7 @@ namespace MuuBoi.Application.Services
                         AnimalId = f.AnimalId,
                         Name = f.Name,
                         TagNumber = f.TagNumber,
+                        PropertyTagNumber = f.PropertyTagNumber,
                         LastCalvingDate = f.LastCalvingDate
                     });
                 }
@@ -267,6 +268,7 @@ namespace MuuBoi.Application.Services
                     AnimalId = p.AnimalId,
                     Name = p.Animal?.Name,
                     TagNumber = p.Animal?.TagNumber,
+                    PropertyTagNumber = p.Animal?.PropertyTagNumber,
                     PregnancyId = p.Id,
                     ExpectedCalvingDate = p.ExpectedCalvingDate
                 })
