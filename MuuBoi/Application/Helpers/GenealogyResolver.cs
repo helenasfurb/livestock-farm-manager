@@ -23,7 +23,7 @@ namespace MuuBoi.Application.Helpers
         private static AnimalRefDto? ResolveMother(Animal? mother)
             => mother == null
                 ? null
-                : new AnimalRefDto { Id = mother.Id, Name = mother.Name, TagNumber = mother.TagNumber };
+                : new AnimalRefDto { Id = mother.Id, Name = mother.Name, TagNumber = mother.TagNumber, PropertyTagNumber = mother.PropertyTagNumber };
 
         private static GenealogyFatherDto? ResolveFather(AnimalPregnancy? pregnancy)
         {
@@ -35,7 +35,7 @@ namespace MuuBoi.Application.Helpers
                 return new GenealogyFatherDto
                 {
                     Type = "Bull",
-                    Bull = new AnimalRefDto { Id = sire.Id, Name = sire.Name, TagNumber = sire.TagNumber }
+                    Bull = new AnimalRefDto { Id = sire.Id, Name = sire.Name, TagNumber = sire.TagNumber, PropertyTagNumber = sire.PropertyTagNumber }
                 };
 
             var semen = pregnancy.SemenSample ?? pregnancy.BreedingEvent?.SemenSample;

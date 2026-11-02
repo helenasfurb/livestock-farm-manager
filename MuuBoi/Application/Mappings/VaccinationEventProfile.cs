@@ -51,7 +51,9 @@ namespace MuuBoi.Application.Mappings
                 .ForMember(dest => dest.Name,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.Name : null))
                 .ForMember(dest => dest.TagNumber,
-                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : null));
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : null))
+                .ForMember(dest => dest.PropertyTagNumber,
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.PropertyTagNumber : null));
 
             CreateMap<VaccinationEvent, VaccinationHistoryItemDto>()
                 .ForMember(dest => dest.VaccinationEventId, opt => opt.MapFrom(src => src.Id))

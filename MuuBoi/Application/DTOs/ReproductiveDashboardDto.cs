@@ -20,6 +20,7 @@ namespace MuuBoi.Application.DTOs
         public int AnimalId { get; set; }
         public string? Name { get; set; }
         public string? TagNumber { get; set; }
+        public string? PropertyTagNumber { get; set; }
         public int PregnancyId { get; set; }
         public DateTime ExpectedCalvingDate { get; set; }
     }
@@ -45,6 +46,7 @@ namespace MuuBoi.Application.DTOs
         public int AnimalId { get; set; }
         public string? Name { get; set; }
         public string? TagNumber { get; set; }
+        public string? PropertyTagNumber { get; set; }
         public DateTime? LastCalvingDate { get; set; }
     }
 }

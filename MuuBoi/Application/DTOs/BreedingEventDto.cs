@@ -8,6 +8,7 @@ namespace MuuBoi.Application.DTOs
         public Guid? PregnancySyncId { get; set; }
         public int AnimalId { get; set; }
         public string AnimalTagNumber { get; set; } = string.Empty;
+        public string? AnimalPropertyTagNumber { get; set; }
         public string? AnimalName { get; set; }
         public EnumValueDto? ReproductionType { get; set; }
         public DateTime BreedingDate { get; set; }
@@ -15,6 +16,7 @@ namespace MuuBoi.Application.DTOs
         public string? SemenSampleName { get; set; }
         public int? SireAnimalId { get; set; }
         public string? SireAnimalTagNumber { get; set; }
+        public string? SireAnimalPropertyTagNumber { get; set; }
         public string? SireAnimalName { get; set; }
         public EnumValueDto? Status { get; set; }
         public DateTime? DiagnosisDate { get; set; }
