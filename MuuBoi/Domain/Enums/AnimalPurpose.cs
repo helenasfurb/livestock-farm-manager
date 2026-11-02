@@ -13,7 +13,10 @@ namespace MuuBoi.Domain.Enums
         [Description("Vaca de descarte")]
         CullCow = 3,
 
-        [Description("Novilha para venda")]
-        HeiferForSale = 4
+        [Description("Venda")]
+        ForSale = 4,
+
+        [Description("Reprodutor")]
+        Sire = 5
     }
 }

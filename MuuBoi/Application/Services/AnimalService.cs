@@ -178,6 +178,11 @@ namespace MuuBoi.Application.Services
             if (dto.TagNumber != null && await _animalRepository.TagNumberExistsAsync(dto.TagNumber, excludeAnimalId: id))
                 throw new ConflictException($"Já existe um animal com o brinco '{dto.TagNumber}' nesta propriedade.");
 
+            var purpose = dto.Purpose ?? animal.Purpose;
+            var classification = dto.Classification ?? animal.Classification;
+            if (purpose == AnimalPurpose.Sire && classification != AnimalClassification.Bull)
+                throw new BusinessRuleException($"A finalidade '{AnimalPurpose.Sire.GetDescription()}' é exclusiva de touros.");
+
             var previousGender = animal.Gender;
 
             _mapper.Map(dto, animal);
