@@ -9,6 +9,7 @@ namespace MuuBoi.Application.Interfaces
         Task<StockItemCreatedDto> CreateAsync(StockItemCreateDto dto);
         Task<StockItemDto> UpdateAsync(int id, StockItemUpdateDto dto);
         Task DeactivateAsync(int id);
+        Task<StockItemDto> ReactivateAsync(int id);
         Task<StockDashboardDto> GetDashboardAsync(StockDashboardFilterDto filter);
         Task<IEnumerable<StockAlertDto>> GetAlertsAsync();
         Task<SyncPageDto<StockItemDto>> GetChangesAsync(string? since, int? limit);

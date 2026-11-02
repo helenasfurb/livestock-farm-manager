@@ -140,6 +140,20 @@ namespace MuuBoi.Application.Services
             await _repository.UpdateAsync(item);
         }
 
+        public async Task<StockItemDto> ReactivateAsync(int id)
+        {
+            var item = await _repository.GetByIdAsync(id)
+                ?? throw new NotFoundException($"Insumo com id '{id}' não encontrado.");
+
+            if (!item.IsActive)
+            {
+                item.IsActive = true;
+                await _repository.UpdateAsync(item);
+            }
+
+            return await ComposeDetailAsync<StockItemDto>(item);
+        }
+
         public async Task<StockDashboardDto> GetDashboardAsync(StockDashboardFilterDto filter)
         {
             var today = DateTime.UtcNow.Date;

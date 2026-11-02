@@ -35,12 +35,13 @@ namespace MuuBoi.Application.Services
                 .ToList();
         }
 
-        public async Task<IEnumerable<MilkProductionListItemDto>> GetByDateAsync(DateTime date)
+        public async Task<IEnumerable<MilkProductionListItemDto>> GetByDateAsync(DateTime date, bool? isActive)
         {
             var filter = new MilkProductionFilterDto
             {
                 DateFrom = date.Date,
-                DateTo = date.Date.AddDays(1).AddTicks(-1)
+                DateTo = date.Date.AddDays(1).AddTicks(-1),
+                IsActive = isActive
             };
 
             var productions = (await _repository.GetAllAsync(filter))
@@ -110,6 +111,20 @@ namespace MuuBoi.Application.Services
             production.IsActive = false;
             await _repository.UpdateAsync(production);
             return true;
+        }
+
+        public async Task<MilkProductionDto> ReactivateAsync(int id)
+        {
+            var production = await _repository.GetByIdAsync(id)
+                ?? throw new NotFoundException($"Lançamento de produção de leite com id '{id}' não encontrado.");
+
+            if (!production.IsActive)
+            {
+                production.IsActive = true;
+                await _repository.UpdateAsync(production);
+            }
+
+            return _mapper.Map<MilkProductionDto>(production);
         }
 
         public async Task<SyncPageDto<MilkProductionDto>> GetChangesAsync(string? since, int? limit)

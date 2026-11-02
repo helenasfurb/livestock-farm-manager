@@ -289,4 +289,32 @@ public class StockItemServiceTests
         Assert.Equal("Concentrado", result[0].StockCategory.Name);
         Assert.Equal("kg", result[1].UnitOfMeasure.Abbreviation);
     }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenInactive_ReactivatesWithoutChangingUpdatedAt()
+    {
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var item = BuildItem(DateTime.UtcNow.AddDays(-1), updatedAt, isActive: false);
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(item);
+        var result = await _service.ReactivateAsync(1);
+        Assert.True(item.IsActive);
+        Assert.Equal(1, result.Id);
+        Assert.Equal(updatedAt, item.UpdatedAt);
+        _repository.Verify(r => r.UpdateAsync(item), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenAlreadyActive_ReturnsWithoutUpdating()
+    {
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(BuildItem(DateTime.UtcNow.AddDays(-1)));
+        await _service.ReactivateAsync(1);
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<StockItem>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenItemNotFound_ThrowsNotFoundException()
+    {
+        _repository.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((StockItem?)null);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ReactivateAsync(99));
+    }
 }

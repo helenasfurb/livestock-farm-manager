@@ -351,7 +351,7 @@ public static class StockForecastResolver
 - **`StockItemUpdateDto`** (PATCH) — `Name?`, `StockCategoryId?`, `UnitOfMeasureId?`, `ReorderPoint?`, `ReplenishmentLeadDays?`, `Notes?` (null = não altera).
 - **`StockItemDto`** (detalhe) — `Id`, `Name`, `StockCategory` (`{id,name}`), `UnitOfMeasure` (`{id,name,abbreviation}`), `ReorderPoint?`, `ReplenishmentLeadDays?`, `Notes?`, **derivados:** `CurrentBalance`, `StockValue`, `AverageUnitCost`, `DaysOfCoverage?`, `EstimatedRunOutDate?`, `AlertSeverity` (`EnumValueDto`), `IsActive`, `CreatedAt`, `UpdatedAt`.
 - **`StockItemListItemDto`** — `Id`, `Name`, `CategoryName`, `UnitAbbreviation`, `CurrentBalance`, `StockValue`, `ReorderPoint?`, `AlertSeverity` (`EnumValueDto`), `IsActive`.
-- **`StockItemFilterDto`** — `Name?`, `StockCategoryId?`, `IsActive?` (`null`=todos, `true`=ativos, `false`=inativos).
+- **`StockItemFilterDto`** — `Name?`, `StockCategoryId?`, `IsActive?` (`null` ou `true`=ativos, `false`=inativos; até 02/Nov/2026, `null` trazia todos).
 
 **`StockMovement`:**
 - **`StockMovementCreateDto`** — `MovementType` (`[Required]`), `MovementReason` (`[Required]`), `MovementDate` (`[Required]`, `<= hoje`), `Quantity` (`[Required]`, `> 0`), `TotalValue?`, `UnitPrice?`, `ValueEntryMode?`, `Notes?`. `IValidatableObject`: coerência tipo×motivo (RN-04); valor obrigatório sse `Purchase`/`OpeningBalance` (informar `totalValue` **ou** `unitPrice` conforme `valueEntryMode`).

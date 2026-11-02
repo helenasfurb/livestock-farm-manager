@@ -19,7 +19,7 @@ namespace MuuBoi.Infrastructure.Repositories
         public async Task<IEnumerable<StockMovement>> GetByStockItemIdAsync(int stockItemId, StockMovementFilterDto filter)
         {
             var query = _context.StockMovements
-                .Where(m => m.StockItemId == stockItemId && m.IsActive);
+                .Where(m => m.StockItemId == stockItemId && m.IsActive == (filter.IsActive ?? true));
 
             if (filter.MovementType.HasValue)
                 query = query.Where(m => m.MovementType == filter.MovementType);

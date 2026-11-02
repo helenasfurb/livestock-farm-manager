@@ -70,6 +70,17 @@ namespace MuuBoi.Application.Services
             return true;
         }
 
+        public async Task<VaccineDto> ReactivateVaccineAsync(int id)
+        {
+            var vaccine = await FindVaccineAsync(id);
+            if (vaccine.IsActive)
+                return _mapper.Map<VaccineDto>(vaccine);
+
+            vaccine.IsActive = true;
+            var updated = await _vaccineRepository.UpdateVaccineAsync(vaccine);
+            return _mapper.Map<VaccineDto>(updated);
+        }
+
         public async Task<SyncPageDto<VaccineDto>> GetChangesAsync(string? since, int? limit)
         {
             if (!SyncPaging.TryDecodeCursor(since, out var cursor))

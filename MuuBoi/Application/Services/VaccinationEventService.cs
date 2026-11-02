@@ -211,6 +211,24 @@ namespace MuuBoi.Application.Services
             return true;
         }
 
+        public async Task<VaccinationEventDto> ReactivateAsync(int id)
+        {
+            var vaccinationEvent = await _repository.GetByIdAsync(id)
+                ?? throw new NotFoundException($"Evento de vacinação com id '{id}' não encontrado.");
+
+            if (!vaccinationEvent.IsActive)
+            {
+                if (vaccinationEvent.ParentEventId.HasValue
+                    && await _repository.GetActiveChildByParentIdAsync(vaccinationEvent.ParentEventId.Value) != null)
+                    throw new ConflictException("Já existe um reforço para este evento.");
+
+                vaccinationEvent.IsActive = true;
+                await _repository.UpdateAsync(vaccinationEvent);
+            }
+
+            return await GetByIdAsync(id);
+        }
+
         public async Task<IEnumerable<VaccinationHistoryItemDto>> GetAnimalHistoryAsync(int animalId)
         {
             _ = await _animalRepository.GetAnimalByIdAsync(animalId)

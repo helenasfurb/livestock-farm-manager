@@ -28,8 +28,7 @@ namespace MuuBoi.Infrastructure.Repositories
             if (filter.StockCategoryId.HasValue)
                 query = query.Where(i => i.StockCategoryId == filter.StockCategoryId);
 
-            if (filter.IsActive.HasValue)
-                query = query.Where(i => i.IsActive == filter.IsActive);
+            query = query.Where(i => i.IsActive == (filter.IsActive ?? true));
 
             return await query.OrderBy(i => i.Name).ToListAsync();
         }

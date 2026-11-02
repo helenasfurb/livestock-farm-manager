@@ -5,6 +5,7 @@ namespace MuuBoi.Application.Interfaces
     public interface ILactationRepository
     {
         Task<IEnumerable<Lactation>> GetByAnimalIdAsync(int animalId);
+        Task<IEnumerable<Lactation>> GetFilteredByAnimalIdAsync(int animalId, bool isActive);
         Task<Lactation?> GetByIdAsync(int id);
         Task<Lactation?> GetBySyncIdAsync(Guid syncId);
         Task<Lactation?> GetOpenByAnimalIdAsync(int animalId);
