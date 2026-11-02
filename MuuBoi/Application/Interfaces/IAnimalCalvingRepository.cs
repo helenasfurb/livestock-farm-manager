@@ -6,7 +6,7 @@ namespace MuuBoi.Application.Interfaces
     {
         Task<AnimalCalving?> GetByIdAsync(int id);
         Task<AnimalCalving?> GetBySyncIdAsync(Guid syncId);
-        Task<AnimalCalving?> CreateAsync(AnimalCalving calving, Lactation lactation, BodyConditionRecord? bodyCondition);
+        Task<AnimalCalving?> CreateAsync(AnimalCalving calving, Lactation? lactation, BodyConditionRecord? bodyCondition);
         Task<AnimalCalving> UpdateAsync(AnimalCalving calving);
         Task<bool> HasActiveByPregnancyIdAsync(int pregnancyId);
         Task<AnimalCalving?> GetLastActiveByAnimalIdAsync(int animalId);

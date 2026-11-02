@@ -33,16 +33,19 @@ public class AnimalCalvingServiceTests
             _repository.Object, _pregnancyRepository.Object, _bodyConditionRecordRepository.Object,
             _lactationRepository.Object, _animalRepository.Object, mapper);
 
-        _repository.Setup(r => r.CreateAsync(It.IsAny<AnimalCalving>(), It.IsAny<Lactation>(), It.IsAny<BodyConditionRecord?>()))
-            .ReturnsAsync((AnimalCalving c, Lactation l, BodyConditionRecord? b) =>
+        _repository.Setup(r => r.CreateAsync(It.IsAny<AnimalCalving>(), It.IsAny<Lactation?>(), It.IsAny<BodyConditionRecord?>()))
+            .ReturnsAsync((AnimalCalving c, Lactation? l, BodyConditionRecord? b) =>
             {
                 c.Id = 30;
-                l.Id = 40;
-                l.CalvingId = 30;
                 _createdCalving = c;
                 _createdLactation = l;
                 _createdBodyCondition = b;
-                _lactationRepository.Setup(r => r.GetByCalvingIdAsync(30)).ReturnsAsync(l);
+                if (l != null)
+                {
+                    l.Id = 40;
+                    l.CalvingId = 30;
+                    _lactationRepository.Setup(r => r.GetByCalvingIdAsync(30)).ReturnsAsync(l);
+                }
                 if (b != null)
                 {
                     b.Id = 50;
@@ -71,6 +74,12 @@ public class AnimalCalvingServiceTests
 
     private void SetupPregnancy(AnimalPregnancy pregnancy) =>
         _pregnancyRepository.Setup(r => r.GetByIdAsync(20)).ReturnsAsync(pregnancy);
+
+    private void SetupLactations(params Lactation[] lactations) =>
+        _lactationRepository.Setup(r => r.GetByAnimalIdAsync(1)).ReturnsAsync(lactations);
+
+    private static Lactation BuildLactation(DateTime start, DateTime? end = null) =>
+        new() { Id = 70, AnimalId = 1, StartDate = start, EndDate = end, IsActive = true };
 
     private static AnimalCalvingCalfCreateDto LiveCalf(string tag = "123456", decimal? weight = null) =>
         new() { Name = "Bezerra", Sex = AnimalGender.F, Breed = AnimalBreed.Holstein, VitalStatus = CalfVitalStatus.Live, TagNumber = tag, WeightKg = weight };
@@ -188,7 +197,7 @@ public class AnimalCalvingServiceTests
         _repository.Setup(r => r.GetBySyncIdAsync(syncId)).ReturnsAsync(BuildCalving(syncId: syncId));
         await _service.CreateAsync(20, BuildCreateDto(syncId));
         _pregnancyRepository.Verify(r => r.GetByIdAsync(It.IsAny<int>()), Times.Never);
-        _lactationRepository.Verify(r => r.HasOpenByAnimalIdAsync(It.IsAny<int>()), Times.Never);
+        _lactationRepository.Verify(r => r.GetByAnimalIdAsync(It.IsAny<int>()), Times.Never);
     }
 
     [Fact]
@@ -208,13 +217,53 @@ public class AnimalCalvingServiceTests
     {
         var syncId = Guid.NewGuid();
         SetupPregnancy(BuildPregnancy());
-        _lactationRepository.Setup(r => r.HasOpenByAnimalIdAsync(1)).ReturnsAsync(true);
+        SetupLactations(BuildLactation(CalvingDate.AddDays(-30)));
         _repository.SetupSequence(r => r.GetBySyncIdAsync(syncId))
             .ReturnsAsync((AnimalCalving?)null)
             .ReturnsAsync(BuildCalving(syncId: syncId));
         var result = await _service.CreateAsync(20, BuildCreateDto(syncId));
         Assert.Equal(9, result.Id);
         _repository.Verify(r => r.CreateAsync(It.IsAny<AnimalCalving>(), It.IsAny<Lactation>(), It.IsAny<BodyConditionRecord?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenLaterLactationExists_CreatesCalvingWithoutLactation()
+    {
+        SetupPregnancy(BuildPregnancy());
+        SetupLactations(BuildLactation(CalvingDate.AddDays(400)));
+        var result = await _service.CreateAsync(20, BuildCreateDto(Guid.NewGuid()));
+        Assert.NotNull(_createdCalving);
+        Assert.Null(_createdLactation);
+        Assert.Null(result.Lactation);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenOpenLactationStartedBeforeCalving_ThrowsBusinessRuleException()
+    {
+        SetupPregnancy(BuildPregnancy());
+        SetupLactations(BuildLactation(CalvingDate.AddDays(-30)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _service.CreateAsync(20, BuildCreateDto(Guid.NewGuid())));
+        _repository.Verify(r => r.CreateAsync(It.IsAny<AnimalCalving>(), It.IsAny<Lactation?>(), It.IsAny<BodyConditionRecord?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenCalvingInsideClosedLactation_ThrowsBusinessRuleException()
+    {
+        SetupPregnancy(BuildPregnancy());
+        SetupLactations(BuildLactation(CalvingDate.AddDays(-100), CalvingDate.AddDays(50)), BuildLactation(CalvingDate.AddDays(400)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _service.CreateAsync(20, BuildCreateDto(Guid.NewGuid())));
+        _repository.Verify(r => r.CreateAsync(It.IsAny<AnimalCalving>(), It.IsAny<Lactation?>(), It.IsAny<BodyConditionRecord?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenOnlyEarlierClosedLactationExists_CreatesOpenLactation()
+    {
+        SetupPregnancy(BuildPregnancy());
+        SetupLactations(BuildLactation(CalvingDate.AddDays(-400), CalvingDate.AddDays(-60)));
+        await _service.CreateAsync(20, BuildCreateDto(Guid.NewGuid()));
+        Assert.NotNull(_createdLactation);
+        Assert.Equal(CalvingDate, _createdLactation!.StartDate);
+        Assert.Null(_createdLactation.EndDate);
     }
 
     [Fact]
