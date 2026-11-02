@@ -102,6 +102,11 @@ namespace MuuBoi.Application.DTOs
                         new[] { nameof(Classification) });
             }
 
+            if (Purpose == AnimalPurpose.Sire && Classification != AnimalClassification.Bull)
+                yield return new ValidationResult(
+                    $"A finalidade '{AnimalPurpose.Sire.GetDescription()}' é exclusiva de touros.",
+                    new[] { nameof(Purpose) });
+
             if (InitialBodyConditionDate.HasValue && InitialBodyConditionDate.Value > DateTime.UtcNow)
                 yield return new ValidationResult(
                     "A data do ECC inicial não pode ser futura.",
