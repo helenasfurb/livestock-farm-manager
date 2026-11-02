@@ -59,9 +59,16 @@ namespace MuuBoi.Application.Services
             if (calvingDate < pregnancy.ConfirmationDate)
                 throw new BusinessRuleException("A data do parto não pode ser anterior à data de confirmação da gestação.");
 
-            if (await _lactationRepository.HasOpenByAnimalIdAsync(pregnancy.AnimalId))
+            var lactations = await _lactationRepository.GetByAnimalIdAsync(pregnancy.AnimalId);
+
+            var overlapping = lactations.FirstOrDefault(l => l.StartDate <= calvingDate && (l.EndDate == null || l.EndDate >= calvingDate));
+            if (overlapping != null)
                 return await ExistingBySyncIdAsync(dto)
-                    ?? throw new BusinessRuleException("O animal possui uma lactação em aberto. Registre a secagem antes de lançar um novo parto.");
+                    ?? throw new BusinessRuleException(overlapping.EndDate == null
+                        ? "O animal possui uma lactação em aberto. Registre a secagem antes de lançar um novo parto."
+                        : "A data do parto está dentro de uma lactação já encerrada do animal.");
+
+            var isRetroactive = lactations.Any(l => l.StartDate > calvingDate);
 
             var tagConflict = await FindCalfTagConflictAsync(dto.Calves);
             if (tagConflict != null)
@@ -94,17 +101,19 @@ namespace MuuBoi.Application.Services
 
             pregnancy.Status = AnimalPregnancyStatus.Calved;
 
-            var lactation = new Lactation
-            {
-                SyncId = dto.LactationSyncId ?? Guid.NewGuid(),
-                AnimalId = pregnancy.AnimalId,
-                StartDate = calvingDate,
-                EndDate = null,
-                Origin = LactationOrigin.Calving,
-                PropertyId = pregnancy.PropertyId,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            };
+            var lactation = isRetroactive
+                ? null
+                : new Lactation
+                {
+                    SyncId = dto.LactationSyncId ?? Guid.NewGuid(),
+                    AnimalId = pregnancy.AnimalId,
+                    StartDate = calvingDate,
+                    EndDate = null,
+                    Origin = LactationOrigin.Calving,
+                    PropertyId = pregnancy.PropertyId,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
 
             var bodyCondition = dto.BodyConditionScore.HasValue
                 ? new BodyConditionRecord
