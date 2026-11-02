@@ -6,6 +6,7 @@ namespace MuuBoi.Application.DTOs
         public Guid SyncId { get; set; }
         public int AnimalId { get; set; }
         public string? AnimalTagNumber { get; set; }
+        public string? AnimalPropertyTagNumber { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public EnumValueDto? Origin { get; set; }

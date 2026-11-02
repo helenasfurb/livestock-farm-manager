@@ -172,12 +172,16 @@ namespace MuuBoi.Application.Services
 
             var take = SyncPaging.ResolveLimit(limit);
             var fetched = await _repository.GetChangesAsync(cursor, take + 1);
-            var tags = await _animalRepository.GetTagNumbersByIdsAsync(fetched.Select(l => l.AnimalId).Distinct().ToList());
+            var tags = await _animalRepository.GetTagsByIdsAsync(fetched.Select(l => l.AnimalId).Distinct().ToList());
 
             return SyncPaging.BuildPage(fetched, take, cursor, l =>
             {
                 var dto = ToDto(l);
-                dto.AnimalTagNumber = tags.GetValueOrDefault(l.AnimalId);
+                if (tags.TryGetValue(l.AnimalId, out var animalTags))
+                {
+                    dto.AnimalTagNumber = animalTags.TagNumber;
+                    dto.AnimalPropertyTagNumber = animalTags.PropertyTagNumber;
+                }
                 return dto;
             });
         }

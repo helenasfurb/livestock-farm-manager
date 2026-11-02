@@ -11,6 +11,7 @@ namespace MuuBoi.Application.DTOs
         public int AnimalId { get; set; }
         public string? AnimalName { get; set; }
         public string? AnimalTagNumber { get; set; }
+        public string? AnimalPropertyTagNumber { get; set; }
 
         public EnumValueDto? DiseaseType { get; set; }
         public string? DiseaseName { get; set; }
