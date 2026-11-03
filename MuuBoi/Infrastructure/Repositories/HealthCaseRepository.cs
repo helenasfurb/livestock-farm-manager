@@ -138,6 +138,14 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(t => t.Id == testId && t.HealthCaseId == healthCaseId);
         }
 
+        public async Task<IEnumerable<MastitisTest>> GetTestsByHealthCaseIdAsync(int healthCaseId, bool isActive)
+        {
+            return await _context.MastitisTests
+                .Where(t => t.HealthCaseId == healthCaseId && t.IsActive == isActive)
+                .OrderByDescending(t => t.TestDate)
+                .ToListAsync();
+        }
+
         public async Task<MastitisTest?> GetTestBySyncIdAsync(Guid syncId)
         {
             return await _context.MastitisTests.FirstOrDefaultAsync(t => t.SyncId == syncId);
@@ -205,6 +213,8 @@ namespace MuuBoi.Infrastructure.Repositories
             var meds = await _context.AnimalMedications
                 .Where(m => m.IsActive
                             && m.WithdrawalPeriodDays != null
+                            && m.HealthCase != null
+                            && m.HealthCase.IsActive
                             && animalIds.Contains(m.AnimalId))
                 .Select(m => new { m.AnimalId, m.ApplicationDate, Days = m.WithdrawalPeriodDays!.Value })
                 .ToListAsync();

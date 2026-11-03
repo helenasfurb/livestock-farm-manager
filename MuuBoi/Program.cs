@@ -22,10 +22,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddIdentityCore<ApplicationUser>()
+builder.Services.AddIdentityCore<ApplicationUser>(options =>
+    {
+        options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultEmailProvider;
+        options.Tokens.EmailConfirmationTokenProvider = TokenOptions.DefaultEmailProvider;
+    })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddErrorDescriber<PortugueseIdentityErrorDescriber>();
 
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT Key não configurada.");
@@ -111,12 +116,23 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(15),
                 QueueLimit = 0
             }));
+
+    options.AddPolicy(AuthRateLimitPolicies.AccountCodes, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            $"{ResolveClientIp(httpContext)}:{httpContext.Request.Path}",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0
+            }));
 });
 
 builder.Services.AddScoped<IPortalAuthService, PortalAuthService>();
 
 builder.Services.AddScoped<IAnimalRepository, AnimalRepository>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
+builder.Services.AddScoped<IAnimalPhotoService, AnimalPhotoService>();
 
 builder.Services.AddScoped<IWeightRecordRepository, WeightRecordRepository>();
 builder.Services.AddScoped<IWeightRecordService, WeightRecordService>();
@@ -126,9 +142,6 @@ builder.Services.AddScoped<IVaccineService, VaccineService>();
 
 builder.Services.AddScoped<IMedicationRepository, MedicationRepository>();
 builder.Services.AddScoped<IMedicationService, MedicationService>();
-
-builder.Services.AddScoped<IAnimalMedicationRepository, AnimalMedicationRepository>();
-builder.Services.AddScoped<IAnimalMedicationService, AnimalMedicationService>();
 
 builder.Services.AddScoped<IBodyConditionRecordRepository, BodyConditionRecordRepository>();
 builder.Services.AddScoped<IBodyConditionRecordService, BodyConditionRecordService>();
@@ -173,6 +186,8 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IPasswordRecoveryService, PasswordRecoveryService>();
+builder.Services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IUsageTracker, UsageTracker>();
@@ -189,6 +204,12 @@ builder.Services.AddSingleton<ISessionValidator, SessionValidator>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantProvider, TenantProvider>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+builder.Services.Configure<BlobStorageOptions>(builder.Configuration.GetSection("BlobStorage"));
+builder.Services.AddSingleton<IFileStorageService, AzureBlobStorageService>();
+
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.AddSingleton<IEmailService, EmailService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 
@@ -245,8 +266,9 @@ app.UseMiddleware<ExceptionMiddleware>();
 
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
+if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
     await DatabaseSeeder.SeedAsync(scope.ServiceProvider);

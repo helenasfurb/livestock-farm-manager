@@ -5,11 +5,13 @@ namespace MuuBoi.Application.DTOs
         public int Id { get; set; }
         public int AnimalId { get; set; }
         public string AnimalTagNumber { get; set; } = string.Empty;
+        public string? AnimalPropertyTagNumber { get; set; }
         public string? AnimalName { get; set; }
         public int? BreedingEventId { get; set; }
         public DateTime ConfirmationDate { get; set; }
         public DateTime ExpectedCalvingDate { get; set; }
         public int? GestationalAge { get; set; }
+        public int GestationLength { get; set; }
         public DateTime? LossDate { get; set; }
         public EnumValueDto? Status { get; set; }
         public bool IsActive { get; set; }

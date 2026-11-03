@@ -77,6 +77,13 @@ namespace MuuBoi.Api.Controllers
             return NoContent();
         }
 
+        [HttpPatch("{id:int}/reactivate")]
+        public async Task<ActionResult<HealthCaseDto>> Reactivate(int id)
+        {
+            var reactivated = await _service.ReactivateAsync(id);
+            return Ok(reactivated);
+        }
+
         [HttpPost("{id:int}/medications")]
         public async Task<ActionResult<MedicationUseDto>> AddMedication(int id, [FromBody] MedicationUseCreateDto dto)
         {
@@ -98,11 +105,25 @@ namespace MuuBoi.Api.Controllers
             return CreatedAtAction(nameof(GetById), new { id }, created);
         }
 
+        [HttpGet("{id:int}/tests")]
+        public async Task<ActionResult<IEnumerable<MastitisTestDto>>> GetTests(int id, [FromQuery] bool? isActive)
+        {
+            var tests = await _service.GetTestsAsync(id, isActive);
+            return Ok(tests);
+        }
+
         [HttpDelete("{id:int}/tests/{testId:int}")]
         public async Task<IActionResult> DeactivateTest(int id, int testId)
         {
             await _service.DeactivateTestAsync(id, testId);
             return NoContent();
+        }
+
+        [HttpPatch("{id:int}/tests/{testId:int}/reactivate")]
+        public async Task<ActionResult<MastitisTestDto>> ReactivateTest(int id, int testId)
+        {
+            var reactivated = await _service.ReactivateTestAsync(id, testId);
+            return Ok(reactivated);
         }
     }
 }

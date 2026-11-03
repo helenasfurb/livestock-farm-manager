@@ -323,6 +323,43 @@ public class AnimalServiceTests
     }
 
     [Fact]
+    public async Task UpdateAnimalAsync_WithSirePurposeOnNonBull_ThrowsBusinessRuleException()
+    {
+        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));
+        _animalRepository.Setup(r => r.GetAnimalByIdAsync(1)).ReturnsAsync(animal);
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _service.UpdateAnimalAsync(1, new AnimalUpdateDto { Purpose = AnimalPurpose.Sire, UpdatedAt = DateTime.UtcNow.AddHours(-1) }));
+        Assert.Null(animal.Purpose);
+        _animalRepository.Verify(r => r.UpdateAnimalAsync(It.IsAny<Animal>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAnimalAsync_WhenSireIsReclassified_ThrowsBusinessRuleException()
+    {
+        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));
+        animal.Gender = AnimalGender.M;
+        animal.Classification = AnimalClassification.Bull;
+        animal.Purpose = AnimalPurpose.Sire;
+        _animalRepository.Setup(r => r.GetAnimalByIdAsync(1)).ReturnsAsync(animal);
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _service.UpdateAnimalAsync(1, new AnimalUpdateDto { Classification = AnimalClassification.Steer, UpdatedAt = DateTime.UtcNow.AddHours(-1) }));
+        Assert.Equal(AnimalClassification.Bull, animal.Classification);
+        _animalRepository.Verify(r => r.UpdateAnimalAsync(It.IsAny<Animal>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAnimalAsync_WithSirePurposeOnBull_AppliesChanges()
+    {
+        var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));
+        animal.Gender = AnimalGender.M;
+        animal.Classification = AnimalClassification.Bull;
+        _animalRepository.Setup(r => r.GetAnimalByIdAsync(1)).ReturnsAsync(animal);
+        await _service.UpdateAnimalAsync(1, new AnimalUpdateDto { Purpose = AnimalPurpose.Sire, UpdatedAt = DateTime.UtcNow.AddHours(-1) });
+        Assert.Equal(AnimalPurpose.Sire, animal.Purpose);
+        _animalRepository.Verify(r => r.UpdateAnimalAsync(animal), Times.Once);
+    }
+
+    [Fact]
     public async Task UpdateAnimalAsync_WhenGenderChanges_UpdatesLinkedCalfSex()
     {
         var animal = BuildAnimal(DateTime.UtcNow.AddDays(-2));
@@ -452,5 +489,45 @@ public class AnimalServiceTests
         Assert.Equal(new[] { 6, 5 }, result[0].ExitRecords.Select(e => e.Id));
         Assert.Empty(result[1].ExitRecords);
         _exitRecordRepository.Verify(r => r.GetByAnimalIdsAsync(It.Is<IReadOnlyCollection<int>>(ids => ids.SequenceEqual(new[] { 1, 2 }))), Times.Once);
+    }
+
+    private void SetupAnimalDetail(Animal animal)
+    {
+        _animalRepository.Setup(r => r.GetAnimalByIdAsync(animal.Id)).ReturnsAsync(animal);
+        _calvingRepository.Setup(r => r.GetRecentActiveByAnimalIdAsync(animal.Id, 2)).ReturnsAsync(new List<AnimalCalving>());
+        _lactationRepository.Setup(r => r.GetByAnimalIdAsync(animal.Id)).ReturnsAsync(new List<Lactation>());
+        _healthCaseService.Setup(s => s.GetSanitaryStatusMapAsync(It.IsAny<IReadOnlyCollection<int>>()))
+            .ReturnsAsync(new Dictionary<int, AnimalSanitaryStatusDto>());
+    }
+
+    [Fact]
+    public async Task GetAnimalByIdAsync_WithActiveConfirmedPregnancy_ReturnsActivePregnancyId()
+    {
+        SetupAnimalDetail(BuildAnimal(DateTime.UtcNow.AddDays(-400)));
+        _pregnancyRepository.Setup(r => r.GetActiveConfirmedByAnimalIdAsync(1))
+            .ReturnsAsync(new AnimalPregnancy { Id = 42, AnimalId = 1, ExpectedCalvingDate = DateTime.UtcNow.AddDays(100) });
+        var result = await _service.GetAnimalByIdAsync(1);
+        Assert.Equal(42, result.ActivePregnancyId);
+        Assert.Null(result.ActiveBreedingEventId);
+    }
+
+    [Fact]
+    public async Task GetAnimalByIdAsync_WithAwaitingDiagnosisBreeding_ReturnsActiveBreedingEventId()
+    {
+        SetupAnimalDetail(BuildAnimal(DateTime.UtcNow.AddDays(-400)));
+        _breedingEventRepository.Setup(r => r.GetLastActiveAwaitingDiagnosisAsync(1))
+            .ReturnsAsync(new BreedingEvent { Id = 7, AnimalId = 1, BreedingDate = DateTime.UtcNow.AddDays(-10), Status = ReproductiveEventStatus.AwaitingDiagnosis });
+        var result = await _service.GetAnimalByIdAsync(1);
+        Assert.Equal(7, result.ActiveBreedingEventId);
+        Assert.Null(result.ActivePregnancyId);
+    }
+
+    [Fact]
+    public async Task GetAnimalByIdAsync_WithoutReproductiveEvents_ReturnsNullReferences()
+    {
+        SetupAnimalDetail(BuildAnimal(DateTime.UtcNow.AddDays(-400)));
+        var result = await _service.GetAnimalByIdAsync(1);
+        Assert.Null(result.ActivePregnancyId);
+        Assert.Null(result.ActiveBreedingEventId);
     }
 }

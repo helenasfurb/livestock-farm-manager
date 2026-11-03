@@ -39,7 +39,7 @@ namespace MuuBoi.Application.DTOs
 
     public class BreedDistributionDto
     {
-        public AnimalBreed Breed { get; set; }
+        public AnimalBreed? Breed { get; set; }
         public string BreedName { get; set; } = string.Empty;
         public int Count { get; set; }
     }

@@ -11,8 +11,6 @@ namespace MuuBoi.Application.Services
 {
     public class AnimalPregnancyService : IAnimalPregnancyService
     {
-        private const int GestationDays = 280;
-
         private readonly IAnimalPregnancyRepository _repository;
         private readonly IAnimalCalvingRepository _calvingRepository;
         private readonly IAnimalRepository _animalRepository;
@@ -36,7 +34,8 @@ namespace MuuBoi.Application.Services
         public async Task<IEnumerable<AnimalPregnancyListItemDto>> GetAllAsync(AnimalPregnancyFilterDto filter)
         {
             var pregnancies = await _repository.GetAllAsync(filter);
-            return _mapper.Map<IEnumerable<AnimalPregnancyListItemDto>>(pregnancies);
+            var now = DateTime.UtcNow;
+            return pregnancies.Select(p => ToListItem(p, now)).ToList();
         }
 
         public async Task<IEnumerable<AnimalPregnancyListItemDto>> GetByAnimalIdAsync(int animalId, bool? isActive)
@@ -45,14 +44,15 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Animal com id '{animalId}' não encontrado.");
 
             var pregnancies = await _repository.GetByAnimalIdAsync(animalId, isActive);
-            return _mapper.Map<IEnumerable<AnimalPregnancyListItemDto>>(pregnancies);
+            var now = DateTime.UtcNow;
+            return pregnancies.Select(p => ToListItem(p, now)).ToList();
         }
 
         public async Task<AnimalPregnancyDto> GetByIdAsync(int id)
         {
             var pregnancy = await _repository.GetByIdAsync(id)
                 ?? throw new NotFoundException($"Gestação com id '{id}' não encontrada.");
-            return _mapper.Map<AnimalPregnancyDto>(pregnancy);
+            return ToDto(pregnancy);
         }
 
         public async Task<AnimalPregnancyDto> CreateRetroactiveAsync(int animalId, AnimalPregnancyRetroactiveCreateDto dto)
@@ -62,7 +62,7 @@ namespace MuuBoi.Application.Services
             {
                 var existing = await _repository.GetBySyncIdAsync(dto.SyncId.Value);
                 if (existing != null)
-                    return _mapper.Map<AnimalPregnancyDto>(existing);
+                    return ToDto(existing);
             }
 
             var animal = await _animalRepository.GetAnimalByIdAsync(animalId)
@@ -112,7 +112,7 @@ namespace MuuBoi.Application.Services
 
             // RN-03: data prevista de parto — informada direto prevalece; senão calcula da concepção.
             var expectedCalvingDate = dto.ExpectedCalvingDate
-                ?? dto.EstimatedConceptionDate!.Value.AddDays(GestationDays);
+                ?? dto.EstimatedConceptionDate!.Value.AddDays(GestationResolver.GestationDays);
 
             var confirmationDate = dto.ConfirmationDate!.Value;
             if (expectedCalvingDate <= confirmationDate)
@@ -139,7 +139,7 @@ namespace MuuBoi.Application.Services
             created.SireAnimal = sire;
             created.SemenSample = semen;
 
-            return _mapper.Map<AnimalPregnancyDto>(created);
+            return ToDto(created);
         }
 
         private async Task<AnimalPregnancyDto?> ExistingBySyncIdAsync(Guid? syncId)
@@ -148,7 +148,7 @@ namespace MuuBoi.Application.Services
                 return null;
 
             var existing = await _repository.GetBySyncIdAsync(syncId.Value);
-            return existing == null ? null : _mapper.Map<AnimalPregnancyDto>(existing);
+            return existing == null ? null : ToDto(existing);
         }
 
         public async Task<AnimalPregnancyDto> RegisterLossAsync(int id, AnimalPregnancyStatusUpdateDto dto)
@@ -157,7 +157,7 @@ namespace MuuBoi.Application.Services
                 ?? throw new NotFoundException($"Gestação com id '{id}' não encontrada.");
 
             if (pregnancy.Status == AnimalPregnancyStatus.LostPregnancy)
-                return _mapper.Map<AnimalPregnancyDto>(pregnancy);
+                return ToDto(pregnancy);
 
             if (pregnancy.Status != AnimalPregnancyStatus.Confirmed)
                 throw new ConflictException("Apenas gestações confirmadas podem ser marcadas como interrompidas.");
@@ -168,7 +168,7 @@ namespace MuuBoi.Application.Services
                 pregnancy.Notes = dto.Notes;
 
             var updated = await _repository.UpdateAsync(pregnancy);
-            return _mapper.Map<AnimalPregnancyDto>(updated);
+            return ToDto(updated);
         }
 
         public async Task<SyncPageDto<AnimalPregnancySyncDto>> GetChangesAsync(string? since, int? limit)
@@ -201,8 +201,8 @@ namespace MuuBoi.Application.Services
         {
             // RN-04: com idade gestacional, a data prevista deriva do diagnóstico; sem ela, da cobertura.
             var expectedCalvingDate = gestationalAge.HasValue
-                ? confirmationDate.AddDays(GestationDays - gestationalAge.Value)
-                : breedingEvent.BreedingDate.AddDays(GestationDays);
+                ? confirmationDate.AddDays(GestationResolver.GestationDays - gestationalAge.Value)
+                : breedingEvent.BreedingDate.AddDays(GestationResolver.GestationDays);
 
             return new AnimalPregnancy
             {
@@ -217,6 +217,20 @@ namespace MuuBoi.Application.Services
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
+        }
+
+        private AnimalPregnancyDto ToDto(AnimalPregnancy pregnancy)
+        {
+            var dto = _mapper.Map<AnimalPregnancyDto>(pregnancy);
+            dto.GestationLength = GestationResolver.GestationLength(pregnancy, DateTime.UtcNow);
+            return dto;
+        }
+
+        private AnimalPregnancyListItemDto ToListItem(AnimalPregnancy pregnancy, DateTime now)
+        {
+            var dto = _mapper.Map<AnimalPregnancyListItemDto>(pregnancy);
+            dto.GestationLength = GestationResolver.GestationLength(pregnancy, now);
+            return dto;
         }
     }
 }

@@ -44,10 +44,13 @@ namespace MuuBoi.Infrastructure.Repositories
                 .FirstOrDefaultAsync(c => c.SyncId == syncId);
         }
 
-        public async Task<AnimalCalving?> CreateAsync(AnimalCalving calving, Lactation lactation, BodyConditionRecord? bodyCondition)
+        public async Task<AnimalCalving?> CreateAsync(AnimalCalving calving, Lactation? lactation, BodyConditionRecord? bodyCondition)
         {
-            lactation.Calving = calving;
-            _context.Lactations.Add(lactation);
+            if (lactation != null)
+            {
+                lactation.Calving = calving;
+                _context.Lactations.Add(lactation);
+            }
             if (bodyCondition != null)
                 _context.BodyConditionRecords.Add(bodyCondition);
             _context.AnimalCalvings.Add(calving);

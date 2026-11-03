@@ -188,6 +188,35 @@ public class SemenSampleMovementServiceTests
     }
 
     [Fact]
+    public async Task GetByIdAsync_WhenMovementBelongsToAnotherSample_ThrowsNotFoundException()
+    {
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1));
+        movement.SemenSampleId = 2;
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.GetByIdAsync(1, 1));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenMovementBelongsToAnotherSample_ThrowsNotFoundException()
+    {
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1));
+        movement.SemenSampleId = 2;
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.UpdateAsync(1, 1, new SemenSampleMovementUpdateDto { Quantity = 8 }));
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<SemenSampleMovement>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_WhenMovementBelongsToAnotherSample_ThrowsNotFoundException()
+    {
+        var movement = BuildMovement(DateTime.UtcNow.AddDays(-1));
+        movement.SemenSampleId = 2;
+        _repository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(movement);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.DeactivateAsync(1, 1));
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<SemenSampleMovement>()), Times.Never);
+    }
+
+    [Fact]
     public async Task DeactivateAsync_WhenActive_Deactivates()
     {
         var updatedAt = DateTime.UtcNow.AddHours(-1);

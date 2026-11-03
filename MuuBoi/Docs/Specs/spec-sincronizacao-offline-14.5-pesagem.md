@@ -400,5 +400,5 @@ Em `AnimalServiceTests` (existente):
 
 | # | Questão | Situação |
 |---|---|---|
-| Q1 | **Peso positivo e data não futura** (R5): hoje não há validação; offline, uma data futura por relógio adiantado passaria a ser o "último peso" | ⏳ Fora desta spec (regra nova). Se adotada, `400` no DTO (definitivo para o app) |
+| Q1 | **Peso positivo e data não futura** (R5): hoje não há validação; offline, uma data futura por relógio adiantado passaria a ser o "último peso" | ✅ **Adotada** (01/Nov/2026): `400` no DTO, no `POST` e no `PATCH` — "O peso deve ser maior que zero." (`Range` 0,01–9999,99) e "A data da pesagem não pode ser futura." (data comparada com a data UTC, para não barrar o relógio levemente adiantado no mesmo dia) |
 | Q2 | **`AnimalMedication` também faz exclusão física** (`AnimalMedicationRepository.cs:53`) | ⏳ Mesma conversão da P1, na spec dos casos de saúde |

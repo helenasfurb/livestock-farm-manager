@@ -16,5 +16,7 @@ namespace MuuBoi.Application.DTOs
         public bool IsActive { get; set; }
         public AnimalExitRecordDto? LastExitRecord { get; set; }
         public WeightRecordDto? LastWeightRecord { get; set; }
+        public string? PhotoHash { get; set; }
+        public string? ThumbnailUrl { get; set; }
     }
 }

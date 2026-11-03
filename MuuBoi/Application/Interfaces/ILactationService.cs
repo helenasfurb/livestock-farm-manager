@@ -4,7 +4,7 @@ namespace MuuBoi.Application.Interfaces
 {
     public interface ILactationService
     {
-        Task<IEnumerable<LactationListItemDto>> GetByAnimalIdAsync(int animalId);
+        Task<IEnumerable<LactationListItemDto>> GetByAnimalIdAsync(int animalId, bool? isActive);
         Task<LactationDto?> GetCurrentByAnimalIdAsync(int animalId);
         Task<LactationDto> GetByIdAsync(int id);
         Task<LactationDto> CreateAsync(int animalId, LactationCreateDto dto);
@@ -12,6 +12,7 @@ namespace MuuBoi.Application.Interfaces
         Task<LactationDto> DryOffAsync(int id, LactationDryOffDto dto);
         Task<LactationDto> UndoDryOffAsync(int id);
         Task<bool> DeactivateAsync(int id);
+        Task<LactationDto> ReactivateAsync(int id);
         Task<SyncPageDto<LactationDto>> GetChangesAsync(string? since, int? limit);
     }
 }

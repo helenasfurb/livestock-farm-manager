@@ -72,6 +72,7 @@ namespace MuuBoi.Infrastructure.Repositories
                     AnimalId = a.Id,
                     Name = a.Name,
                     TagNumber = a.TagNumber,
+                    PropertyTagNumber = a.PropertyTagNumber,
                     HasActiveConfirmedPregnancy = a.Pregnancies!.Any(p =>
                         p.IsActive && p.Status == AnimalPregnancyStatus.Confirmed),
                     LastCalvingDate = a.Calvings!
@@ -101,6 +102,9 @@ namespace MuuBoi.Infrastructure.Repositories
             if (filter.Breed.HasValue)
                 query = query.Where(a => a.Breed == filter.Breed.Value);
 
+            if (filter.WithoutBreed == true)
+                query = query.Where(a => a.Breed == null);
+
             return query;
         }
 
@@ -111,6 +115,11 @@ namespace MuuBoi.Infrastructure.Repositories
                 .Include(a => a.BodyConditionRecords!.OrderByDescending(r => r.RecordedAt).Take(1))
                 .Include(a => a.ExitRecords!.OrderByDescending(e => e.ExitDate).Take(1))
                 .FirstOrDefaultAsync(a => a.Id == id);
+        }
+
+        public async Task<Animal?> GetAnimalForPhotoAsync(int id)
+        {
+            return await _context.Animals.FirstOrDefaultAsync(a => a.Id == id);
         }
 
         public async Task<Animal?> GetBySyncIdAsync(Guid syncId)
@@ -138,14 +147,15 @@ namespace MuuBoi.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Dictionary<int, string?>> GetTagNumbersByIdsAsync(IReadOnlyCollection<int> ids)
+        public async Task<Dictionary<int, (string? TagNumber, string? PropertyTagNumber)>> GetTagsByIdsAsync(IReadOnlyCollection<int> ids)
         {
             if (ids == null || ids.Count == 0)
-                return new Dictionary<int, string?>();
+                return new Dictionary<int, (string? TagNumber, string? PropertyTagNumber)>();
 
             return await _context.Animals
                 .Where(a => ids.Contains(a.Id))
-                .ToDictionaryAsync(a => a.Id, a => a.TagNumber);
+                .Select(a => new { a.Id, a.TagNumber, a.PropertyTagNumber })
+                .ToDictionaryAsync(a => a.Id, a => (a.TagNumber, a.PropertyTagNumber));
         }
 
         public async Task<IEnumerable<Animal>> GetBreedingEligibleAnimalsAsync(string? search)
@@ -175,6 +185,12 @@ namespace MuuBoi.Infrastructure.Repositories
             _context.Animals.Update(animal);
             await _context.SaveChangesAsync();
             return animal;
+        }
+
+        public async Task<bool> UpdatePhotoAsync(Animal animal)
+        {
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<Animal> UpdateAnimalAndTouchCalvingAsync(Animal animal, int calvingId)

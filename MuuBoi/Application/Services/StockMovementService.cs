@@ -42,8 +42,7 @@ namespace MuuBoi.Application.Services
             var item = await _itemRepository.GetByIdAsync(stockItemId)
                 ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
 
-            var movement = await _repository.GetByIdAsync(movementId)
-                ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            var movement = await FindMovementAsync(stockItemId, movementId);
             movement.StockItem = item;
 
             return _mapper.Map<StockMovementDto>(movement);
@@ -81,8 +80,7 @@ namespace MuuBoi.Application.Services
             var item = await _itemRepository.GetByIdAsync(stockItemId)
                 ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
 
-            var movement = await _repository.GetByIdAsync(movementId)
-                ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            var movement = await FindMovementAsync(stockItemId, movementId);
             movement.StockItem = item;
 
             if (dto.MovementDate.HasValue && dto.MovementDate.Value.Date > DateTime.UtcNow.Date)
@@ -115,14 +113,34 @@ namespace MuuBoi.Application.Services
             _ = await _itemRepository.GetByIdAsync(stockItemId)
                 ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
 
-            var movement = await _repository.GetByIdAsync(movementId)
-                ?? throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            var movement = await FindMovementAsync(stockItemId, movementId);
 
             if (!movement.IsActive)
                 return;
 
             movement.IsActive = false;
             await _repository.UpdateAsync(movement);
+        }
+
+        public async Task<StockMovementDto> ReactivateAsync(int stockItemId, int movementId)
+        {
+            var item = await _itemRepository.GetByIdAsync(stockItemId)
+                ?? throw new NotFoundException($"Insumo com id '{stockItemId}' não encontrado.");
+
+            var movement = await FindMovementAsync(stockItemId, movementId);
+            movement.StockItem = item;
+
+            if (movement.IsActive)
+                return _mapper.Map<StockMovementDto>(movement);
+
+            if (!item.IsActive)
+                throw new ConflictException("Não é possível reativar movimentação de um insumo inativo.");
+
+            movement.IsActive = true;
+            var updated = await _repository.UpdateAsync(movement);
+            updated.StockItem = item;
+
+            return _mapper.Map<StockMovementDto>(updated);
         }
 
         public async Task<SyncPageDto<StockMovementDto>> GetChangesAsync(string? since, int? limit)
@@ -160,6 +178,14 @@ namespace MuuBoi.Application.Services
                 movement.UnitCostSnapshot = averageUnitCost;
             else
                 movement.TotalValue = averageUnitCost * movement.Quantity;
+        }
+
+        private async Task<StockMovement> FindMovementAsync(int stockItemId, int movementId)
+        {
+            var movement = await _repository.GetByIdAsync(movementId);
+            if (movement == null || movement.StockItemId != stockItemId)
+                throw new NotFoundException($"Movimentação com id '{movementId}' não encontrada.");
+            return movement;
         }
     }
 }

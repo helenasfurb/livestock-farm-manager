@@ -120,6 +120,20 @@ namespace MuuBoi.Application.Services
             return true;
         }
 
+        public async Task<HealthCaseDto> ReactivateAsync(int id)
+        {
+            var healthCase = await _repository.GetByIdAsync(id)
+                ?? throw new NotFoundException($"Caso de saúde com id '{id}' não encontrado.");
+
+            if (!healthCase.IsActive)
+            {
+                healthCase.IsActive = true;
+                await _repository.UpdateAsync(healthCase);
+            }
+
+            return BuildDetail(healthCase, DateTime.UtcNow);
+        }
+
         public async Task<MedicationUseDto> AddMedicationAsync(int healthCaseId, MedicationUseCreateDto dto)
         {
             if (dto.SyncId.HasValue)
@@ -198,6 +212,34 @@ namespace MuuBoi.Application.Services
             test.IsActive = false;
             await _repository.UpdateTestAsync(test);
             return true;
+        }
+
+        public async Task<IEnumerable<MastitisTestDto>> GetTestsAsync(int healthCaseId, bool? isActive)
+        {
+            _ = await _repository.GetByIdAsync(healthCaseId)
+                ?? throw new NotFoundException($"Caso de saúde com id '{healthCaseId}' não encontrado.");
+
+            var tests = await _repository.GetTestsByHealthCaseIdAsync(healthCaseId, isActive ?? true);
+            return _mapper.Map<IEnumerable<MastitisTestDto>>(tests);
+        }
+
+        public async Task<MastitisTestDto> ReactivateTestAsync(int healthCaseId, int testId)
+        {
+            var test = await _repository.GetTestAsync(testId, healthCaseId)
+                ?? throw new NotFoundException($"Teste com id '{testId}' não encontrado.");
+
+            if (test.IsActive)
+                return _mapper.Map<MastitisTestDto>(test);
+
+            var healthCase = await _repository.GetByIdAsync(healthCaseId)
+                ?? throw new NotFoundException($"Caso de saúde com id '{healthCaseId}' não encontrado.");
+
+            if (!healthCase.IsActive)
+                throw new ConflictException("Reative o caso de saúde antes de reativar o teste.");
+
+            test.IsActive = true;
+            await _repository.UpdateTestAsync(test);
+            return _mapper.Map<MastitisTestDto>(test);
         }
 
         public async Task<SyncPageDto<HealthCaseSyncDto>> GetChangesAsync(string? since, int? limit)

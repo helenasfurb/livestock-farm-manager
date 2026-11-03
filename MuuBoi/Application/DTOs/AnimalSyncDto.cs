@@ -18,5 +18,9 @@ namespace MuuBoi.Application.DTOs
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public IEnumerable<AnimalExitRecordDto> ExitRecords { get; set; } = new List<AnimalExitRecordDto>();
+        public string? PhotoHash { get; set; }
+        public string? PhotoUrl { get; set; }
+        public string? ThumbnailUrl { get; set; }
+        public DateTime? PhotoUpdatedAt { get; set; }
     }
 }

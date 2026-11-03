@@ -12,7 +12,7 @@
        Classification: Calf = 1, Heifer = 2, Steer = 3, Bull = 4, Cow = 5
        Breed:          Holstein=1, Jersey=2, Crossbred=3, BrownSwiss=4,
                        Simmental=5, DairyGir=6, Girolando=7, DairyGuzerat=8, Sindhi=9
-       Purpose:        Breeder=1, ReplacementHeifer=2, CullCow=3, HeiferForSale=4
+       Purpose:        Breeder=1, ReplacementHeifer=2, CullCow=3, ForSale=4, Sire=5
        Origin:         BornOnFarm=1, Purchased=2
    - Multi-tenant: cada animal precisa de um PropertyId válido. O script usa
      a primeira Property cadastrada. Se quiser uma específica, ajuste o
@@ -46,7 +46,7 @@ SELECT v.Name, v.TagNumber, v.PropertyTagNumber, v.Gender, v.BirthDate, v.Breed,
        v.Classification, v.Purpose, v.Origin, v.Notes, @PropertyId, 1, @Now, NULL
 FROM (VALUES
     -- Touro (macho adulto, reprodutor)
-    (N'Trovão',   N'000001', N'BR-001', 0, CAST('2021-03-15' AS DATETIME2), 7, 4, NULL, 2, N'Reprodutor principal do rebanho.'),
+    (N'Trovão',   N'000001', N'BR-001', 0, CAST('2021-03-15' AS DATETIME2), 7, 4, 5,    2, N'Reprodutor principal do rebanho.'),
     -- Vaca 1 (matriz, nascida na fazenda)
     (N'Mimosa',   N'000002', N'BR-002', 1, CAST('2020-06-10' AS DATETIME2), 7, 5, 1,    1, N'Matriz em lactação.'),
     -- Vaca 2 (matriz)

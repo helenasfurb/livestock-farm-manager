@@ -156,4 +156,86 @@ public class AnimalPregnancyServiceTests
         Assert.True(result.HasMore);
         Assert.Equal("11", result.NextCursor);
     }
+
+    [Fact]
+    public async Task GetByIdAsync_WithConfirmedPregnancy_ReturnsDaysSinceConception()
+    {
+        var pregnancy = BuildPregnancy();
+        pregnancy.ExpectedCalvingDate = DateTime.UtcNow.Date.AddDays(GestationResolver.GestationDays - 84);
+        _repository.Setup(r => r.GetByIdAsync(20)).ReturnsAsync(pregnancy);
+        var result = await _service.GetByIdAsync(20);
+        Assert.Equal(84, result.GestationLength);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WithConfirmedPregnancyPastExpectedCalving_KeepsCountingDays()
+    {
+        var pregnancy = BuildPregnancy();
+        pregnancy.ExpectedCalvingDate = DateTime.UtcNow.Date.AddDays(-15);
+        _repository.Setup(r => r.GetByIdAsync(20)).ReturnsAsync(pregnancy);
+        var result = await _service.GetByIdAsync(20);
+        Assert.Equal(GestationResolver.GestationDays + 15, result.GestationLength);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WithLostPregnancy_FreezesGestationLengthAtLossDate()
+    {
+        var pregnancy = BuildPregnancy(status: AnimalPregnancyStatus.LostPregnancy);
+        pregnancy.LossDate = new DateTime(2026, 10, 12, 0, 0, 0, DateTimeKind.Utc);
+        _repository.Setup(r => r.GetByIdAsync(20)).ReturnsAsync(pregnancy);
+        var result = await _service.GetByIdAsync(20);
+        Assert.Equal(140, result.GestationLength);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WithCalvedPregnancy_FreezesGestationLengthAtCalvingDate()
+    {
+        var pregnancy = BuildPregnancy(status: AnimalPregnancyStatus.Calved);
+        pregnancy.Calvings = new List<AnimalCalving>
+        {
+            new() { Id = 1, CalvingDate = new DateTime(2027, 2, 20, 0, 0, 0, DateTimeKind.Utc), IsActive = true }
+        };
+        _repository.Setup(r => r.GetByIdAsync(20)).ReturnsAsync(pregnancy);
+        var result = await _service.GetByIdAsync(20);
+        Assert.Equal(271, result.GestationLength);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WithGestationalAgeAtConfirmation_CountsFromVeterinaryEstimate()
+    {
+        var breedingEvent = new BreedingEvent { Id = 5, AnimalId = 1, BreedingDate = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc) };
+        var pregnancy = _service.BuildForBreedingEvent(breedingEvent, new DateTime(2026, 9, 10, 0, 0, 0, DateTimeKind.Utc), 35, Guid.NewGuid());
+        pregnancy.Id = 20;
+        pregnancy.Status = AnimalPregnancyStatus.LostPregnancy;
+        pregnancy.LossDate = new DateTime(2026, 10, 24, 0, 0, 0, DateTimeKind.Utc);
+        _repository.Setup(r => r.GetByIdAsync(20)).ReturnsAsync(pregnancy);
+        var result = await _service.GetByIdAsync(20);
+        Assert.Equal(79, result.GestationLength);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WithConceptionAfterToday_ReturnsZeroGestationLength()
+    {
+        var pregnancy = BuildPregnancy();
+        pregnancy.ExpectedCalvingDate = DateTime.UtcNow.Date.AddDays(GestationResolver.GestationDays + 10);
+        _repository.Setup(r => r.GetByIdAsync(20)).ReturnsAsync(pregnancy);
+        var result = await _service.GetByIdAsync(20);
+        Assert.Equal(0, result.GestationLength);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_WithPregnancies_FillsGestationLengthOfEachItem()
+    {
+        var lost = BuildPregnancy(id: 20, status: AnimalPregnancyStatus.LostPregnancy);
+        lost.LossDate = new DateTime(2026, 10, 12, 0, 0, 0, DateTimeKind.Utc);
+        var calved = BuildPregnancy(id: 21, status: AnimalPregnancyStatus.Calved);
+        calved.Calvings = new List<AnimalCalving>
+        {
+            new() { Id = 1, CalvingDate = new DateTime(2027, 2, 20, 0, 0, 0, DateTimeKind.Utc), IsActive = true }
+        };
+        _repository.Setup(r => r.GetAllAsync(It.IsAny<AnimalPregnancyFilterDto>())).ReturnsAsync(new List<AnimalPregnancy> { lost, calved });
+        var result = (await _service.GetAllAsync(new AnimalPregnancyFilterDto())).ToList();
+        Assert.Equal(140, result.Single(p => p.Id == 20).GestationLength);
+        Assert.Equal(271, result.Single(p => p.Id == 21).GestationLength);
+    }
 }

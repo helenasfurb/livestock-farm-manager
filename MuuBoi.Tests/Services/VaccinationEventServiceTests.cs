@@ -306,4 +306,45 @@ public class VaccinationEventServiceTests
         Assert.Equal(new[] { 5, 6 }, result[0].AnimalIds);
         Assert.Empty(result[1].AnimalIds);
     }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenInactive_ReactivatesWithoutChangingUpdatedAt()
+    {
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var vaccinationEvent = Store(BuildEvent(DateTime.UtcNow.AddDays(-1), updatedAt, isActive: false, id: 1));
+        var result = await _service.ReactivateAsync(1);
+        Assert.True(vaccinationEvent.IsActive);
+        Assert.True(result.IsActive);
+        Assert.Equal(updatedAt, vaccinationEvent.UpdatedAt);
+        _repository.Verify(r => r.UpdateAsync(vaccinationEvent), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenAlreadyActive_ReturnsWithoutUpdating()
+    {
+        Store(BuildEvent(DateTime.UtcNow.AddDays(-1), id: 1));
+        await _service.ReactivateAsync(1);
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<VaccinationEvent>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenParentHasAnotherActiveBooster_ThrowsConflictException()
+    {
+        Store(BuildEvent(DateTime.UtcNow.AddDays(-10), id: 1));
+        var booster = Store(BuildEvent(DateTime.UtcNow.AddDays(-5), isActive: false, parentEventId: 1, id: 2));
+        _repository.Setup(r => r.GetActiveChildByParentIdAsync(1)).ReturnsAsync(BuildEvent(DateTime.UtcNow.AddDays(-2), parentEventId: 1, id: 3));
+        await Assert.ThrowsAsync<ConflictException>(() => _service.ReactivateAsync(2));
+        Assert.False(booster.IsActive);
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<VaccinationEvent>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_BoosterWithoutActiveSibling_Reactivates()
+    {
+        Store(BuildEvent(DateTime.UtcNow.AddDays(-10), id: 1));
+        var booster = Store(BuildEvent(DateTime.UtcNow.AddDays(-5), isActive: false, parentEventId: 1, id: 2));
+        await _service.ReactivateAsync(2);
+        Assert.True(booster.IsActive);
+        _repository.Verify(r => r.UpdateAsync(booster), Times.Once);
+    }
 }

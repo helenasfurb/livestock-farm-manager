@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MuuBoi.Infrastructure.Data;
@@ -26,6 +27,8 @@ namespace MuuBoi.Api.Controllers
         private readonly IAccountService _accountService;
         private readonly ISessionValidator _sessionValidator;
         private readonly IUsageService _usageService;
+        private readonly IPasswordRecoveryService _passwordRecoveryService;
+        private readonly IEmailConfirmationService _emailConfirmationService;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
@@ -33,7 +36,9 @@ namespace MuuBoi.Api.Controllers
             ApplicationDbContext context,
             IAccountService accountService,
             ISessionValidator sessionValidator,
-            IUsageService usageService)
+            IUsageService usageService,
+            IPasswordRecoveryService passwordRecoveryService,
+            IEmailConfirmationService emailConfirmationService)
         {
             _userManager = userManager;
             _configuration = configuration;
@@ -41,10 +46,13 @@ namespace MuuBoi.Api.Controllers
             _accountService = accountService;
             _sessionValidator = sessionValidator;
             _usageService = usageService;
+            _passwordRecoveryService = passwordRecoveryService;
+            _emailConfirmationService = emailConfirmationService;
         }
 
         [HttpPost("register")]
-        public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto model)
+        [EnableRateLimiting(AuthRateLimitPolicies.AccountCodes)]
+        public async Task<IActionResult> Register([FromBody] RegisterDto model)
         {
             var existingUser = await _userManager.FindByEmailAsync(model.Email);
             if (existingUser != null)
@@ -82,7 +90,8 @@ namespace MuuBoi.Api.Controllers
 
             await transaction.CommitAsync();
 
-            return StatusCode(201, BuildAuthResponse(user, property));
+            await _emailConfirmationService.SendCodeAsync(user);
+            return StatusCode(201, new { message = "Conta criada. Enviamos um código de confirmação para o seu e-mail.", email = user.Email });
         }
 
         [HttpPost("login")]
@@ -99,6 +108,12 @@ namespace MuuBoi.Api.Controllers
             if (!passwordValid)
                 return Unauthorized(new { message = "Credenciais inválidas." });
 
+            if (!user.EmailConfirmed)
+            {
+                await _emailConfirmationService.SendCodeAsync(user);
+                return StatusCode(403, new { message = "Confirme seu e-mail para entrar. Enviamos um código para você.", code = "EmailNotConfirmed" });
+            }
+
             var property = await _context.Properties.FindAsync(user.PropertyId);
             if (property == null)
                 return StatusCode(500, new { message = "Propriedade não encontrada." });
@@ -109,6 +124,55 @@ namespace MuuBoi.Api.Controllers
             await _usageService.RecordLoginAsync(user.Id, user.PropertyId);
 
             return Ok(BuildAuthResponse(user, property));
+        }
+
+        [HttpPost("forgot-password")]
+        [EnableRateLimiting(AuthRateLimitPolicies.AccountCodes)]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+        {
+            await _passwordRecoveryService.RequestResetAsync(dto.Email);
+            return Ok(new { message = "Se o e-mail estiver cadastrado, você receberá um código em instantes." });
+        }
+
+        [HttpPost("reset-password")]
+        [EnableRateLimiting(AuthRateLimitPolicies.AccountCodes)]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            var result = await _passwordRecoveryService.ResetPasswordAsync(dto.Email, dto.Code, dto.NewPassword);
+            if (result.Succeeded)
+                return Ok(new { message = "Senha redefinida com sucesso." });
+
+            if (result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.InvalidToken)))
+                return BadRequest(new { message = "Código inválido ou expirado." });
+
+            var errors = result.Errors.Select(e => e.Description);
+            return BadRequest(new { message = "Erro ao redefinir a senha.", errors });
+        }
+
+        [HttpPost("confirm-email")]
+        [EnableRateLimiting(AuthRateLimitPolicies.AccountCodes)]
+        public async Task<ActionResult<AuthResponseDto>> ConfirmEmail([FromBody] ConfirmEmailDto dto)
+        {
+            var result = await _emailConfirmationService.ConfirmAsync(dto.Email, dto.Code);
+            if (!result.Succeeded)
+                return BadRequest(new { message = "Código inválido ou expirado." });
+
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            var property = await _context.Properties.FindAsync(user!.PropertyId);
+            if (property == null)
+                return StatusCode(500, new { message = "Propriedade não encontrada." });
+
+            await _usageService.RecordLoginAsync(user.Id, user.PropertyId);
+
+            return Ok(BuildAuthResponse(user, property));
+        }
+
+        [HttpPost("resend-confirmation")]
+        [EnableRateLimiting(AuthRateLimitPolicies.AccountCodes)]
+        public async Task<IActionResult> ResendConfirmation([FromBody] ResendConfirmationDto dto)
+        {
+            await _emailConfirmationService.ResendAsync(dto.Email);
+            return Ok(new { message = "Se o e-mail estiver cadastrado e aguardando confirmação, você receberá um código em instantes." });
         }
 
         [HttpGet("me")]
@@ -232,7 +296,7 @@ namespace MuuBoi.Api.Controllers
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
             var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
-            var expiresAt = DateTime.UtcNow.AddHours(24);
+            var expiresAt = DateTime.UtcNow.AddMonths(6);
 
             var token = new JwtSecurityToken(
                 claims: claims,

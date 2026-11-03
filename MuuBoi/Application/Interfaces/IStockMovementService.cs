@@ -9,6 +9,7 @@ namespace MuuBoi.Application.Interfaces
         Task<StockMovementDto> CreateAsync(int stockItemId, StockMovementCreateDto dto);
         Task<StockMovementDto> UpdateAsync(int stockItemId, int movementId, StockMovementUpdateDto dto);
         Task DeactivateAsync(int stockItemId, int movementId);
+        Task<StockMovementDto> ReactivateAsync(int stockItemId, int movementId);
         Task<SyncPageDto<StockMovementDto>> GetChangesAsync(string? since, int? limit);
     }
 }

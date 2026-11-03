@@ -28,8 +28,7 @@ namespace MuuBoi.Infrastructure.Repositories
             if (filter.Milking.HasValue)
                 query = query.Where(m => m.Milking == filter.Milking);
 
-            if (filter.IsActive.HasValue)
-                query = query.Where(m => m.IsActive == filter.IsActive);
+            query = query.Where(m => m.IsActive == (filter.IsActive ?? true));
 
             return await query.OrderByDescending(m => m.Date).ToListAsync();
         }

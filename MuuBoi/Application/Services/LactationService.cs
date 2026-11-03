@@ -25,11 +25,11 @@ namespace MuuBoi.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<LactationListItemDto>> GetByAnimalIdAsync(int animalId)
+        public async Task<IEnumerable<LactationListItemDto>> GetByAnimalIdAsync(int animalId, bool? isActive)
         {
             await FindAnimalAsync(animalId);
 
-            var lactations = await _repository.GetByAnimalIdAsync(animalId);
+            var lactations = await _repository.GetFilteredByAnimalIdAsync(animalId, isActive ?? true);
             return lactations.Select(ToListItem).ToList();
         }
 
@@ -165,6 +165,30 @@ namespace MuuBoi.Application.Services
             return true;
         }
 
+        public async Task<LactationDto> ReactivateAsync(int id)
+        {
+            var lactation = await _repository.GetByIdAsync(id)
+                ?? throw new NotFoundException($"Lactação com id '{id}' não encontrada.");
+
+            if (lactation.IsActive)
+                return ToDto(lactation);
+
+            if (lactation.Animal is { IsActive: false })
+                throw new ConflictException("Não é possível reativar a lactação de um animal inativo.");
+
+            if (lactation.Calving is { IsActive: false })
+                throw new ConflictException("Esta lactação pertence a um parto excluído e não pode ser reativada.");
+
+            var others = await _repository.GetByAnimalIdAsync(lactation.AnimalId);
+            var end = lactation.EndDate ?? DateTime.MaxValue;
+            if (others.Any(o => o.StartDate <= end && (o.EndDate ?? DateTime.MaxValue) >= lactation.StartDate))
+                throw new ConflictException("O período desta lactação coincide com outra lactação ativa do animal.");
+
+            lactation.IsActive = true;
+            await _repository.UpdateAsync(lactation);
+            return ToDto(lactation);
+        }
+
         public async Task<SyncPageDto<LactationDto>> GetChangesAsync(string? since, int? limit)
         {
             if (!SyncPaging.TryDecodeCursor(since, out var cursor))
@@ -172,12 +196,16 @@ namespace MuuBoi.Application.Services
 
             var take = SyncPaging.ResolveLimit(limit);
             var fetched = await _repository.GetChangesAsync(cursor, take + 1);
-            var tags = await _animalRepository.GetTagNumbersByIdsAsync(fetched.Select(l => l.AnimalId).Distinct().ToList());
+            var tags = await _animalRepository.GetTagsByIdsAsync(fetched.Select(l => l.AnimalId).Distinct().ToList());
 
             return SyncPaging.BuildPage(fetched, take, cursor, l =>
             {
                 var dto = ToDto(l);
-                dto.AnimalTagNumber = tags.GetValueOrDefault(l.AnimalId);
+                if (tags.TryGetValue(l.AnimalId, out var animalTags))
+                {
+                    dto.AnimalTagNumber = animalTags.TagNumber;
+                    dto.AnimalPropertyTagNumber = animalTags.PropertyTagNumber;
+                }
                 return dto;
             });
         }

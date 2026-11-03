@@ -29,6 +29,11 @@ namespace MuuBoi.Domain.Models
         [MaxLength(1000)]
         public string? Notes { get; set; }
 
+        [MaxLength(64)]
+        public string? PhotoHash { get; set; }
+
+        public DateTime? PhotoUpdatedAt { get; set; }
+
         public Guid PropertyId { get; set; }
 
         public Guid SyncId { get; set; }

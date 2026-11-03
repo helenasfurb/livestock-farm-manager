@@ -79,13 +79,14 @@ namespace MuuBoi.Infrastructure.Repositories
                     && e.Status == ReproductiveEventStatus.AwaitingDiagnosis);
         }
 
-        public async Task<DateTime?> GetLastActiveAwaitingDiagnosisDateAsync(int animalId)
+        public async Task<BreedingEvent?> GetLastActiveAwaitingDiagnosisAsync(int animalId)
         {
             return await _context.BreedingEvents
                 .Where(e => e.AnimalId == animalId
                     && e.IsActive
                     && e.Status == ReproductiveEventStatus.AwaitingDiagnosis)
-                .MaxAsync(e => (DateTime?)e.BreedingDate);
+                .OrderByDescending(e => e.BreedingDate)
+                .FirstOrDefaultAsync();
         }
 
         public async Task<(int Successful, int Unsuccessful, int Awaiting)> GetStatusCountsAsync(DateTime from, DateTime to)

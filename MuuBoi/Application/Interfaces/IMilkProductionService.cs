@@ -5,11 +5,12 @@ namespace MuuBoi.Application.Interfaces
     public interface IMilkProductionService
     {
         Task<IEnumerable<MilkProductionDayDto>> GetAllAsync(MilkProductionFilterDto filter);
-        Task<IEnumerable<MilkProductionListItemDto>> GetByDateAsync(DateTime date);
+        Task<IEnumerable<MilkProductionListItemDto>> GetByDateAsync(DateTime date, bool? isActive);
         Task<MilkProductionDto> GetByIdAsync(int id);
         Task<MilkProductionDto> CreateAsync(MilkProductionCreateDto dto);
         Task<MilkProductionDto> UpdateAsync(int id, MilkProductionUpdateDto dto);
         Task<bool> DeactivateAsync(int id);
+        Task<MilkProductionDto> ReactivateAsync(int id);
         Task<SyncPageDto<MilkProductionDto>> GetChangesAsync(string? since, int? limit);
     }
 }

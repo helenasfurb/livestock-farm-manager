@@ -8,6 +8,8 @@
 **Ajusta:** Spec #7 / #18 (Dashboards) — rota `GET /api/dashboard` (dashboard geral / home) e `GET /api/dashboard/reproductive` (previsão de partos, Ajuste 6)
 **Depende de:** #14 (Vacinação), #16 (Tratamentos/Mastite), #6.1 (Gestação) — resolvers/repositórios já implementados (`VaccinationEventStatusResolver`, `AnimalSanitaryStatusResolver`, `IAnimalPregnancyRepository`)
 **Referenciado por:** —
+
+> **Animais sem raça (25/Out/2026):** a raça é opcional no cadastro, e a `breedDistribution` do `GET /api/dashboard` descartava os animais sem raça — as fatias não somavam o `totalAnimals`. Agora há uma fatia **"Sem raça registrada"** (`breed: null`), sempre por último e só quando existe algum animal sem raça. A lista de animais ganhou o filtro `GET /api/animals?withoutBreed=true`; junto com `breed` responde `400` ("Informe a raça ou 'sem raça registrada', não os dois."). O `GET /api/animals/breeds` continua listando só as raças reais.
 **Histórico:** v1.1 — adiciona a previsão de partos ao dashboard reprodutivo (Ajuste 6, cumpre a "estimativa de parto" prevista no #18 US-02/CU-02, nunca implementada) e retira o *stub* vazio de `BirthForecast` da home, que passa a viver no reprodutivo (D9 revisada).
 
 ---

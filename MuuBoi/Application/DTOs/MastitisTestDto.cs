@@ -12,5 +12,6 @@ namespace MuuBoi.Application.DTOs
 
         [JsonConverter(typeof(DateFormatConverter))]
         public DateTime TestDate { get; set; }
+        public bool IsActive { get; set; }
     }
 }

@@ -16,6 +16,10 @@ namespace MuuBoi.Application.Mappings
                     opt => opt.MapFrom(src => src.Pregnancy != null ? src.Pregnancy.SyncId : (Guid?)null))
                 .ForMember(dest => dest.AnimalTagNumber,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : string.Empty))
+                .ForMember(dest => dest.AnimalPropertyTagNumber,
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.PropertyTagNumber : null))
+                .ForMember(dest => dest.AnimalName,
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.Name : null))
                 .ForMember(dest => dest.ReproductionType,
                     opt => opt.MapFrom(src => new EnumValueDto
                     {
@@ -32,6 +36,8 @@ namespace MuuBoi.Application.Mappings
                     opt => opt.MapFrom(src => src.SemenSample != null ? src.SemenSample.Name : null))
                 .ForMember(dest => dest.SireAnimalTagNumber,
                     opt => opt.MapFrom(src => src.SireAnimal != null ? src.SireAnimal.TagNumber : null))
+                .ForMember(dest => dest.SireAnimalPropertyTagNumber,
+                    opt => opt.MapFrom(src => src.SireAnimal != null ? src.SireAnimal.PropertyTagNumber : null))
                 .ForMember(dest => dest.SireAnimalName,
                     opt => opt.MapFrom(src => src.SireAnimal != null ? src.SireAnimal.Name : null))
                 .ForMember(dest => dest.DiagnosisMethod,
@@ -68,6 +74,8 @@ namespace MuuBoi.Application.Mappings
             CreateMap<BreedingEvent, BreedingEventListItemDto>()
                 .ForMember(dest => dest.AnimalTagNumber,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.TagNumber : string.Empty))
+                .ForMember(dest => dest.AnimalPropertyTagNumber,
+                    opt => opt.MapFrom(src => src.Animal != null ? src.Animal.PropertyTagNumber : null))
                 .ForMember(dest => dest.AnimalName,
                     opt => opt.MapFrom(src => src.Animal != null ? src.Animal.Name : null))
                 .ForMember(dest => dest.ReproductionType,

@@ -8,5 +8,6 @@ namespace MuuBoi.Application.DTOs
         public EnumValueDto? Origin { get; set; }
         public bool IsLactating { get; set; }
         public int DaysInMilk { get; set; }
+        public bool IsActive { get; set; }
     }
 }

@@ -381,6 +381,10 @@ Campos adicionados ao AnimalDto (além de DEL/ProductiveStatus/ReproductiveStatu
 | calvingIntervalDays | int? | CalvingDate(n) − CalvingDate(n−1) dos dois últimos partos ativos (IEP; #6.2) | menos de 2 partos |
 | nextCalving | { pregnancyId, expectedCalvingDate } ? | gestação ativa e confirmada: Id + ExpectedCalvingDate (#6.1) | sem gestação confirmada em curso |
 | parentage | { mother, father } ? | genealogia imediata derivada da cadeia cria→parto→gestação→cobertura (#10 Alt. A) | animal sem cadeia de parto (ex.: adquirido) |
+| activePregnancyId | int? | Id da gestação ativa e confirmada (#6.1) — mesma fonte de nextCalving | sem gestação confirmada em curso |
+| activeBreedingEventId | int? | Id da cobertura ativa mais recente aguardando diagnóstico (#5) | sem cobertura aguardando diagnóstico |
+
+Referências reprodutivas ativas (activePregnancyId / activeBreedingEventId — ajuste 26/Out/2026). Ids diretos para a ficha abrir a gestação em curso ou a cobertura pendente sem requisição extra. activePregnancyId repete nextCalving.pregnancyId de propósito, como campo solto, para o cliente não depender do objeto de previsão. activeBreedingEventId só existe enquanto a cobertura está AwaitingDiagnosis; após o diagnóstico positivo a referência passa a ser a gestação (que carrega o BreedingEventId de origem). Os dois são mutuamente exclusivos na prática (RN de bloqueio de cobertura com gestação ativa — Ajustes Pontuais, Ajuste 4) e, como os demais índices reprodutivos, só são preenchidos para Cow/Heifer.
 
 Previsão do próximo parto (nextCalving). Retorna o par pregnancyId + expectedCalvingDate da gestação ativa e confirmada do animal. O id é intencional: permite abrir a gestação a partir da ficha (drill-down repro), sem uma segunda requisição para descobri-la. A data reusa AnimalPregnancy.ExpectedCalvingDate já persistida (não recalcula BreedingDate + 280 aqui — a gestação é a fonte de verdade; #6.1 D2). Objeto único (não dois campos soltos) para acoplar data e id e dar um só nulo quando não há gestação.
 
@@ -394,7 +398,8 @@ Resolvers / métodos (padrão puro e testável — D2):
 - GenealogyResolver.Resolve(AnimalCalvingCalf birth) → AnimalParentageDto? — puro; mapeia a cadeia carregada para o DTO.
 - IAnimalCalvingRepository.GetRecentActiveByAnimalIdAsync(animalId, count) — os N partos ativos mais recentes (usa 2: último parto + IEP; reaproveitado para o status reprodutivo).
 - IAnimalCalvingRepository.GetParentageByAnimalIdAsync(animalId) — a cria do animal com parto → mãe e gestação → cobertura/sire/sêmen, em uma query.
-- IAnimalPregnancyRepository.GetActiveConfirmedByAnimalIdAsync(animalId) — a gestação confirmada em curso (nextCalving; reaproveitada para o status reprodutivo em vez do HasActive… booleano).
+- IAnimalPregnancyRepository.GetActiveConfirmedByAnimalIdAsync(animalId) — a gestação confirmada em curso (nextCalving e activePregnancyId; reaproveitada para o status reprodutivo em vez do HasActive… booleano).
+- IBreedingEventRepository.GetLastActiveAwaitingDiagnosisAsync(animalId) — a cobertura ativa mais recente aguardando diagnóstico (activeBreedingEventId; sua BreedingDate alimenta o status reprodutivo). Substitui o antigo GetLastActiveAwaitingDiagnosisDateAsync, que só devolvia a data — mesma query, sem custo extra.
 
 Orçamento de queries (performance). A derivação reprodutiva reaproveita as buscas: GetRecentActive… substitui o "último parto" e GetActiveConfirmed… substitui o booleano HasActiveConfirmed…, ambos já necessários ao status reprodutivo — logo lastCalvingDate/IEP/nextCalving saem sem query extra. A genealogia acrescenta exatamente uma query (a cadeia da cria). Índices reprodutivos gateados a Cow/Heifer; genealogia vale para qualquer animal nascido na propriedade.
 

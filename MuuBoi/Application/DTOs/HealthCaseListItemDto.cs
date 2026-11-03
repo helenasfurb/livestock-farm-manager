@@ -9,6 +9,7 @@ namespace MuuBoi.Application.DTOs
         public int AnimalId { get; set; }
         public string? AnimalName { get; set; }
         public string? AnimalTagNumber { get; set; }
+        public string? AnimalPropertyTagNumber { get; set; }
 
         public EnumValueDto? DiseaseType { get; set; }
         public string? DiseaseName { get; set; }
@@ -22,5 +23,6 @@ namespace MuuBoi.Application.DTOs
         public DateTime? MilkLiberationDate { get; set; }       // derived = case liberation
 
         public IEnumerable<EnumValueDto> AffectedQuarters { get; set; } = new List<EnumValueDto>();
+        public bool IsActive { get; set; }
     }
 }

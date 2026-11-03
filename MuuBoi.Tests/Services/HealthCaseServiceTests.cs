@@ -330,6 +330,37 @@ public class HealthCaseServiceTests
     }
 
     [Fact]
+    public async Task ReactivateAsync_WhenInactive_ReactivatesWithoutChangingUpdatedAt()
+    {
+        var updatedAt = DateTime.UtcNow.AddHours(-1);
+        var healthCase = BuildCase(DateTime.UtcNow.AddDays(-1), updatedAt, isActive: false);
+        _repository.Setup(r => r.GetByIdAsync(11)).ReturnsAsync(healthCase);
+        var result = await _service.ReactivateAsync(11);
+        Assert.True(result.IsActive);
+        Assert.True(healthCase.IsActive);
+        Assert.Equal(updatedAt, healthCase.UpdatedAt);
+        _repository.Verify(r => r.UpdateAsync(healthCase), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenAlreadyActive_ReturnsCaseWithoutUpdating()
+    {
+        var healthCase = BuildCase(DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddHours(-1));
+        _repository.Setup(r => r.GetByIdAsync(11)).ReturnsAsync(healthCase);
+        var result = await _service.ReactivateAsync(11);
+        Assert.True(result.IsActive);
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<HealthCase>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_WhenNotFound_ThrowsNotFoundException()
+    {
+        _repository.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((HealthCase?)null);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ReactivateAsync(99));
+        _repository.Verify(r => r.UpdateAsync(It.IsAny<HealthCase>()), Times.Never);
+    }
+
+    [Fact]
     public async Task DeactivateMedicationAsync_WhenAlreadyInactive_ReturnsTrueWithoutUpdating()
     {
         _repository.Setup(r => r.GetMedicationAsync(7, 10)).ReturnsAsync(BuildMedication(7, isActive: false));
@@ -393,5 +424,67 @@ public class HealthCaseServiceTests
         Assert.Empty(result[0].Tests);
         Assert.Empty(result[1].Medications);
         Assert.False(Assert.Single(result[1].Tests).IsActive);
+    }
+
+    [Fact]
+    public async Task ReactivateTestAsync_WhenInactive_Reactivates()
+    {
+        var test = BuildTest(8, isActive: false);
+        _repository.Setup(r => r.GetTestAsync(8, 10)).ReturnsAsync(test);
+        var result = await _service.ReactivateTestAsync(10, 8);
+        Assert.True(test.IsActive);
+        Assert.Equal(8, result.Id);
+        _repository.Verify(r => r.UpdateTestAsync(test), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivateTestAsync_WhenAlreadyActive_ReturnsWithoutUpdating()
+    {
+        _repository.Setup(r => r.GetTestAsync(8, 10)).ReturnsAsync(BuildTest(8));
+        await _service.ReactivateTestAsync(10, 8);
+        _repository.Verify(r => r.UpdateTestAsync(It.IsAny<MastitisTest>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateTestAsync_WhenHealthCaseInactive_ThrowsConflictException()
+    {
+        var test = BuildTest(8, isActive: false);
+        _repository.Setup(r => r.GetTestAsync(8, 10)).ReturnsAsync(test);
+        _repository.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(BuildCase(DateTime.UtcNow.AddDays(-1), isActive: false, id: 10));
+        await Assert.ThrowsAsync<ConflictException>(() => _service.ReactivateTestAsync(10, 8));
+        Assert.False(test.IsActive);
+        _repository.Verify(r => r.UpdateTestAsync(It.IsAny<MastitisTest>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReactivateTestAsync_WhenTestNotFound_ThrowsNotFoundException()
+    {
+        _repository.Setup(r => r.GetTestAsync(99, 10)).ReturnsAsync((MastitisTest?)null);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ReactivateTestAsync(10, 99));
+    }
+
+    [Fact]
+    public async Task GetTestsAsync_WithoutIsActive_ReturnsActiveTests()
+    {
+        _repository.Setup(r => r.GetTestsByHealthCaseIdAsync(10, true)).ReturnsAsync(new[] { BuildTest(8) });
+        var result = await _service.GetTestsAsync(10, null);
+        Assert.True(Assert.Single(result).IsActive);
+        _repository.Verify(r => r.GetTestsByHealthCaseIdAsync(10, true), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetTestsAsync_WithIsActiveFalse_ReturnsInactiveTests()
+    {
+        _repository.Setup(r => r.GetTestsByHealthCaseIdAsync(10, false)).ReturnsAsync(new[] { BuildTest(8, isActive: false) });
+        var result = await _service.GetTestsAsync(10, false);
+        Assert.False(Assert.Single(result).IsActive);
+    }
+
+    [Fact]
+    public async Task GetTestsAsync_WhenHealthCaseNotFound_ThrowsNotFoundException()
+    {
+        _repository.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((HealthCase?)null);
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.GetTestsAsync(99, null));
+        _repository.Verify(r => r.GetTestsByHealthCaseIdAsync(It.IsAny<int>(), It.IsAny<bool>()), Times.Never);
     }
 }
