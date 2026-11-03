@@ -26,6 +26,7 @@ namespace MuuBoi.Api.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IAccountService _accountService;
         private readonly ISessionValidator _sessionValidator;
+        private readonly IUsageService _usageService;
         private readonly IPasswordRecoveryService _passwordRecoveryService;
         private readonly IEmailConfirmationService _emailConfirmationService;
 
@@ -35,6 +36,7 @@ namespace MuuBoi.Api.Controllers
             ApplicationDbContext context,
             IAccountService accountService,
             ISessionValidator sessionValidator,
+            IUsageService usageService,
             IPasswordRecoveryService passwordRecoveryService,
             IEmailConfirmationService emailConfirmationService)
         {
@@ -43,6 +45,7 @@ namespace MuuBoi.Api.Controllers
             _context = context;
             _accountService = accountService;
             _sessionValidator = sessionValidator;
+            _usageService = usageService;
             _passwordRecoveryService = passwordRecoveryService;
             _emailConfirmationService = emailConfirmationService;
         }
@@ -118,6 +121,8 @@ namespace MuuBoi.Api.Controllers
             if (string.IsNullOrEmpty(user.SecurityStamp))
                 await _userManager.UpdateSecurityStampAsync(user);
 
+            await _usageService.RecordLoginAsync(user.Id, user.PropertyId);
+
             return Ok(BuildAuthResponse(user, property));
         }
 
@@ -156,6 +161,8 @@ namespace MuuBoi.Api.Controllers
             var property = await _context.Properties.FindAsync(user!.PropertyId);
             if (property == null)
                 return StatusCode(500, new { message = "Propriedade não encontrada." });
+
+            await _usageService.RecordLoginAsync(user.Id, user.PropertyId);
 
             return Ok(BuildAuthResponse(user, property));
         }
@@ -289,7 +296,7 @@ namespace MuuBoi.Api.Controllers
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
             var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
-            var expiresAt = DateTime.UtcNow.AddHours(24);
+            var expiresAt = DateTime.UtcNow.AddMonths(6);
 
             var token = new JwtSecurityToken(
                 claims: claims,

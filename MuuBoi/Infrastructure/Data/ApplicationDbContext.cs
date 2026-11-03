@@ -36,6 +36,8 @@ namespace MuuBoi.Infrastructure.Data
         public DbSet<UnitOfMeasure> UnitsOfMeasure { get; set; }
         public DbSet<StockItem> StockItems { get; set; }
         public DbSet<StockMovement> StockMovements { get; set; }
+        public DbSet<LoginEvent> LoginEvents { get; set; }
+        public DbSet<UsageDaily> UsageDaily { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -466,6 +468,45 @@ namespace MuuBoi.Infrastructure.Data
                 new UnitOfMeasure { Id = 5, Name = "Saco", Abbreviation = null, IsActive = true, CreatedAt = stockSeedDate },
                 new UnitOfMeasure { Id = 6, Name = "Tonelada", Abbreviation = "t", IsActive = true, CreatedAt = stockSeedDate },
                 new UnitOfMeasure { Id = 7, Name = "Unidade", Abbreviation = "un", IsActive = true, CreatedAt = stockSeedDate });
+
+            builder.Entity<LoginEvent>()
+                .HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<LoginEvent>()
+                .HasOne(e => e.Property)
+                .WithMany()
+                .HasForeignKey(e => e.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<LoginEvent>()
+                .HasIndex(e => e.OccurredAt)
+                .HasDatabaseName("IX_LoginEvents_OccurredAt");
+
+            builder.Entity<LoginEvent>()
+                .HasIndex(e => new { e.PropertyId, e.OccurredAt })
+                .HasDatabaseName("IX_LoginEvents_PropertyId_OccurredAt");
+
+            builder.Entity<UsageDaily>()
+                .HasOne(u => u.Property)
+                .WithMany()
+                .HasForeignKey(u => u.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<UsageDaily>()
+                .Property(u => u.Date)
+                .HasColumnType("date");
+
+            builder.Entity<UsageDaily>()
+                .HasIndex(u => new { u.PropertyId, u.Date })
+                .IsUnique()
+                .HasDatabaseName("UX_UsageDaily_PropertyId_Date");
+
+            builder.Entity<UsageDaily>()
+                .HasIndex(u => u.Date)
+                .HasDatabaseName("IX_UsageDaily_Date");
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

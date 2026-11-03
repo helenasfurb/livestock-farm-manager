@@ -8,6 +8,7 @@ namespace MuuBoi.Infrastructure.Services
     public class SessionValidator : ISessionValidator
     {
         private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(60);
+        private static readonly TimeSpan LastSeenThreshold = TimeSpan.FromMinutes(15);
 
         private readonly IMemoryCache _cache;
         private readonly IServiceScopeFactory _scopeFactory;
@@ -27,11 +28,25 @@ namespace MuuBoi.Infrastructure.Services
                 using var scope = _scopeFactory.CreateScope();
                 var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-                return await context.Users
+                var user = await context.Users
                     .AsNoTracking()
                     .Where(u => u.Id == userId)
-                    .Select(u => new SessionState(u.IsActive, u.SecurityStamp))
+                    .Select(u => new { u.IsActive, u.SecurityStamp, u.LastSeenAt })
                     .FirstOrDefaultAsync();
+
+                if (user == null)
+                    return null;
+
+                var now = DateTime.UtcNow;
+                if (user.IsActive && user.SecurityStamp == securityStamp
+                    && (user.LastSeenAt == null || now - user.LastSeenAt >= LastSeenThreshold))
+                {
+                    await context.Users
+                        .Where(u => u.Id == userId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastSeenAt, now));
+                }
+
+                return new SessionState(user.IsActive, user.SecurityStamp);
             });
 
             return state is { IsActive: true } && state.SecurityStamp == securityStamp;

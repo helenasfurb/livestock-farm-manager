@@ -13,6 +13,7 @@ using MuuBoi.Infrastructure.Repositories;
 using MuuBoi.Infrastructure.Services;
 using MuuBoi.Domain.Models;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -33,6 +34,13 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT Key não configurada.");
+
+builder.Services.Configure<PortalOptions>(builder.Configuration.GetSection("Portal"));
+
+var portalJwtKey = builder.Configuration["Portal:JwtKey"];
+var portalSigningKey = string.IsNullOrEmpty(portalJwtKey)
+    ? RandomNumberGenerator.GetBytes(64)
+    : Encoding.UTF8.GetBytes(portalJwtKey);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -69,9 +77,28 @@ builder.Services.AddAuthentication(options =>
                 context.Fail("Sessão inválida.");
         }
     };
+})
+.AddJwtBearer(PortalAuthDefaults.Scheme, options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = false,
+        ValidateAudience = true,
+        ValidAudience = PortalAuthDefaults.Audience,
+        ValidateIssuerSigningKey = true,
+        ValidateLifetime = true,
+        IssuerSigningKey = new SymmetricSecurityKey(portalSigningKey),
+        ClockSkew = TimeSpan.Zero
+    };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(PortalAuthDefaults.Policy, policy => policy
+        .AddAuthenticationSchemes(PortalAuthDefaults.Scheme)
+        .RequireAuthenticatedUser()
+        .RequireRole(PortalAuthDefaults.Role));
+});
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -79,6 +106,16 @@ builder.Services.AddRateLimiter(options =>
     options.OnRejected = async (context, ct) =>
         await context.HttpContext.Response.WriteAsJsonAsync(
             new { error = "Muitas tentativas. Tente novamente mais tarde." }, ct);
+
+    options.AddPolicy(PortalAuthDefaults.LoginRateLimit, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ResolveClientIp(httpContext),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0
+            }));
 
     options.AddPolicy(AuthRateLimitPolicies.AccountCodes, httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
@@ -90,6 +127,8 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
 });
+
+builder.Services.AddScoped<IPortalAuthService, PortalAuthService>();
 
 builder.Services.AddScoped<IAnimalRepository, AnimalRepository>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
@@ -150,6 +189,15 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IPasswordRecoveryService, PasswordRecoveryService>();
 builder.Services.AddScoped<IEmailConfirmationService, EmailConfirmationService>();
 
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IUsageTracker, UsageTracker>();
+builder.Services.AddScoped<IUsageRepository, UsageRepository>();
+builder.Services.AddScoped<IUsageService, UsageService>();
+builder.Services.AddHostedService<UsageFlushService>();
+
+builder.Services.AddScoped<IPortalRepository, PortalRepository>();
+builder.Services.AddScoped<IPortalMetricsService, PortalMetricsService>();
+
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ISessionValidator, SessionValidator>();
 
@@ -197,6 +245,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseSwagger();
@@ -210,6 +259,8 @@ if (!app.Environment.IsEnvironment("Docker"))
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
+
+app.UseMiddleware<UsageTrackingMiddleware>();
 
 app.UseMiddleware<ExceptionMiddleware>();
 

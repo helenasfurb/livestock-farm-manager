@@ -29,6 +29,9 @@ namespace MuuBoi.Domain.Enums
         DairyGuzerat = 8,
 
         [Description("Sindi")]
-        Sindhi = 9
+        Sindhi = 9,
+
+        [Description("Angus")]
+        Angus = 10
     }
 }

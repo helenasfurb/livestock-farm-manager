@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Portal MuuBoi — Entrar</title>
+    <link rel="stylesheet" href="portal.css" />
+</head>
+<body>
+    <main class="login">
+        <form id="login-form" class="card" novalidate>
+            <h1>Portal MuuBoi</h1>
+            <p class="subtitle">Acesso do operador da plataforma</p>
+            <p id="error" class="error" role="alert" hidden></p>
+            <label class="field">
+                <span>Usuário</span>
+                <input id="username" autocomplete="username" required />
+            </label>
+            <label class="field">
+                <span>Senha</span>
+                <input id="password" type="password" autocomplete="current-password" required />
+            </label>
+            <button id="submit" class="button" type="submit">Entrar</button>
+        </form>
+    </main>
+    <script src="portal.js"></script>
+    <script>
+        if (Portal.getToken()) window.location.replace('dashboard.html');
+
+        const errorBox = document.getElementById('error');
+        const submitButton = document.getElementById('submit');
+
+        document.getElementById('login-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            errorBox.hidden = true;
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            if (!username || !password) {
+                showError('Informe usuário e senha.');
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.textContent = 'Entrando…';
+
+            try {
+                const response = await fetch('/api/portal/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (Portal.saveToken(data.token, data.expiresAt)) {
+                        window.location.replace('dashboard.html');
+                        return;
+                    }
+                    showError('O navegador bloqueou o armazenamento da sessão.');
+                } else if (response.status === 429) {
+                    showError('Muitas tentativas. Aguarde 15 minutos e tente de novo.');
+                } else if (response.status === 401) {
+                    showError('Usuário ou senha inválidos.');
+                } else {
+                    showError('Não foi possível entrar. Tente novamente.');
+                }
+            } catch {
+                showError('Sem conexão com o servidor.');
+            }
+
+            submitButton.disabled = false;
+            submitButton.textContent = 'Entrar';
+        });
+
+        function showError(message) {
+            errorBox.textContent = message;
+            errorBox.hidden = false;
+        }
+    </script>
+</body>
+</html>
